@@ -193,3 +193,22 @@ func TestInfo(t *testing.T) {
 		t.Fatal("plain folder seen as a repository")
 	}
 }
+
+// A chat outside a goal has no goal or task branch: it gets a read-only view of the base.
+func TestChatWithoutAGoalReadsTheBase(t *testing.T) {
+	ctx := context.Background()
+	remote, clone := setup(t)
+	r := New(t.TempDir(), memBlobs{})
+	m := protocol.RepoMount{DirectoryID: uuid.New(), Name: "api", Remote: remote, ClonePath: clone}
+
+	co, err := r.Prepare(ctx, t.TempDir(), m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(filepath.Join(co.Worktree, "app.txt")); string(got) != "one\n" {
+		t.Errorf("worktree has %q, want the base branch’s app.txt", got)
+	}
+	if branches := must(t, clone, "branch", "--list", "canopy/*"); branches != "" {
+		t.Errorf("made branches for a chat: %q", branches)
+	}
+}

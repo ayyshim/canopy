@@ -121,7 +121,8 @@ func baseRef(ctx context.Context, clone, base string) string {
 }
 
 func (r *Repos) ensureGoalBranch(ctx context.Context, clone string, m protocol.RepoMount) error {
-	if branchExists(ctx, clone, m.GoalBranch) {
+	// A chat outside a goal has no goal branch; it reads the base instead.
+	if m.GoalBranch == "" || branchExists(ctx, clone, m.GoalBranch) {
 		return nil
 	}
 	if m.BundleKey != "" {
