@@ -184,8 +184,8 @@ Description=Canopy client
 After=network-online.target
 
 [Service]
-ExecStart=$BIN_DIR/canopy run
-Restart=always
+ExecStart=$BIN_DIR/canopy run --foreground
+Restart=on-failure
 RestartSec=5
 
 [Install]

@@ -33,16 +33,18 @@ Usage:
   canopy pair --hub URL --code CODE [--name NAME] [--address HOST] [--run]
       pair with a hub using a code from Canopy (--address: for servers, the name people
       reach it by; --run: start running right after pairing)
-  canopy run [--hub URL] [--sandbox auto|bwrap|none] [-v]
-      connect and run agents; keep it running (--hub: only this hub; -v: verbose logs)
-  canopy status      show pairings and installed CLIs
+  canopy run [--hub URL] [--sandbox auto|bwrap|none] [--foreground] [-v]
+      connect and run agents in the background (--hub: only this hub; --foreground: stay in
+      this terminal, for systemd or debugging; -v: verbose logs)
+  canopy stop        stop canopy running in the background
+  canopy status      show whether canopy is running, pairings and installed CLIs
   canopy version
 
 Pairing codes come from Canopy: workspace setup, or Organization → Computers → Connect a computer.
 
 Environment:
   CANOPY_HOME          pairings and keys (default ~/.config/canopy)
-  CANOPY_DATA          work folders, mirrors and sockets (default ~/.local/share/canopy)
+  CANOPY_DATA          work folders, mirrors, sockets and canopy.log (default ~/.local/share/canopy)
   CANOPY_CLAUDE_BIN    the claude binary to run (default: found on PATH)
 `
 
@@ -57,6 +59,8 @@ func main() {
 		err = cmdPair(os.Args[2:])
 	case "run":
 		err = cmdRun(os.Args[2:])
+	case "stop":
+		err = cmdStop()
 	case "status":
 		err = cmdStatus()
 	case "mcp":
@@ -108,7 +112,11 @@ func cmdRun(args []string) error {
 	sb := fs.String("sandbox", "auto", "auto, bwrap or none")
 	unsafe := fs.Bool("unsafe-no-sandbox", false, "run agents without a sandbox (development only)")
 	verbose := fs.Bool("v", false, "verbose logging")
+	foreground := fs.Bool("foreground", false, "stay in this terminal instead of running in the background")
 	_ = fs.Parse(args)
+	if pid := runningPID(); pid > 0 {
+		return fmt.Errorf("canopy is already running (pid %d). Stop it with: canopy stop", pid)
+	}
 	level := slog.LevelInfo
 	if *verbose {
 		level = slog.LevelDebug
@@ -145,6 +153,14 @@ func cmdRun(args []string) error {
 	if len(selected) == 0 {
 		return fmt.Errorf("this machine isn’t paired yet. Run: canopy pair --hub URL --code CODE")
 	}
+	if !*foreground {
+		return startBackground(args)
+	}
+	lock, err := holdPIDFile()
+	if err != nil {
+		return err
+	}
+	defer lock.Close()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	var wg sync.WaitGroup
@@ -168,6 +184,11 @@ func cmdStatus() error {
 	hubs, err := config.List()
 	if err != nil {
 		return err
+	}
+	if pid := runningPID(); pid > 0 {
+		fmt.Printf("Running in the background (pid %d). Logs: %s\n\n", pid, logPath())
+	} else {
+		fmt.Print("Not running. Start it with: canopy run\n\n")
 	}
 	if len(hubs) == 0 {
 		fmt.Println("Not paired with any hub yet.")

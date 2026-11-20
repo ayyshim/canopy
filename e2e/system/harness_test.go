@@ -264,7 +264,7 @@ func (mc *machine) command(args ...string) *exec.Cmd {
 }
 
 func (mc *machine) start() {
-	args := []string{"run", "--sandbox", mc.sandbox}
+	args := []string{"run", "--foreground", "--sandbox", mc.sandbox}
 	if mc.sandbox == "none" {
 		args = append(args, "--unsafe-no-sandbox")
 	}

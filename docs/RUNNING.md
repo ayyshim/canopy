@@ -178,7 +178,9 @@ Each person connects their own computer. Their goals run there with their own Cl
    journalctl --user -u canopy -f
    ```
 
-   Without systemd, run `canopy run` yourself (in tmux, for example).
+   Without systemd, run `canopy run` yourself. It starts in the background, writes its log to
+   `~/.local/share/canopy/canopy.log`, and `canopy stop` stops it. It doesn’t start again after
+   a restart of the computer.
 
 Admins can also share a server: pair it the same way, sign its Claude Code in with an API key
 on **Organization → Computers**, and press **Share with everyone**. People without
@@ -231,7 +233,8 @@ Other environment variables:
 
 ```
 canopy pair --hub URL --code CODE [--name NAME] [--address HOST] [--run]
-canopy run [--hub URL] [--sandbox auto|bwrap|none] [--unsafe-no-sandbox] [-v]
+canopy run [--hub URL] [--sandbox auto|bwrap|none] [--unsafe-no-sandbox] [--foreground] [-v]
+canopy stop
 canopy status
 canopy version
 canopy help
@@ -243,13 +246,15 @@ canopy help
 | `pair --code CODE` | One-time code from Canopy (valid 15 minutes) |
 | `pair --name NAME` | Name shown in Canopy (default: the hostname) |
 | `pair --address HOST` | For servers: the name people know it by |
-| `pair --run` | Start running right after pairing |
-| `run` | Connect to every paired hub and run agents. Keep it running. |
+| `pair --run` | Start running in the background right after pairing |
+| `run` | Connect to every paired hub and run agents, in the background. Prints the process id and log file, then returns. Refuses to start a second copy. |
+| `run --foreground` | Stay in this terminal and log there. The systemd service uses this; so can you when debugging. |
 | `run --hub URL` | Connect to just this hub |
 | `run --sandbox auto\|bwrap\|none` | Sandbox to use (`auto` picks bubblewrap on Linux) |
 | `run --unsafe-no-sandbox` | Allow running without a sandbox. Agents then see everything your user can. Development only. |
 | `run -v` | Verbose logs |
-| `status` | Pairings, installed CLIs and their sign-in, and the sandbox |
+| `stop` | Stop canopy running in the background (waits up to 15 seconds) |
+| `status` | Whether canopy is running, pairings, installed CLIs and their sign-in, and the sandbox |
 
 `canopy mcp` and `canopy sandbox-init` also exist. The client runs them itself inside agent
 sessions; you don’t call them.
@@ -259,7 +264,7 @@ Environment:
 | Variable | Default | Meaning |
 |---|---|---|
 | `CANOPY_HOME` | `~/.config/canopy` | Pairings and keys, one folder per hub under `hubs/`. Delete one to unpair. |
-| `CANOPY_DATA` | `~/.local/share/canopy` | Work folders (git worktrees), folder copies, sockets |
+| `CANOPY_DATA` | `~/.local/share/canopy` | Work folders (git worktrees), folder copies, sockets, `canopy.log` and `canopy.pid` |
 | `CANOPY_CLAUDE_BIN` | `claude` on `PATH` | The Claude Code binary to run |
 | `CLAUDE_CONFIG_DIR` | `~/.claude` | Where Claude Code keeps its sign-in |
 | `CANOPY_BIN_DIR` | `~/.local/bin` | Install script only: where to put `canopy` |
