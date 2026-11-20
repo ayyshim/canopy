@@ -65,7 +65,9 @@ export function ChatWindow({ win, index }: { win: ChatWin; index: number }) {
   const anchor = win.anchor;
   // Refs so other windows opening or closing don't move this one.
   const live = useRef({ index, full: !!win.full });
-  live.current = { index, full: !!win.full };
+  useLayoutEffect(() => {
+    live.current = { index, full: !!win.full };
+  });
   useLayoutEffect(() => {
     const el = boxRef.current, host = el?.offsetParent;
     if (!anchor || !el || !host || live.current.full || innerWidth <= 860) return;
