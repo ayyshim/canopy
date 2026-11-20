@@ -34,14 +34,20 @@ func HasApp() bool {
 
 // App serves the web app.
 func App() http.Handler {
-	files := site()
-	fileServer := http.FileServer(http.FS(files))
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !HasApp() {
+	if !HasApp() {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			fmt.Fprint(w, `<!doctype html><title>Canopy</title><p style="font-family:sans-serif">This hub was built without its web app. Use a release build of canopy-hub, or run the web app’s dev server.`)
-			return
-		}
+		})
+	}
+	return serveSite(site())
+}
+
+// serveSite serves a static export. Files are served with ServeFileFS and the request's own
+// path: http.FileServer would answer a request it sees as /index.html with a redirect to ./,
+// which loops forever on the home page.
+func serveSite(files fs.FS) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p := path.Clean("/" + r.URL.Path)
 		if strings.HasPrefix(p, "/_next/static/") {
 			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
@@ -49,14 +55,12 @@ func App() http.Handler {
 			w.Header().Set("Cache-Control", "no-cache")
 		}
 		if name, ok := resolve(files, p); ok {
-			r2 := r.Clone(r.Context())
-			r2.URL.Path = "/" + name
-			fileServer.ServeHTTP(w, r2)
+			http.ServeFileFS(w, r, files, name)
 			return
 		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusNotFound)
 		if b, err := fs.ReadFile(files, "404.html"); err == nil {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			_, _ = w.Write(b)
 		}
 	})
