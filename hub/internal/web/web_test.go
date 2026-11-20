@@ -57,15 +57,23 @@ func TestServeSitePWAFiles(t *testing.T) {
 	h := serveSite(fstest.MapFS{
 		"manifest.webmanifest": {Data: []byte(`{"name":"Canopy"}`)},
 		"icons/icon-192.png":   {Data: []byte("\x89PNG\r\n\x1a\n")},
+		"sw.js":                {Data: []byte("self.skipWaiting()")},
 	})
 	for path, want := range map[string]string{
 		"/manifest.webmanifest": "application/manifest+json",
 		"/icons/icon-192.png":   "image/png",
+		"/sw.js":                "text/javascript; charset=utf-8",
 	} {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, httptest.NewRequest("GET", path, nil))
 		if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != want {
 			t.Errorf("%s: %d %q, want 200 %q", path, rec.Code, rec.Header().Get("Content-Type"), want)
+		}
+		if cc := rec.Header().Get("Cache-Control"); cc != "no-cache" {
+			t.Errorf("%s: Cache-Control %q, want no-cache", path, cc)
+		}
+		if cc := rec.Header().Get("Cache-Control"); cc != "no-cache" {
+			t.Errorf("%s: Cache-Control %q, want no-cache", path, cc)
 		}
 	}
 }
