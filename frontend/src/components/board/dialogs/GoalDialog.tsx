@@ -3,53 +3,80 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ApiError } from "@/lib/api";
-import { giveGoal } from "@/lib/board/actions";
+import { attachFiles, giveDraft, giveGoal, saveDraft } from "@/lib/board/actions";
 import { computer, computerFor, goal as findGoal, managers, signInLabel, staffOf, visibleMember } from "@/lib/board/derive";
 import { useUI } from "@/lib/board/ui";
 import { useB, useBoardCtx } from "../context";
+import { FilePicker, MAX_FILE_MB } from "../panels/Attachments";
 
-/** GoalDialog gives a goal to a manager, choosing the branch it starts from and where it runs. */
-export function GoalDialog({ managerId }: { managerId?: string }) {
+/** GoalDialog gives a goal to a manager, or saves it as a draft to give later. */
+export function GoalDialog({ managerId, draftId }: { managerId?: string; draftId?: string }) {
   const b = useB();
   const { wsId, me } = useBoardCtx();
   const ui = useUI();
   const side = ui.side;
-  const ctxManager = managerId ?? (side?.type === "goal" ? findGoal(b, side.id)?.manager_id : undefined) ?? managers(b).find((m) => visibleMember(b, m.id))?.id ?? "";
+  const draft = findGoal(b, draftId);
+  const ctxManager = draft?.manager_id ?? managerId ?? (side?.type === "goal" ? findGoal(b, side.id)?.manager_id : undefined) ?? managers(b).find((m) => visibleMember(b, m.id))?.id ?? "";
   const [manager, setManager] = useState(ctxManager ?? "");
-  const [title, setTitle] = useState("");
-  const [doneWhen, setDoneWhen] = useState("");
-  const [base, setBase] = useState("");
-  const [snapshot, setSnapshot] = useState(false);
+  const [title, setTitle] = useState(draft?.title ?? "");
+  const [description, setDescription] = useState(draft?.description ?? "");
+  const [doneWhen, setDoneWhen] = useState(draft?.done_when ?? "");
+  const [base, setBase] = useState(draft?.base ?? "");
+  const [snapshot, setSnapshot] = useState(draft?.snapshot ?? false);
   const runOptions = b.runners.filter((r) => r.owner_user_id === me || r.shared);
-  const [runner, setRunner] = useState(computerFor(b, me) ?? "");
+  const [runner, setRunner] = useState(draft?.runner_id ?? computerFor(b, me) ?? "");
+  const [files, setFiles] = useState<File[]>([]);
+  const tooBig = files.some((f) => f.size > MAX_FILE_MB << 20);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"" | "give" | "draft">("");
 
   // "Start from": the default branch, or the branch checked out in my clone on my computer.
   const repos = b.directories.filter((d) => d.is_repo);
   const myClone = b.clones.find((c) => c.user_id === me && repos.some((d) => d.id === c.directory_id) && c.runner_id === runner);
   const defaultBranch = repos[0]?.default_branch || "main";
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
+  const send = async (asDraft: boolean) => {
+    setBusy(asDraft ? "draft" : "give");
+    const body = { manager_id: manager, title, description: description.trim() || undefined, done_when: doneWhen, runner_id: runner || undefined, base, snapshot: snapshot && base === myClone?.current_branch };
     try {
-      const res = await giveGoal(wsId, { manager_id: manager, title, done_when: doneWhen, runner_id: runner || undefined, base, snapshot: snapshot && base === myClone?.current_branch });
-      if (res.queued) ui.toast(res.reason ?? "You’re at your usage limit. The goal starts when it resets.", "warn");
-      else ui.toast(`Goal given to ${visibleMember(b, manager)?.name}.`, "ok");
+      let id: string | undefined;
+      let given = !asDraft;
+      if (draft || files.length) {
+        // With files, save a draft first so they are there before the manager starts planning.
+        id = draft ? (await saveDraft(draft.id, body)).goal.id : (await giveGoal(wsId, { ...body, draft: true })).goal?.id;
+        if (id && files.length) await attachFiles({ goalId: id }, files);
+        if (id && !asDraft) {
+          try {
+            await giveDraft(id);
+          } catch (err) {
+            given = false;
+            ui.toast(`Saved as a draft. ${err instanceof ApiError ? err.message : ""}`, "warn");
+          }
+        }
+      } else {
+        const res = await giveGoal(wsId, { ...body, draft: asDraft });
+        if (res.queued) ui.toast(res.reason ?? "You’re at your usage limit. The goal starts when it resets.", "warn");
+        id = res.goal?.id;
+      }
+      if (id && asDraft) ui.toast("Draft saved. Give it to the manager when it’s ready.", "ok");
+      else if (id && given) ui.toast(`Goal given to ${visibleMember(b, manager)?.name}.`, "ok");
       ui.openDialog(null);
-      if (res.goal) ui.openSide({ type: "goal", id: res.goal.id });
+      if (id) ui.openSide({ type: "goal", id });
     } catch (err) {
       if (err instanceof ApiError) setErrors(Object.keys(err.fields).length ? err.fields : { title: err.message });
     } finally {
-      setBusy(false);
+      setBusy("");
     }
+  };
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    send(false);
   };
 
   return (
     <form className="dialog" onSubmit={submit}>
-      <h2>Give a goal</h2>
-      <p>The manager analyzes it, splits it into tasks and works with staff to get it done.</p>
+      <h2>{draft ? "Edit draft goal" : "Give a goal"}</h2>
+      <p>The manager analyzes it, splits it into tasks and works with staff to get it done. Not ready yet? Save it as a draft.</p>
       <label className="field"><span>Manager</span>
         <select className="input" value={manager} onChange={(e) => setManager(e.target.value)}>
           {managers(b).map((mg) => {
@@ -65,9 +92,13 @@ export function GoalDialog({ managerId }: { managerId?: string }) {
         <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Let admins refund a payment from the dashboard" autoComplete="off" autoFocus />
         {errors.title && <span className="err">{errors.title}</span>}
       </label>
+      <label className="field"><span>Description <span style={{ fontWeight: 500 }}>(optional)</span></span>
+        <textarea className="input" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Add any details, context or links that help the team" />
+      </label>
       <label className="field"><span>Done when <span style={{ fontWeight: 500 }}>(optional)</span></span>
         <input className="input" value={doneWhen} onChange={(e) => setDoneWhen(e.target.value)} placeholder="A refund shows up in the payment’s history" autoComplete="off" />
       </label>
+      <FilePicker files={files} onChange={setFiles} />
       {repos.length > 0 && (
         <>
           <label className="field"><span>Start from</span>
@@ -100,7 +131,8 @@ export function GoalDialog({ managerId }: { managerId?: string }) {
       )}
       <div className="row"><span className="spacer" />
         <button type="button" className="btn" onClick={() => ui.openDialog(null)}>Cancel</button>
-        <button className="btn btn-primary" disabled={busy || !title.trim() || !manager}>Give goal</button>
+        <button type="button" className="btn" disabled={!!busy || !title.trim() || !manager || tooBig} onClick={() => send(true)}>{busy === "draft" ? "Saving…" : draft ? "Save draft" : "Save as draft"}</button>
+        <button className="btn btn-primary" disabled={!!busy || !title.trim() || !manager || tooBig}>{busy === "give" ? "Giving…" : "Give goal"}</button>
       </div>
     </form>
   );

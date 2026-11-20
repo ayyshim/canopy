@@ -1,7 +1,20 @@
 -- name: CreateGoal :one
-INSERT INTO goals (id, workspace_id, manager_id, title, done_when, color, created_by, runner_id, base, branch, snapshot)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+INSERT INTO goals (id, workspace_id, manager_id, title, done_when, color, created_by, runner_id, base, branch, snapshot, description, status)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 RETURNING *;
+
+-- name: UpdateDraftGoal :one
+UPDATE goals
+SET manager_id = $2, title = $3, done_when = $4, description = $5, runner_id = $6, base = $7, branch = $8, snapshot = $9
+WHERE id = $1 AND status = 'draft'
+RETURNING *;
+
+-- name: GiveDraftGoal :one
+UPDATE goals SET status = 'planning', created_at = now() WHERE id = $1 AND status = 'draft'
+RETURNING *;
+
+-- name: DeleteDraftGoal :execrows
+DELETE FROM goals WHERE id = $1 AND status = 'draft';
 
 -- name: GetGoal :one
 SELECT * FROM goals WHERE id = $1;

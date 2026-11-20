@@ -47,6 +47,10 @@ var Defs = []Def{
 		`{"type":"object","properties":{"member":{"type":"string","description":"name of a staff member who reports to you"}},"required":["member"]}`},
 	{protocol.ToolUpdateStaff, "Managers: draft new instructions for one of your staff and send them to a workspace admin for approval. Send the full new text. Returns right away; you are told later if it was approved or rejected.",
 		`{"type":"object","properties":{"member":{"type":"string","description":"name of a staff member who reports to you"},"instructions":{"type":"string"},"reason":{"type":"string"}},"required":["member","instructions"]}`},
+	{protocol.ToolGetAttachments, "Download the files attached to your goal and its tasks (images, documents, data) into ./attachments. Returns their paths.",
+		`{"type":"object","properties":{"name":{"type":"string","description":"only this file; leave out for all"}}}`},
+	{protocol.ToolAttachFile, "Attach a file to your goal (default) or your task, so people and other agents on the goal can use it.",
+		`{"type":"object","properties":{"path":{"type":"string"},"to":{"type":"string","enum":["goal","task"]}},"required":["path"]}`},
 }
 
 // Call is the bridge asking the runner to run a tool.

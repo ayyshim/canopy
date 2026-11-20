@@ -6,7 +6,7 @@ export type Side = { type: "ws" | "goal" | "task" | "people" | "pool" | "dirs" |
 export type ChatAnchor = { left: number; top: number; right: number; bottom: number };
 export type ChatWin = { id: string; anchor?: ChatAnchor; full?: boolean; min?: boolean; tab?: "chat" | "activity" | "settings" };
 export type Dialog =
-  | { kind: "goal"; managerId?: string }
+  | { kind: "goal"; managerId?: string; draftId?: string }
   | { kind: "task"; goalId?: string; memberId?: string }
   | { kind: "member"; mode: "manager" | "staff" | "pool"; bossId?: string; memberId?: string }
   | { kind: "invite" }

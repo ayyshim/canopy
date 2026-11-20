@@ -1,12 +1,12 @@
 // Shapes the hub returns beyond the generated core types.
 import type {
   AccountView, DirectoryView, GoalEventView, GoalView, GrantView, MemberView, OutputView, SessionView, SignalView, TaskView, WorkspaceView,
-  ChatMessageView, LogLineView, RunnerView, CLIStatus, CloneView, GoalRepoView, NoteView, SkillView, StaffProposalView, DraftSkill,
+  ChatMessageView, LogLineView, RunnerView, CLIStatus, CloneView, GoalRepoView, NoteView, SkillView, StaffProposalView, DraftSkill, AttachmentView,
 } from "./core-types";
 
 export type {
   AccountView, DirectoryView, GoalEventView, GoalView, GrantView, MemberView, OutputView, SessionView, SignalView, TaskView, WorkspaceView,
-  ChatMessageView, LogLineView, RunnerView, CLIStatus, CloneView, GoalRepoView, NoteView, SkillView, StaffProposalView, DraftSkill,
+  ChatMessageView, LogLineView, RunnerView, CLIStatus, CloneView, GoalRepoView, NoteView, SkillView, StaffProposalView, DraftSkill, AttachmentView,
 };
 
 export type HiddenMember = { id: string; kind: string; reports_to?: string | null; hidden: true; position: number };
@@ -40,6 +40,7 @@ export type Board = {
   signals: SignalView[];
   sessions: SessionView[];
   outputs: OutputView[];
+  attachments: AttachmentView[];
   notes: NoteView[];
   skills: SkillView[]; // the workspace skill library
   member_skills: Record<string, string[]>; // member id → ids of library skills they have

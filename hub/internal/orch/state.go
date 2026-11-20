@@ -32,6 +32,7 @@ type wsState struct {
 	signals      []db.Signal
 	skills       []db.WorkspaceSkill               // the workspace skill library, by name
 	memberSkills map[uuid.UUID][]db.WorkspaceSkill // skills attached to each member
+	attachments  []db.Attachment
 	online       func(uuid.UUID) bool
 
 	mirrorCache map[uuid.UUID]map[uuid.UUID]string
@@ -70,6 +71,9 @@ func (o *Orch) load(ctx context.Context, q *db.Queries, wsID uuid.UUID) (*wsStat
 	}
 	for _, g := range st.goals {
 		st.goal[g.ID] = g
+	}
+	if st.attachments, err = q.ListWorkspaceAttachments(ctx, wsID); err != nil {
+		return nil, err
 	}
 	sessions, err := q.ListLatestSessions(ctx, wsID)
 	if err != nil {

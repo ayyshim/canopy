@@ -45,7 +45,7 @@ export type SetupPayload = {
   skills: SetupSkill[];
   members: SetupMember[];
   people: SetupPerson[];
-  first_goal: { manager_key: string; title: string; done_when: string } | null;
+  first_goal: { manager_key: string; title: string; description: string; done_when: string } | null;
 };
 
 let seq = 0;

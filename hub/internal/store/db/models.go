@@ -28,6 +28,20 @@ type Account struct {
 	RunnerID     uuid.UUID
 }
 
+type Attachment struct {
+	ID          uuid.UUID
+	WorkspaceID uuid.UUID
+	GoalID      *uuid.UUID
+	TaskID      *uuid.UUID
+	Name        string
+	Mime        string
+	Size        int64
+	Sha256      string
+	UserID      *uuid.UUID
+	MemberID    *uuid.UUID
+	CreatedAt   time.Time
+}
+
 type AuditEvent struct {
 	ID          uuid.UUID
 	OrgID       *uuid.UUID
@@ -195,6 +209,7 @@ type Goal struct {
 	ShowTasks   bool
 	DoneBy      *uuid.UUID
 	ReadyAt     *time.Time
+	Description string
 }
 
 type GoalEvent struct {

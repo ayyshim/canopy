@@ -217,6 +217,13 @@ type ToolResult struct {
 	IsError   bool      `json:"is_error,omitempty"`
 	Allow     *bool     `json:"allow,omitempty"`
 	Restart   bool      `json:"restart,omitempty"` // restart the session (resume) after answering, e.g. new mounts
+	Files     []FileRef `json:"files,omitempty"`   // get_attachments: files the runner downloads into ./attachments
+}
+
+// FileRef is a stored file by hash, saved under Name.
+type FileRef struct {
+	Name   string `json:"name"`
+	SHA256 string `json:"sha256"`
 }
 
 type SetAPIKey struct {
@@ -349,6 +356,8 @@ const (
 	ToolUpdateStaff    = "update_staff_instructions"
 	ToolGetStaff       = "get_staff_instructions"
 	ToolReadBoard      = "read_board"
+	ToolGetAttachments = "get_attachments"
+	ToolAttachFile     = "attach_file"
 )
 
 // ---- Directory mirror (DECISIONS: Directories) ----

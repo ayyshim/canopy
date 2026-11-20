@@ -18,7 +18,7 @@ export function goalNeeds(b: Board, g: GoalView) {
 
 export function goalLabel(b: Board, g: GoalView) {
   if (g.status === "ready") return goalRepos(b, g.id).length ? "Ready to ship" : "Ready to close";
-  return ({ done: "Done", planning: "Planning" } as Record<string, string>)[g.status] ?? "In progress";
+  return ({ done: "Done", planning: "Planning", draft: "Draft" } as Record<string, string>)[g.status] ?? "In progress";
 }
 
 export function GoalRow({ g }: { g: GoalView }) {

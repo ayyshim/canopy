@@ -7,11 +7,15 @@ import {
   signInLabel, visibleMember, firstName, plural,
 } from "@/lib/board/derive";
 import { useUI } from "@/lib/board/ui";
+import type { GoalView } from "@/lib/types";
 import { useNow } from "@/lib/useNow";
 import { useB, useBoardCtx } from "../context";
-import { Avatar, RepoIcon, Thumb } from "../icons";
+import { Avatar, RepoIcon } from "../icons";
 import { RunsOn, SignalBox, TaskRow, goalLabel } from "./bits";
+import { Attachments } from "./Attachments";
+import { DraftPanel } from "./DraftPanel";
 import { PanelBody, PanelFoot, PanelHead } from "./Panel";
+import { OutputThumb } from "../OutputThumb";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function shippedText(shipped: any, base: string, branch: string): string {
@@ -25,11 +29,18 @@ function shippedText(shipped: any, base: string, branch: string): string {
 
 export function GoalPanel({ id }: { id: string }) {
   const b = useB();
+  const g = findGoal(b, id);
+  if (!g) return null;
+  if (g.status === "draft") return <DraftPanel g={g} />;
+  return <GivenGoalPanel g={g} />;
+}
+
+function GivenGoalPanel({ g }: { g: GoalView }) {
+  const b = useB();
   const { me } = useBoardCtx();
   const ui = useUI();
   const [busy, setBusy] = useState("");
   const now = useNow(30000);
-  const g = findGoal(b, id)!;
   const ts = goalTasks(b, g.id);
   const work = ts.filter((t) => t.kind !== "plan");
   const dn = work.filter((t) => t.status === "done").length;
@@ -145,7 +156,9 @@ export function GoalPanel({ id }: { id: string }) {
             </button>
           </div>
         )}
+        {g.description && <div className="sb-sec"><span className="lbl">Description</span><span style={{ fontSize: 13.5, whiteSpace: "pre-wrap" }}>{g.description}</span></div>}
         {g.done_when && <div className="sb-sec"><span className="lbl">Done when</span><span style={{ fontSize: 13.5 }}>{g.done_when}</span></div>}
+        <Attachments goalId={g.id} />
         {sigs.length > 0 && <div className="sb-sec"><span className="lbl">Waiting on you ({sigs.length})</span>{sigs.map((s) => <SignalBox key={s.id} s={s} />)}</div>}
         <div className="sb-sec">
           <span className="lbl">Tasks by member</span>
@@ -174,7 +187,7 @@ export function GoalPanel({ id }: { id: string }) {
             <div className="thumbs">
               {outs.map((o) => (
                 <button key={o.id} className={`fruit${o.status === "review" ? " review" : o.status === "approved" ? " approved" : (b.seen[o.id] ?? 0) < o.versions.length ? " new" : ""}`}
-                  onClick={() => ui.openViewer(o.id)} title={o.title}><Thumb kind={o.kind} /></button>
+                  onClick={() => ui.openViewer(o.id)} title={o.title}><OutputThumb o={o} /></button>
               ))}
             </div>
           ) : <p className="hint">Nothing yet.</p>}
