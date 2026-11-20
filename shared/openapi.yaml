@@ -211,6 +211,46 @@ paths:
         "403": { $ref: "#/components/responses/Error" }
         "409": { description: skill_name_taken, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
         "422": { $ref: "#/components/responses/Error" }
+  /workspaces/{wsId}/staff-proposals:
+    get:
+      summary: List managers' drafts of new staff and instruction updates (workspace admins only)
+      parameters: [{ name: wsId, in: path, required: true, schema: { type: string, format: uuid } }, { name: status, in: query, required: false, schema: { type: string, enum: [pending, approved, rejected] } }]
+      responses:
+        "200": { description: Drafts, newest first, content: { application/json: { schema: { type: object, required: [proposals], properties: { proposals: { type: array, items: { $ref: "#/components/schemas/StaffProposal" } } } } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /workspaces/{wsId}/staff-proposals/{proposalId}/approve:
+    post:
+      summary: Approve a draft (admins only); fields sent replace the draft's
+      parameters: [{ name: wsId, in: path, required: true, schema: { type: string, format: uuid } }, { name: proposalId, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/StaffProposalEdit" } } } }
+      responses:
+        "200": { description: Approved, content: { application/json: { schema: { type: object, required: [proposal, member], properties: { proposal: { $ref: "#/components/schemas/StaffProposal" }, member: { type: object, description: "The new or updated member (MemberView in core-types)" } } } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { description: proposal_decided, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Error" }
+  /workspaces/{wsId}/staff-proposals/{proposalId}/reject:
+    post:
+      summary: Reject a draft (workspace admins only)
+      parameters: [{ name: wsId, in: path, required: true, schema: { type: string, format: uuid } }, { name: proposalId, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { reason: { type: string } } } } } }
+      responses:
+        "200": { description: Rejected, content: { application/json: { schema: { type: object, required: [proposal], properties: { proposal: { $ref: "#/components/schemas/StaffProposal" } } } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { description: proposal_decided, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /orgs/{orgId}/setup/chat:
+    post:
+      summary: Ask Claude on the admin's own computer to suggest a team for the setup wizard (admins only). Nothing is stored.
+      parameters: [{ name: orgId, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [runner_id, messages], properties: { runner_id: { type: string, format: uuid }, workspace: { type: object }, directories: { type: array, items: { type: object } }, skills: { type: array, items: { type: object } }, messages: { type: array, items: { type: object, required: [role, text], properties: { role: { type: string, enum: [user, assistant] }, text: { type: string } } } } } } } } }
+      responses:
+        "200": { description: A reply and an optional team draft, content: { application/json: { schema: { type: object, required: [reply], properties: { reply: { type: string }, team: { type: [object, "null"] } } } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { description: runner_offline, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Error" }
   /orgs/{orgId}/skills/preview:
     post:
       summary: Fetch a GitHub markdown link for the setup wizard without saving it (org admins)
@@ -461,6 +501,40 @@ components:
         name: { type: string }
         slug: { type: string }
         role: { $ref: "#/components/schemas/OrgRole" }
+        logo_url: { type: [string, "null"] }
+    DraftSkill:
+      type: object
+      required: [name, content, source_url]
+      properties:
+        name: { type: string, maxLength: 80 }
+        content: { type: string }
+        source_url: { type: string, description: "Where the skill was found; empty when written by the manager" }
+    StaffProposal:
+      type: object
+      required: [id, kind, manager_id, member_id, name, role, instructions, skills, status, reason, note, result_member_id, decided_at, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [new, update] }
+        manager_id: { type: string, format: uuid }
+        member_id: { type: [string, "null"], format: uuid, description: "The staff member an update changes" }
+        name: { type: string }
+        role: { type: [string, "null"], enum: [developer, reviewer, researcher, designer, writer, null] }
+        instructions: { type: string }
+        skills: { type: array, items: { $ref: "#/components/schemas/DraftSkill" } }
+        status: { type: string, enum: [pending, approved, rejected] }
+        reason: { type: string }
+        note: { type: string }
+        result_member_id: { type: [string, "null"], format: uuid }
+        decided_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
+    StaffProposalEdit:
+      type: object
+      description: Edits an admin makes while approving; omitted fields keep the draft's values.
+      properties:
+        name: { type: string }
+        role: { type: string, enum: [developer, reviewer, researcher, designer, writer] }
+        instructions: { type: string }
+        skills: { type: array, items: { $ref: "#/components/schemas/DraftSkill" } }
     Skill:
       type: object
       required: [id, name, source_kind, source_url, content, updated_at]
@@ -521,6 +595,7 @@ components:
         default_session_limit: { type: integer, format: int64 }
         default_weekly_limit: { type: integer, format: int64 }
         timezone: { type: string }
+        logo_url: { type: [string, "null"] }
         created_at: { type: string, format: date-time }
     OrgResponse:
       type: object

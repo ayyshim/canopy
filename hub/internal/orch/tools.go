@@ -79,6 +79,14 @@ func (o *Orch) onToolCall(ctx context.Context, rn db.Runner, c protocol.ToolCall
 		handle = o.toolWriteNote
 	case protocol.ToolAssignSkill:
 		handle = o.toolAssignSkill
+	case protocol.ToolProposeStaff:
+		handle = o.toolProposeStaff
+	case protocol.ToolUpdateStaff:
+		handle = o.toolUpdateStaffInstructions
+	case protocol.ToolGetStaff:
+		handle = o.toolGetStaffInstructions
+	case protocol.ToolReadBoard:
+		handle = o.toolReadBoard
 	case protocol.ToolGetAttachments:
 		handle = o.toolGetAttachments
 	case protocol.ToolAttachFile:

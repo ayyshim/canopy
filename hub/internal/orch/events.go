@@ -196,7 +196,11 @@ func (o *Orch) onSessionEvent(ctx context.Context, rn db.Runner, ev protocol.Ses
 			t.AfterCommit(func() { o.Kick(ctx, ws.ID) })
 			return nil
 		}
-		if ev.ResultText != "" {
+		if ev.ResultText != "" && ev.TurnKind == staffDecisionTurn {
+			if err := o.chat(ctx, t, ws, sess.MemberID, "agent", ev.ResultText, nil); err != nil {
+				return err
+			}
+		} else if ev.ResultText != "" {
 			if err := o.log(ctx, t, ws, &sess.ID, sess.MemberID, ev.TaskID, "agent", ev.ResultText); err != nil {
 				return err
 			}

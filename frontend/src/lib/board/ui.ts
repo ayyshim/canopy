@@ -13,6 +13,7 @@ export type Dialog =
   | { kind: "access"; userId: string }
   | { kind: "summary" }
   | { kind: "cap"; signalId: string }
+  | { kind: "draft"; id: string }
   | { kind: "shortcuts" };
 export type Toast = { id: number; text: string; kind: "ok" | "info" | "warn" | "error" };
 

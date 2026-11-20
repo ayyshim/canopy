@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import type {
   AccountView, AnyMember, Board, ChatMessageView, Cursor, GoalRepoView, GrantView, LogLineView, NoteView, OutputView,
-  PresenceUser, SessionView, SignalView, SkillView,
+  PresenceUser, SessionView, SignalView, SkillView, StaffProposalView,
 } from "../types";
 
 export type Comment = { id: string; task_id: string; author_user_id?: string | null; author_member_id?: string | null; text: string; created_at: string };
@@ -17,6 +17,7 @@ type BoardState = {
   chats: Record<string, ChatMessageView[]>; // member id → loaded thread
   logs: Record<string, LogLineView[]>; // member id → loaded activity, newest last
   comments: Record<string, Comment[]>; // task id → loaded comments
+  proposals: StaffProposalView[]; // managers' staff drafts; admins load them, everyone gets live changes
   gone: "" | "deleted" | "lost"; // the workspace went away, or the viewer lost access
 
   setSnapshot: (b: Board, presence: PresenceUser[]) => void;
@@ -25,6 +26,7 @@ type BoardState = {
   setChat: (memberId: string, msgs: ChatMessageView[]) => void;
   setLog: (memberId: string, lines: LogLineView[]) => void;
   setComments: (taskId: string, list: Comment[]) => void;
+  setProposals: (list: StaffProposalView[]) => void;
   reset: () => void;
 };
 
@@ -43,7 +45,7 @@ const sessionKey = (s: SessionView) => `${s.member_id}|${s.goal_id ?? ""}|${s.pe
 const accountKey = (a: AccountView) => `${a.runner_id}|${a.cli}`;
 const repoKey = (r: GoalRepoView) => `${r.goal_id}|${r.directory_id}`;
 
-const empty = { board: null, connected: false, presence: [], cursors: {}, typing: {}, chats: {}, logs: {}, comments: {}, gone: "" as const };
+const empty = { board: null, connected: false, presence: [], cursors: {}, typing: {}, chats: {}, logs: {}, comments: {}, proposals: [], gone: "" as const };
 
 export const useBoard = create<BoardState>((set) => ({
   ...empty,
@@ -52,6 +54,7 @@ export const useBoard = create<BoardState>((set) => ({
   setChat: (memberId, msgs) => set((s) => ({ chats: { ...s.chats, [memberId]: msgs } })),
   setLog: (memberId, lines) => set((s) => ({ logs: { ...s.logs, [memberId]: lines } })),
   setComments: (taskId, list) => set((s) => ({ comments: { ...s.comments, [taskId]: list } })),
+  setProposals: (proposals) => set({ proposals }),
   reset: () => set(empty),
   apply: (type, data) => set((s) => applyEvent(s, type, data)),
 }));
@@ -73,6 +76,8 @@ function applyEvent(s: BoardState, type: string, data: unknown): Partial<BoardSt
       return { cursors: { ...s.cursors, [d.user_id]: { ...d, at: Date.now() } } };
     case "chat.typing":
       return { typing: { ...s.typing, [d.member_id]: { name: d.name, at: Date.now() } } };
+    case "staff_proposal.updated":
+      return { proposals: upsert(s.proposals, d.proposal as StaffProposalView, byId) };
     case "workspace.deleted":
       return { gone: "deleted" };
     case "access.lost":

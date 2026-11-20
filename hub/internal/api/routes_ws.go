@@ -50,9 +50,14 @@ func (s *Server) workspaceRoutes(r chi.Router) {
 	r.Put("/workspaces/{wsID}/members/{memberID}/grants", httpx.Handler(s.handlePutGrants))
 	r.Post("/workspaces/{wsID}/members/{memberID}/suggest-grants", httpx.Handler(s.handleSuggestGrants))
 
+	r.Get("/workspaces/{wsID}/staff-proposals", httpx.Handler(s.handleListStaffProposals))
+	r.Post("/workspaces/{wsID}/staff-proposals/{proposalID}/approve", httpx.Handler(s.handleApproveStaffProposal))
+	r.Post("/workspaces/{wsID}/staff-proposals/{proposalID}/reject", httpx.Handler(s.handleRejectStaffProposal))
+
 	r.Get("/workspaces/{wsID}/skills", httpx.Handler(s.handleListSkills))
 	r.Post("/workspaces/{wsID}/skills", httpx.Handler(s.handleCreateSkill))
 	r.Post("/orgs/{orgID}/skills/preview", httpx.Handler(s.handlePreviewSkill))
+	r.Post("/orgs/{orgID}/setup/chat", httpx.Handler(s.handleSetupChat))
 	r.Patch("/skills/{skillID}", httpx.Handler(s.handlePatchSkill))
 	r.Delete("/skills/{skillID}", httpx.Handler(s.handleDeleteSkill))
 	r.Get("/workspaces/{wsID}/members/{memberID}/skills", httpx.Handler(s.handleListMemberSkills))

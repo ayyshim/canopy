@@ -526,6 +526,27 @@ type Signal struct {
 	EmailedAt   *time.Time
 }
 
+type StaffProposal struct {
+	ID             uuid.UUID
+	WorkspaceID    uuid.UUID
+	ManagerID      uuid.UUID
+	Kind           string
+	MemberID       *uuid.UUID
+	Name           string
+	Role           *string
+	Instructions   string
+	Skills         []byte
+	Status         string
+	DecidedBy      *uuid.UUID
+	DecidedAt      *time.Time
+	Reason         string
+	ResultMemberID *uuid.UUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	SessionID      *uuid.UUID
+	Note           string
+}
+
 type Task struct {
 	ID               uuid.UUID
 	WorkspaceID      uuid.UUID

@@ -32,7 +32,7 @@ export interface WorkspaceView {
   name: string;
   about: string;
   goal_completion: string; // manual or auto
-  logo_url?: string | null;
+  logo_url?: string;
   created_at: string /* RFC3339 */;
 }
 export interface MemberView {
@@ -134,6 +134,33 @@ export interface SkillView {
   source_url: string;
   content: string;
   updated_at: string /* RFC3339 */;
+}
+/**
+ * DraftSkill is a skill a manager wrote or found for a draft.
+ */
+export interface DraftSkill {
+  name: string;
+  content: string;
+  source_url: string;
+}
+/**
+ * StaffProposalView is a manager's draft of a new staff member, or of new instructions for one.
+ */
+export interface StaffProposalView {
+  id: string /* uuid */;
+  kind: string; // new or update
+  manager_id: string /* uuid */;
+  member_id?: string /* uuid */; // the staff member an update changes
+  name: string;
+  role?: string;
+  instructions: string;
+  skills: DraftSkill[];
+  status: string; // pending, approved or rejected
+  reason: string;
+  note: string; // why the manager drafted it
+  result_member_id?: string /* uuid */;
+  decided_at?: string /* RFC3339 */;
+  created_at: string /* RFC3339 */;
 }
 
 //////////

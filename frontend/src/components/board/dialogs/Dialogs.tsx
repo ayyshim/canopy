@@ -8,6 +8,7 @@ import { SKILL_LABEL, isHidden, type MemberView } from "@/lib/types";
 import { useB } from "../context";
 import { goalLabel } from "../panels/bits";
 import { AccessDialog } from "./AccessDialog";
+import { DraftDialog } from "./DraftDialog";
 import { GoalDialog } from "./GoalDialog";
 import { MemberDialog } from "./MemberDialog";
 import { TaskDialog } from "./TaskDialog";
@@ -33,6 +34,7 @@ export function Dialogs() {
     case "access": body = <AccessDialog userId={d.userId} />; break;
     case "summary": body = <SummaryDialog />; break;
     case "cap": body = <CapDialog signalId={d.signalId} />; break;
+    case "draft": body = <DraftDialog id={d.id} />; break;
     case "shortcuts": body = <ShortcutsDialog />; break;
   }
   return <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && close(null)}>{body}</div>;

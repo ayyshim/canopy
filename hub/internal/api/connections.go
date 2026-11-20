@@ -27,6 +27,7 @@ type RunnerHub interface {
 type Orchestrator interface {
 	Kick(ctx context.Context, workspaceID uuid.UUID)
 	MemberChanged(ctx context.Context, memberID uuid.UUID)
+	StaffProposalDecided(ctx context.Context, p db.StaffProposal)
 	MemberRemoved(ctx context.Context, workspaceID, memberID uuid.UUID)
 	DirectoriesChanged(ctx context.Context, workspaceID uuid.UUID)
 

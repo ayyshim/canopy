@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { LogoMark } from "@/components/LogoMark";
 import { api, currentOrg, hardNavigate, initials, isOrgAdmin } from "@/lib/api";
 import { isAdmin, needsMe, payload, plural, unseen } from "@/lib/board/derive";
+import { pendingDrafts, useStaffDrafts } from "@/lib/board/proposals";
 import { useBoard } from "@/lib/board/store";
 import { useUI } from "@/lib/board/ui";
 import { useMe } from "@/lib/me";
@@ -67,6 +68,8 @@ export function TopBar() {
   const [computers, setComputers] = useState<ClaudeUsage[] | null>(null);
   const theme = useTheme();
   const need = needsMe(b, me);
+  const drafts = pendingDrafts(useBoard((s) => s.proposals));
+  useStaffDrafts(wsId, isAdmin(b));
   const [walk, setWalk] = useState(0);
 
   useEffect(() => {
@@ -180,6 +183,11 @@ export function TopBar() {
         <button className="count" onClick={() => go(0)}>{need.length} need{need.length === 1 ? "s" : ""} you</button>
         <button className="a" onClick={() => go(1)} aria-label="Next item">›</button>
       </div>
+      {drafts.length > 0 && (
+        <button className="btn btn-sm" onClick={() => ui.openDialog({ kind: "draft", id: drafts[0].id })}>
+          {plural(drafts.length, "staff draft")}{isAdmin(b) ? " to review" : ""}
+        </button>
+      )}
       <div className="mw hide-sm">
         <button className="usage-btn" onClick={() => menu.toggle("usage")} aria-haspopup="dialog" aria-expanded={menu.open === "usage"}
           aria-label={hasData ? `Claude Code usage: current session ${Math.round(sp)} percent` : "Claude Code usage: no data yet"}>
