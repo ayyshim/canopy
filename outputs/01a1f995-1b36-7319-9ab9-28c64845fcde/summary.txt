@@ -1,0 +1,522 @@
+commit 23028d12fb002011f24f4974cf9144f966417995
+Author: F E (Canopy) <justayyme@gmail.com>
+Date:   Fri Nov 20 21:19:15 2026 +0545
+
+    Add chat option to the setup team step
+    
+    Admins can describe their needs in a chat and get a suggested team to use or edit.
+
+ client/internal/runner/ask.go                      |  40 +++++
+ client/internal/runner/runner.go                   |   7 +
+ frontend/src/app/(app)/setup/steps/Members.tsx     |  22 ++-
+ frontend/src/app/(app)/setup/steps/MembersChat.tsx |  79 +++++++++
+ hub/internal/api/routes_ws.go                      |   1 +
+ hub/internal/api/setup_chat.go                     | 180 +++++++++++++++++++++
+ hub/internal/api/setup_chat_test.go                |  34 ++++
+ hub/internal/runners/hub.go                        |   7 +-
+ shared/protocol/protocol.go                        |  12 ++
+ 9 files changed, 379 insertions(+), 3 deletions(-)
+commit 23028d12fb002011f24f4974cf9144f966417995
+Author: F E (Canopy) <justayyme@gmail.com>
+Date:   Fri Nov 20 21:19:15 2026 +0545
+
+    Add chat option to the setup team step
+    
+    Admins can describe their needs in a chat and get a suggested team to use or edit.
+
+diff --git a/client/internal/runner/ask.go b/client/internal/runner/ask.go
+new file mode 100644
+index 0000000..4c31101
+--- /dev/null
++++ b/client/internal/runner/ask.go
+@@ -0,0 +1,40 @@
++package runner
++
++import (
++	"bytes"
++	"context"
++	"errors"
++	"os"
++	"os/exec"
++	"strings"
++	"time"
++
++	"canopy/client/internal/detect"
++	"canopy/shared/protocol"
++)
++
++// ask runs Claude once with no tools and returns its answer.
++func ask(ctx context.Context, m protocol.Ask) (string, error) {
++	bin := detect.ResolveCLI("claude")
++	if bin == "" {
++		return "", errors.New("Claude isn’t installed on this computer")
++	}
++	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
++	defer cancel()
++	args := []string{"-p", "--output-format", "text", "--tools", "", "--setting-sources", "", "--system-prompt", m.System}
++	if m.Model != "" {
++		args = append(args, "--model", m.Model)
++	}
++	cmd := exec.CommandContext(ctx, bin, args...)
++	cmd.Dir = os.TempDir()
++	cmd.Stdin = strings.NewReader(m.Prompt)
++	var out, errb bytes.Buffer
++	cmd.Stdout, cmd.Stderr = &out, &errb
++	if err := cmd.Run(); err != nil {
++		if ctx.Err() != nil {
++			return "", errors.New("Claude took too long to answer")
++		}
++		return "", errors.New("Claude couldn’t answer: " + strings.TrimSpace(errb.String()))
++	}
++	return strings.TrimSpace(out.String()), nil
++}
+diff --git a/client/internal/runner/runner.go b/client/internal/runner/runner.go
+index eb84384..d69fd76 100644
+--- a/client/internal/runner/runner.go
++++ b/client/internal/runner/runner.go
+@@ -109,6 +109,13 @@ func (r *Runner) Handle(ctx context.Context, c *conn.Conn, env protocol.Envelope
+ 		}
+ 		res, err := browse(m.Path)
+ 		_ = c.Reply(env, res, err)
++	case protocol.TAsk:
++		if m, ok := decode[protocol.Ask](env); ok {
++			go func() {
++				text, err := ask(context.WithoutCancel(ctx), m)
++				_ = c.Reply(env, protocol.AskResult{Text: text}, err)
++			}()
++		}
+ 	case protocol.TRepoInfo:
+ 		if m, ok := decode[protocol.RepoInfo](env); ok {
+ 			_ = c.Reply(env, gitwork.Info(ctx, expandHome(m.Path)), nil)
+diff --git a/frontend/src/app/(app)/setup/steps/Members.tsx b/frontend/src/app/(app)/setup/steps/Members.tsx
+index c6b9271..cf37288 100644
+--- a/frontend/src/app/(app)/setup/steps/Members.tsx
++++ b/frontend/src/app/(app)/setup/steps/Members.tsx
+@@ -9,6 +9,7 @@ import { newKey, type PickedDir, type SetupMember, type SetupPayload } from "@/l
+ import { clamp, suggest } from "@/lib/setup/suggest";
+ import { SKILL_LABEL } from "@/lib/types";
+ import type { StepProps } from "../Setup";
++import { MembersChat, type ChatMember } from "./MembersChat";
+ 
+ const WHY: Record<string, string> = {
+   developer: "builds in your main project", reviewer: "checks your main project",
+@@ -47,7 +48,8 @@ export function tidyGrants(p: SetupPayload, dirs: PickedDir[]): SetupPayload {
+   return { ...p, members };
+ }
+ 
+-export function Members({ p, set, dirs, errors }: StepProps) {
++export function Members({ p, set, dirs, errors, orgId, computer }: StepProps) {
++  const [mode, setMode] = useState<"hand" | "chat">("hand");
+   const managers = p.members.filter((m) => m.kind === "manager");
+   const independent = p.members.filter((m) => m.kind === "staff" && !m.reports_to_key);
+   const update = (key: string, patch: Partial<SetupMember>) => set((x) => ({ ...x, members: x.members.map((m) => (m.key === key ? { ...m, ...patch } : m)) }));
+@@ -63,6 +65,17 @@ export function Members({ p, set, dirs, errors }: StepProps) {
+     set((x) => ({ ...x, members: [...x.members, m] }));
+     setSel(m.key);
+   };
++  const useTeam = (team: ChatMember[]) => {
++    const keys = new Map(team.map((c) => [c.key, newKey("m")]));
++    const members = team.map((c): SetupMember => ({
++      ...member(c.kind, c.name, c.kind === "staff" ? c.skill : "", c.reports_to_key ? keys.get(c.reports_to_key) ?? "" : ""),
++      key: keys.get(c.key) ?? newKey("m"), instructions: c.instructions.trim() || defaultInstructions(c.kind, c.skill),
++      skill_keys: c.skill_keys.filter((k) => p.skills.some((s) => s.key === k)),
++    }));
++    const lead = members.find((m) => m.kind === "manager");
++    set((x) => ({ ...x, members, people: x.people.map((pp) => ({ ...pp, manager_keys: [] })), first_goal: x.first_goal ? { ...x.first_goal, manager_key: lead?.key ?? "" } : x.first_goal }));
++    setSel("");
++  };
+   const selected = p.members.find((m) => m.key === sel) ?? managers[0];
+   const nameErr = (m: SetupMember) => errors[`members.${p.members.indexOf(m)}.name`];
+   const card = (m: SetupMember) => (
+@@ -84,6 +97,12 @@ export function Members({ p, set, dirs, errors }: StepProps) {
+     <>
+       <h1>Build your team</h1>
+       <p className="lead">A <b>manager</b> takes your goals, plans the work and hands tasks to their staff. <b>Staff</b> do the tasks. We started you off with a small team. Click anyone to change them.</p>
++      <span className="seg" role="group" aria-label="How to build your team" style={{ marginBottom: 10 }}>
++        <button type="button" aria-pressed={mode === "hand"} onClick={() => setMode("hand")}>Build by hand</button>
++        <button type="button" aria-pressed={mode === "chat"} onClick={() => setMode("chat")}>Chat</button>
++      </span>
++      {mode === "chat" && <MembersChat p={p} orgId={orgId} computerId={computer?.id} online={!!computer?.online} onUse={useTeam} />}
++      {mode === "hand" && <>
+       <div style={{ display: "flex", gap: 28, flexWrap: "wrap", alignItems: "flex-start", padding: "6px 2px 14px" }}>
+         {managers.map((mg) => (
+           <div key={mg.key}>
+@@ -119,6 +138,7 @@ export function Members({ p, set, dirs, errors }: StepProps) {
+           <Advanced m={selected} p={p} dirs={dirs} update={update} />
+         </div>
+       )}
++      </>}
+       {errors.members && <div className="err" style={{ fontSize: 13.5 }}>{errors.members}</div>}
+       {Object.keys(errors).some((k) => k.startsWith("members.") && k.endsWith(".name")) && <div className="err" style={{ fontSize: 13.5 }}>Give everyone a name. Click a card marked “Needs a name”.</div>}
+     </>
+diff --git a/frontend/src/app/(app)/setup/steps/MembersChat.tsx b/frontend/src/app/(app)/setup/steps/MembersChat.tsx
+new file mode 100644
+index 0000000..b1861b9
+--- /dev/null
++++ b/frontend/src/app/(app)/setup/steps/MembersChat.tsx
+@@ -0,0 +1,79 @@
++"use client";
++
++import { useState } from "react";
++import { api, ApiError } from "@/lib/api";
++import { SKILL_LABEL } from "@/lib/types";
++import type { StepProps } from "../Setup";
++
++export type ChatMember = { key: string; name: string; kind: "manager" | "staff"; skill: string; reports_to_key: string; instructions: string; skill_keys: string[] };
++type Reply = { reply: string; team: { members: ChatMember[] } | null };
++type Msg = { role: "user" | "assistant"; text: string };
++
++/** A chat where the person describes their needs and gets a suggested team. */
++export function MembersChat({ p, orgId, computerId, online, onUse }: Pick<StepProps, "p" | "orgId"> & { computerId: string | undefined; online: boolean; onUse: (m: ChatMember[]) => void }) {
++  const [msgs, setMsgs] = useState<Msg[]>([]);
++  const [text, setText] = useState("");
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState("");
++  const [team, setTeam] = useState<ChatMember[] | null>(null);
++  const [used, setUsed] = useState(false);
++
++  const send = async () => {
++    const t = text.trim();
++    if (!t || busy) return;
++    const next: Msg[] = [...msgs, { role: "user", text: t }];
++    setMsgs(next);
++    setText("");
++    setError("");
++    setBusy(true);
++    try {
++      const r = await api<Reply>("POST", `/orgs/${orgId}/setup/chat`, {
++        runner_id: computerId,
++        workspace: { Name: p.workspace.name, About: p.workspace.about },
++        directories: p.directories.map((d) => ({ name: d.name, kind: d.kind })),
++        skills: p.skills.map((k) => ({ key: k.key, name: k.name })),
++        messages: next,
++      });
++      setMsgs([...next, { role: "assistant", text: r.reply || "Here is what I suggest." }]);
++      if (r.team) { setTeam(r.team.members); setUsed(false); }
++    } catch (e) {
++      setError(e instanceof ApiError && e.status === 409 ? e.message : "Something went wrong. Please try again.");
++    } finally {
++      setBusy(false);
++    }
++  };
++
++  const nameOf = (k: string) => team?.find((m) => m.key === k)?.name;
++  return (
++    <div className="stack-sm" aria-label="Chat about your team">
++      {!online && <div className="err" style={{ fontSize: 13.5 }}>Your computer isn’t connected right now. Connect it to chat, or build the team by hand.</div>}
++      <div className="stack-sm" aria-live="polite">
++        {msgs.length === 0 && <p className="hint">Tell me what you want to get done. For example: “I run a small shop and need help with my website and writing.”</p>}
++        {msgs.map((m, i) => (
++          <div key={i} className="card" style={{ padding: "8px 12px", marginLeft: m.role === "user" ? 40 : 0, marginRight: m.role === "user" ? 0 : 40, whiteSpace: "pre-wrap" }}>
++            <b style={{ fontSize: 12 }}>{m.role === "user" ? "You" : "Canopy"}</b><div>{m.text}</div>
++          </div>
++        ))}
++        {busy && <p className="hint">Thinking…</p>}
++      </div>
++      {error && <div className="err" style={{ fontSize: 13.5 }}>{error}</div>}
++      <div className="row" style={{ gap: 8, alignItems: "flex-end" }}>
++        <textarea className="input" style={{ flex: 1 }} rows={2} value={text} aria-label="Your message" placeholder="What do you need help with?" disabled={!online}
++          onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }} />
++        <button type="button" className="btn btn-primary" onClick={send} disabled={busy || !online || !text.trim()}>Send</button>
++      </div>
++      {team && (
++        <div className="mgroup">
++          <h3 style={{ margin: 0 }}>Suggested team</h3>
++          <ul style={{ margin: "6px 0", paddingLeft: 18 }}>
++            {team.map((m) => (
++              <li key={m.key}><b>{m.name}</b>{m.kind === "manager" ? " (manager)" : ` · ${SKILL_LABEL[m.skill] ?? "Staff"}${m.reports_to_key && nameOf(m.reports_to_key) ? `, reports to ${nameOf(m.reports_to_key)}` : ", helps anyone"}`}</li>
++            ))}
++          </ul>
++          <button type="button" className="btn btn-primary" onClick={() => { onUse(team); setUsed(true); }}>Use this team</button>
++          {used && <span className="hint" style={{ marginLeft: 8 }}>Done. Switch to “Build by hand” to change anyone.</span>}
++        </div>
++      )}
++    </div>
++  );
++}
+diff --git a/hub/internal/api/routes_ws.go b/hub/internal/api/routes_ws.go
+index 17d1110..21b56cc 100644
+--- a/hub/internal/api/routes_ws.go
++++ b/hub/internal/api/routes_ws.go
+@@ -53,6 +53,7 @@ func (s *Server) workspaceRoutes(r chi.Router) {
+ 	r.Get("/workspaces/{wsID}/skills", httpx.Handler(s.handleListSkills))
+ 	r.Post("/workspaces/{wsID}/skills", httpx.Handler(s.handleCreateSkill))
+ 	r.Post("/orgs/{orgID}/skills/preview", httpx.Handler(s.handlePreviewSkill))
++	r.Post("/orgs/{orgID}/setup/chat", httpx.Handler(s.handleSetupChat))
+ 	r.Patch("/skills/{skillID}", httpx.Handler(s.handlePatchSkill))
+ 	r.Delete("/skills/{skillID}", httpx.Handler(s.handleDeleteSkill))
+ 	r.Get("/workspaces/{wsID}/members/{memberID}/skills", httpx.Handler(s.handleListMemberSkills))
+diff --git a/hub/internal/api/setup_chat.go b/hub/internal/api/setup_chat.go
+new file mode 100644
+index 0000000..c40ffdf
+--- /dev/null
++++ b/hub/internal/api/setup_chat.go
+@@ -0,0 +1,180 @@
++package api
++
++import (
++	"context"
++	"encoding/json"
++	"fmt"
++	"net/http"
++	"strings"
++	"time"
++
++	"github.com/google/uuid"
++
++	"canopy/hub/internal/authz"
++	"canopy/hub/internal/httpx"
++	"canopy/shared/protocol"
++)
++
++type chatMessage struct {
++	Role string `json:"role"` // "user" or "assistant"
++	Text string `json:"text"`
++}
++
++type chatMember struct {
++	Key          string   `json:"key"`
++	Name         string   `json:"name"`
++	Kind         string   `json:"kind"`
++	Skill        string   `json:"skill"`
++	ReportsToKey string   `json:"reports_to_key"`
++	Instructions string   `json:"instructions"`
++	SkillKeys    []string `json:"skill_keys"`
++}
++
++type chatTeam struct {
++	Members []chatMember `json:"members"`
++}
++
++type setupChatReply struct {
++	Reply string    `json:"reply"`
++	Team  *chatTeam `json:"team"`
++}
++
++var staffSkills = map[string]bool{"developer": true, "reviewer": true, "designer": true, "writer": true, "researcher": true}
++
++const setupChatSystem = `You help someone set up a team of AI workers in Canopy. A manager takes goals and leads staff. Staff do tasks.
++Talk in short, plain sentences. Ask at most one question if you really need to. Do not use jargon.
++Always answer with ONE JSON object and nothing else:
++{"reply": "what you say to the person", "team": null or {"members": [{"key": "m1", "name": "...", "kind": "manager" or "staff", "skill": "developer|reviewer|designer|writer|researcher (staff only, else empty)", "reports_to_key": "key of a manager, or empty", "instructions": "2 to 5 plain lines on how this person should work", "skill_keys": ["keys from the given skills list that fit"]}]}}
++Rules: include at least one manager. Give every member a short first name. Only use skill keys from the list given. Staff with no manager help everyone. Send a team whenever you can suggest one; send the full team each time.`
++
++// parseSetupChat reads Claude's answer. It tolerates text around the JSON and drops anything
++// invalid (unknown skills, unknown managers, empty names) instead of failing.
++func parseSetupChat(text string, skillKeys map[string]bool) setupChatReply {
++	text = strings.TrimSpace(text)
++	start, end := strings.Index(text, "{"), strings.LastIndex(text, "}")
++	var raw setupChatReply
++	if start < 0 || end <= start || json.Unmarshal([]byte(text[start:end+1]), &raw) != nil {
++		return setupChatReply{Reply: text}
++	}
++	if raw.Team == nil {
++		return raw
++	}
++	keys := map[string]bool{}
++	var members []chatMember
++	for _, m := range raw.Team.Members {
++		m.Name = strings.TrimSpace(m.Name)
++		if m.Name == "" || m.Key == "" || keys[m.Key] || (m.Kind != "manager" && m.Kind != "staff") {
++			continue
++		}
++		keys[m.Key] = true
++		if m.Kind == "manager" {
++			m.Skill = ""
++		} else if !staffSkills[m.Skill] {
++			m.Skill = "developer"
++		}
++		var sk []string
++		for _, k := range m.SkillKeys {
++			if skillKeys[k] {
++				sk = append(sk, k)
++			}
++		}
++		m.SkillKeys = sk
++		members = append(members, m)
++	}
++	hasManager := false
++	for i := range members {
++		if members[i].Kind == "manager" {
++			hasManager = true
++		}
++		if members[i].Kind == "staff" && !isManagerKey(members, members[i].ReportsToKey) {
++			members[i].ReportsToKey = ""
++		}
++		if members[i].Kind == "manager" {
++			members[i].ReportsToKey = ""
++		}
++	}
++	if !hasManager {
++		return setupChatReply{Reply: raw.Reply}
++	}
++	raw.Team = &chatTeam{Members: members}
++	return raw
++}
++
++func isManagerKey(ms []chatMember, key string) bool {
++	for _, m := range ms {
++		if m.Key == key && m.Kind == "manager" {
++			return true
++		}
++	}
++	return false
++}
++
++// handleSetupChat is POST /orgs/{orgID}/setup/chat: the setup wizard's assistant. It asks Claude
++// on the admin's own computer and returns a reply plus an optional team draft. Nothing is stored.
++func (s *Server) handleSetupChat(w http.ResponseWriter, r *http.Request) error {
++	orgID, err := pathID(r, "orgID")
++	if err != nil {
++		return err
++	}
++	ctx := r.Context()
++	uid := identity(r).UserID
++	if _, err := authz.OrgAdmin(ctx, s.Store.Queries, orgID, uid); err != nil {
++		return err
++	}
++	var in struct {
++		RunnerID    uuid.UUID `json:"runner_id"`
++		Workspace   struct{ Name, About string }
++		Directories []struct {
++			Name string `json:"name"`
++			Kind string `json:"kind"`
++		} `json:"directories"`
++		Skills []struct {
++			Key  string `json:"key"`
++			Name string `json:"name"`
++		} `json:"skills"`
++		Messages []chatMessage `json:"messages"`
++	}
++	if err := httpx.Decode(r, &in); err != nil {
++		return err
++	}
++	if len(in.Messages) == 0 || len(in.Messages) > 40 || strings.TrimSpace(in.Messages[len(in.Messages)-1].Text) == "" {
++		return httpx.Validation{"messages": "Write a message first."}.Err()
++	}
++	rn, err := s.Store.GetRunner(ctx, in.RunnerID)
++	if err != nil || rn.OrgID != orgID || rn.RevokedAt != nil || rn.OwnerUserID != uid {
++		return httpx.ErrNotFound
++	}
++	if s.Runners == nil || !s.Runners.Online(rn.ID) {
++		return httpx.NewError(http.StatusConflict, "runner_offline", "Your computer isn’t connected right now. Connect it and try again.")
++	}
++
++	var b strings.Builder
++	fmt.Fprintf(&b, "Workspace: %s\nAbout: %s\nFolders:\n", in.Workspace.Name, in.Workspace.About)
++	for _, d := range in.Directories {
++		fmt.Fprintf(&b, "- %s (%s)\n", d.Name, d.Kind)
++	}
++	b.WriteString("Skills you can pick (key: name):\n")
++	skillKeys := map[string]bool{}
++	for _, k := range in.Skills {
++		skillKeys[k.Key] = true
++		fmt.Fprintf(&b, "- %s: %s\n", k.Key, k.Name)
++	}
++	b.WriteString("\nConversation so far:\n")
++	for _, m := range in.Messages {
++		who := "Person"
++		if m.Role == "assistant" {
++			who = "You"
++		}
++		fmt.Fprintf(&b, "%s: %s\n", who, strings.TrimSpace(m.Text))
++	}
++	b.WriteString("\nAnswer now with the JSON object.")
++
++	rctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
++	defer cancel()
++	var res protocol.AskResult
++	if err := s.Runners.Request(rctx, rn.ID, protocol.TAsk, protocol.Ask{System: setupChatSystem, Prompt: b.String(), Model: "sonnet"}, &res); err != nil {
++		return httpx.NewError(http.StatusBadGateway, "chat_failed", "I couldn’t get an answer from your computer. Please try again.")
++	}
++	httpx.JSON(w, http.StatusOK, parseSetupChat(res.Text, skillKeys))
++	return nil
++}
+diff --git a/hub/internal/api/setup_chat_test.go b/hub/internal/api/setup_chat_test.go
+new file mode 100644
+index 0000000..f147e7f
+--- /dev/null
++++ b/hub/internal/api/setup_chat_test.go
+@@ -0,0 +1,34 @@
++package api
++
++import "testing"
++
++func TestParseSetupChat(t *testing.T) {
++	skills := map[string]bool{"s1": true}
++	out := parseSetupChat("Sure!\n{\"reply\":\"Here you go\",\"team\":{\"members\":["+
++		`{"key":"m1","name":"Atlas","kind":"manager","skill":"developer","reports_to_key":"x","instructions":"Lead","skill_keys":[]},`+
++		`{"key":"m2","name":"Pike","kind":"staff","skill":"wizard","reports_to_key":"m1","instructions":"Build","skill_keys":["s1","nope"]},`+
++		`{"key":"m3","name":"","kind":"staff"},`+
++		`{"key":"m4","name":"Ivy","kind":"staff","skill":"writer","reports_to_key":"ghost"}]}}`, skills)
++	if out.Reply != "Here you go" || out.Team == nil || len(out.Team.Members) != 3 {
++		t.Fatalf("unexpected: %+v", out)
++	}
++	m := out.Team.Members
++	if m[0].Skill != "" || m[0].ReportsToKey != "" {
++		t.Errorf("manager not cleaned: %+v", m[0])
++	}
++	if m[1].Skill != "developer" || m[1].ReportsToKey != "m1" || len(m[1].SkillKeys) != 1 {
++		t.Errorf("staff not cleaned: %+v", m[1])
++	}
++	if m[2].ReportsToKey != "" {
++		t.Errorf("unknown manager kept: %+v", m[2])
++	}
++}
++
++func TestParseSetupChatPlainText(t *testing.T) {
++	if out := parseSetupChat("What kind of work do you do?", nil); out.Team != nil || out.Reply == "" {
++		t.Fatalf("unexpected: %+v", out)
++	}
++	if out := parseSetupChat(`{"reply":"x","team":{"members":[{"key":"a","name":"Bo","kind":"staff"}]}}`, nil); out.Team != nil {
++		t.Fatalf("team without manager should be dropped: %+v", out)
++	}
++}
+diff --git a/hub/internal/runners/hub.go b/hub/internal/runners/hub.go
+index 8831ec9..ffb0aea 100644
+--- a/hub/internal/runners/hub.go
++++ b/hub/internal/runners/hub.go
+@@ -123,8 +123,11 @@ func (h *Hub) Request(ctx context.Context, id uuid.UUID, typ string, data any, o
+ 	if err := c.write(ctx, protocol.Envelope{Type: typ, ID: reqID, Data: b}); err != nil {
+ 		return err
+ 	}
+-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+-	defer cancel()
++	if _, ok := ctx.Deadline(); !ok {
++		var cancel context.CancelFunc
++		ctx, cancel = context.WithTimeout(ctx, 20*time.Second)
++		defer cancel()
++	}
+ 	select {
+ 	case env := <-ch:
+ 		if env.Error != "" {
+diff --git a/shared/protocol/protocol.go b/shared/protocol/protocol.go
+index 06dc2c5..a086d12 100644
+--- a/shared/protocol/protocol.go
++++ b/shared/protocol/protocol.go
+@@ -39,6 +39,7 @@ const (
+ 	TRepoInfo     = "repo_info"    // is this folder a git repository, and its state
+ 	TGitShip      = "git_ship"     // open a pull request, merge, or keep a goal's branch
+ 	TGoalCleanup  = "goal_cleanup" // remove a goal's worktrees from this computer
++	TAsk          = "ask"          // one short Claude answer with no tools; replies with AskResult
+ )
+ 
+ // Runner → hub.
+@@ -223,6 +224,17 @@ type SetAPIKey struct {
+ 	Key string `json:"key"`
+ }
+ 
++// Ask is a one-off question for Claude on this computer. It runs without tools.
++type Ask struct {
++	System string `json:"system"`
++	Prompt string `json:"prompt"`
++	Model  string `json:"model,omitempty"`
++}
++
++type AskResult struct {
++	Text string `json:"text"`
++}
++
+ type Browse struct {
+ 	Path string `json:"path"`
+ }

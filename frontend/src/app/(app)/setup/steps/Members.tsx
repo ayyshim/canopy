@@ -9,6 +9,7 @@ import { newKey, type PickedDir, type SetupMember, type SetupPayload } from "@/l
 import { clamp, suggest } from "@/lib/setup/suggest";
 import { SKILL_LABEL } from "@/lib/types";
 import type { StepProps } from "../Setup";
+import { MembersChat, type ChatMember } from "./MembersChat";
 
 const WHY: Record<string, string> = {
   developer: "builds in your main project", reviewer: "checks your main project",
@@ -47,7 +48,8 @@ export function tidyGrants(p: SetupPayload, dirs: PickedDir[]): SetupPayload {
   return { ...p, members };
 }
 
-export function Members({ p, set, dirs, errors }: StepProps) {
+export function Members({ p, set, dirs, errors, orgId, computer }: StepProps) {
+  const [mode, setMode] = useState<"hand" | "chat">("hand");
   const managers = p.members.filter((m) => m.kind === "manager");
   const independent = p.members.filter((m) => m.kind === "staff" && !m.reports_to_key);
   const update = (key: string, patch: Partial<SetupMember>) => set((x) => ({ ...x, members: x.members.map((m) => (m.key === key ? { ...m, ...patch } : m)) }));
@@ -62,6 +64,17 @@ export function Members({ p, set, dirs, errors }: StepProps) {
     const m = member(kind, "", kind === "staff" ? "developer" : "", reports);
     set((x) => ({ ...x, members: [...x.members, m] }));
     setSel(m.key);
+  };
+  const useTeam = (team: ChatMember[]) => {
+    const keys = new Map(team.map((c) => [c.key, newKey("m")]));
+    const members = team.map((c): SetupMember => ({
+      ...member(c.kind, c.name, c.kind === "staff" ? c.skill : "", c.reports_to_key ? keys.get(c.reports_to_key) ?? "" : ""),
+      key: keys.get(c.key) ?? newKey("m"), instructions: c.instructions.trim() || defaultInstructions(c.kind, c.skill),
+      skill_keys: c.skill_keys.filter((k) => p.skills.some((s) => s.key === k)),
+    }));
+    const lead = members.find((m) => m.kind === "manager");
+    set((x) => ({ ...x, members, people: x.people.map((pp) => ({ ...pp, manager_keys: [] })), first_goal: x.first_goal ? { ...x.first_goal, manager_key: lead?.key ?? "" } : x.first_goal }));
+    setSel("");
   };
   const selected = p.members.find((m) => m.key === sel) ?? managers[0];
   const nameErr = (m: SetupMember) => errors[`members.${p.members.indexOf(m)}.name`];
@@ -84,6 +97,12 @@ export function Members({ p, set, dirs, errors }: StepProps) {
     <>
       <h1>Build your team</h1>
       <p className="lead">A <b>manager</b> takes your goals, plans the work and hands tasks to their staff. <b>Staff</b> do the tasks. We started you off with a small team. Click anyone to change them.</p>
+      <span className="seg" role="group" aria-label="How to build your team" style={{ marginBottom: 10 }}>
+        <button type="button" aria-pressed={mode === "hand"} onClick={() => setMode("hand")}>Build by hand</button>
+        <button type="button" aria-pressed={mode === "chat"} onClick={() => setMode("chat")}>Chat</button>
+      </span>
+      {mode === "chat" && <MembersChat p={p} orgId={orgId} computerId={computer?.id} online={!!computer?.online} onUse={useTeam} />}
+      {mode === "hand" && <>
       <div style={{ display: "flex", gap: 28, flexWrap: "wrap", alignItems: "flex-start", padding: "6px 2px 14px" }}>
         {managers.map((mg) => (
           <div key={mg.key}>
@@ -119,6 +138,7 @@ export function Members({ p, set, dirs, errors }: StepProps) {
           <Advanced m={selected} p={p} dirs={dirs} update={update} />
         </div>
       )}
+      </>}
       {errors.members && <div className="err" style={{ fontSize: 13.5 }}>{errors.members}</div>}
       {Object.keys(errors).some((k) => k.startsWith("members.") && k.endsWith(".name")) && <div className="err" style={{ fontSize: 13.5 }}>Give everyone a name. Click a card marked “Needs a name”.</div>}
     </>

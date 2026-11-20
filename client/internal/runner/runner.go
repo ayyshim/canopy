@@ -109,6 +109,13 @@ func (r *Runner) Handle(ctx context.Context, c *conn.Conn, env protocol.Envelope
 		}
 		res, err := browse(m.Path)
 		_ = c.Reply(env, res, err)
+	case protocol.TAsk:
+		if m, ok := decode[protocol.Ask](env); ok {
+			go func() {
+				text, err := ask(context.WithoutCancel(ctx), m)
+				_ = c.Reply(env, protocol.AskResult{Text: text}, err)
+			}()
+		}
 	case protocol.TRepoInfo:
 		if m, ok := decode[protocol.RepoInfo](env); ok {
 			_ = c.Reply(env, gitwork.Info(ctx, expandHome(m.Path)), nil)
