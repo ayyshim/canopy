@@ -115,6 +115,9 @@ func goalOf(st *wsState, t db.Task) *db.Goal {
 func planPrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Note) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "New goal: %s\n", g.Title)
+	if g.Description != "" {
+		fmt.Fprintf(&b, "Description: %s\n", g.Description)
+	}
 	if g.DoneWhen != "" {
 		fmt.Fprintf(&b, "Done when: %s\n", g.DoneWhen)
 	}
@@ -174,6 +177,9 @@ func taskPrompt(st *wsState, m db.Member, t db.Task, comments []db.Comment, moun
 	fmt.Fprintf(&b, "Task: %s\n", t.Title)
 	if g := goalOf(st, t); g != nil {
 		fmt.Fprintf(&b, "Goal: %s\n", g.Title)
+		if g.Description != "" {
+			fmt.Fprintf(&b, "Goal description: %s\n", g.Description)
+		}
 		if g.DoneWhen != "" {
 			fmt.Fprintf(&b, "Goal is done when: %s\n", g.DoneWhen)
 		}
