@@ -172,3 +172,59 @@ func TestStaffProposalTools(t *testing.T) {
 	rec.wait(t, protocol.TSendInput, "rejected your new instructions for Dev")
 	rec.wait(t, protocol.TSendInput, "Keep it as it is.")
 }
+
+// A manager drafts a new staff member and an instruction change; the admin approves both.
+func TestStaffProposalFlow(t *testing.T) {
+	e := newEnv(t)
+	owner, me := e.signup("Staff Flow Co")
+	org := currentOrg(me)
+	ws, d := e.createWorkspace(owner, org, setupPayload())
+	riley, dev := uuid.MustParse(str(members(d)["Riley"]["id"])), str(members(d)["Dev"]["id"])
+	wsID, uid := uuid.MustParse(ws), uuid.MustParse(userID(me))
+	ctx := context.Background()
+	runnerID := uuid.MustParse(e.addRunner(org, userID(me), "Laptop", "computer"))
+	rn, err := e.store.GetRunner(ctx, runnerID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := e.store.CreateAgentSession(ctx, db.CreateAgentSessionParams{ID: uuid.New(), WorkspaceID: wsID, MemberID: riley,
+		Status: "waiting", RunnerID: &runnerID, PersonID: &uid})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := &recorder{}
+	o := orch.New(e.srv.Core, rec, nil)
+	e.srv.Orch = o
+	base := "/api/v1/workspaces/" + ws + "/staff-proposals"
+	pending := func() map[string]any {
+		list := owner.do("GET", base+"?status=pending", nil).Body["proposals"].([]any)
+		if len(list) != 1 {
+			t.Fatalf("pending drafts: %v", list)
+		}
+		return list[0].(map[string]any)
+	}
+
+	call(t, o, rn, rec, s.ID, protocol.ToolProposeStaff, map[string]any{"name": "Tess", "role": "reviewer", "instructions": "Review pull requests.",
+		"skills": []map[string]string{{"name": "Review", "content": "Check errors.", "source_url": "https://example.com/review.md"}}})
+	r := owner.do("POST", base+"/"+str(pending()["id"])+"/approve", map[string]any{})
+	if r.Status != 200 {
+		t.Fatalf("approve new: %d %v", r.Status, r.Body)
+	}
+	tess := r.Body["member"].(map[string]any)
+	if tess["name"] != "Tess" || tess["reports_to"] != riley.String() {
+		t.Errorf("member: %v", tess)
+	}
+	if got := owner.do("GET", "/api/v1/workspaces/"+ws+"/members/"+str(tess["id"])+"/skills", nil).Body["skills"].([]any); len(got) != 1 {
+		t.Errorf("Tess's skills: %v", got)
+	}
+
+	call(t, o, rn, rec, s.ID, protocol.ToolUpdateStaff, map[string]any{"member": "Dev", "instructions": "Write tests first."})
+	if r := owner.do("POST", base+"/"+str(pending()["id"])+"/approve", map[string]any{}); r.Status != 200 {
+		t.Fatalf("approve update: %d %v", r.Status, r.Body)
+	}
+	got, err := e.store.GetMember(ctx, uuid.MustParse(dev))
+	if err != nil || got.Instructions != "Write tests first." {
+		t.Errorf("Dev: %v %q", err, got.Instructions)
+	}
+	rec.wait(t, protocol.TSendInput, "approved your new instructions for Dev")
+}

@@ -1148,7 +1148,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Approve a draft (workspace admins only). New staff are created under the drafting manager; their new skills join the library. Updates change the member's instructions. Any field sent replaces the draft's. */
+        /** Approve a draft (admins only); fields sent replace the draft's */
         post: {
             parameters: {
                 query?: never;
@@ -1248,6 +1248,74 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorBody"];
                     };
                 };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orgs/{orgId}/setup/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask Claude on the admin's own computer to suggest a team for the setup wizard (admins only). Nothing is stored. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    orgId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        runner_id: string;
+                        workspace?: Record<string, never>;
+                        directories?: Record<string, never>[];
+                        skills?: Record<string, never>[];
+                        messages: {
+                            /** @enum {string} */
+                            role: "user" | "assistant";
+                            text: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description A reply and an optional team draft */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            reply: string;
+                            team?: Record<string, never> | null;
+                        };
+                    };
+                };
+                403: components["responses"]["Error"];
+                404: components["responses"]["Error"];
+                /** @description runner_offline */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                422: components["responses"]["Error"];
             };
         };
         delete?: never;
@@ -1749,6 +1817,7 @@ export interface components {
             /** @enum {string} */
             status: "pending" | "approved" | "rejected";
             reason: string;
+            note: string;
             /** Format: uuid */
             result_member_id: string | null;
             /** Format: date-time */
