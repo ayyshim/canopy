@@ -654,3 +654,4 @@ body.on-board.tray-open .toasts{bottom:314px}
   .needpill .count{padding:0 4px}
   .wsbtn{max-width:44vw}
 }
+@media (max-width:640px){.topbar .mw,.topbar .menu-wrap{min-width:0}.topbar .wsbtn{max-width:100%}.topbar .menu-wrap .btn{max-width:100%}.menu-wrap .menu{max-width:calc(100vw - 20px)}}
