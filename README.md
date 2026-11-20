@@ -61,6 +61,8 @@ curl -fsSL https://github.com/ayyshim/canopy/releases/latest/download/install.sh
 Open a new terminal afterwards if the installer says it added a folder to your `PATH`.
 
 - **A particular version:** add `--version v0.1.0` after `--`.
+- **macOS, v0.4.2 or earlier:** if the installer stops with `REPO?: unbound variable`, run it
+  with `LC_ALL=C sh` in place of `sh`.
 - **A binary you downloaded yourself:** let it install itself.
 
   ```sh
@@ -102,6 +104,9 @@ These steps run everything on one computer. [Run it for a team](#run-it-for-a-te
    ```sh
    curl -fsSL http://localhost:8080/install.sh | sh -s -- --code ABCD-EFGH
    ```
+
+   On macOS with a hub at v0.4.2 or earlier, if it stops with `HUB?: unbound variable`, run
+   it with `LC_ALL=C sh` in place of `sh`.
 
    That installs `canopy`, pairs it with the hub, and keeps it running as a user service. If
    `canopy` is already installed, you can do the same by hand:
