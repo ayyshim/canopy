@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { LogoMark } from "@/components/LogoMark";
 import { Denied } from "@/components/PageShell";
-import { api, currentOrg, initials, isOrgAdmin } from "@/lib/api";
+import { api, currentOrg, isOrgAdmin } from "@/lib/api";
 import { useMe } from "@/lib/me";
 import type { WorkspaceSummary } from "@/lib/types";
 
@@ -23,7 +24,7 @@ export default function WorkspacesPage() {
       <div className="grid2">
         {(list ?? []).map((w) => (
           <section className="card panel" key={w.id}>
-            <div className="row"><span className="wsi" style={{ background: "var(--team)" }}>{initials(w.name)}</span><h2 className="spacer">{w.name}</h2></div>
+            <div className="row"><LogoMark name={w.name} url={w.logo_url} /><h2 className="spacer">{w.name}</h2></div>
             <p className="hint">{w.about || "No description."}</p>
             <dl className="kv">
               <dt>Members</dt><dd>{w.members} agents</dd>
