@@ -13,10 +13,11 @@ import { FirstGoal } from "./steps/FirstGoal";
 import { Members, seedMembers, tidyGrants } from "./steps/Members";
 import { People, type OrgPerson } from "./steps/People";
 import { Review } from "./steps/Review";
+import { SkillsStep } from "./steps/SkillsStep";
 import { Welcome } from "./steps/Welcome";
 import { WorkspaceStep } from "./steps/WorkspaceStep";
 
-export const STEPS = ["Welcome", "Connect your computer", "Create a workspace", "Connect your CLIs", "Members and access", "Invite people", "First goal", "Review and create"];
+export const STEPS = ["Welcome", "Connect your computer", "Create a workspace", "Connect your CLIs", "Skills", "Team and access", "Invite people", "First goal", "Review and create"];
 
 /** What every step gets: the payload being built and helpers to change it. */
 export type StepProps = {
@@ -96,11 +97,11 @@ export function Setup({ later = false }: { later?: boolean }) {
       const c = p.clis.find((x) => x.cli === "claude");
       if (c?.mode === "api_key" && !c.api_key.trim()) e["clis.0.api_key"] = "Paste the API key, or choose subscription.";
     }
-    if (i === 4) {
+    if (i === 5) {
       if (!p.members.some((m) => m.kind === "manager")) e.members = "Add at least one manager.";
       p.members.forEach((m, k) => { if (!m.name.trim()) e[`members.${k}.name`] = "Give every member a name."; });
     }
-    if (i === 5) p.people.forEach((x, k) => { if (!x.user_id && x.email && !/^\S+@\S+\.\S+$/.test(x.email)) e[`people.${k}.email`] = "Check this email address."; });
+    if (i === 6) p.people.forEach((x, k) => { if (!x.user_id && x.email && !/^\S+@\S+\.\S+$/.test(x.email)) e[`people.${k}.email`] = "Check this email address."; });
     return e;
   };
   const goTo = (i: number) => {
@@ -133,14 +134,14 @@ export function Setup({ later = false }: { later?: boolean }) {
       if (e instanceof ApiError && Object.keys(e.fields).length) {
         setErrors(e.fields);
         const f = Object.keys(e.fields)[0];
-        const back = f.startsWith("workspace") || f.startsWith("directories") ? 2 : f.startsWith("clis") ? 3 : f.startsWith("members") ? 4 : f.startsWith("people") ? 5 : f.startsWith("first_goal") ? 6 : 7;
+        const back = f.startsWith("workspace") || f.startsWith("directories") ? 2 : f.startsWith("clis") ? 3 : f.startsWith("skills") ? 4 : f.startsWith("members") ? 5 : f.startsWith("people") ? 6 : f.startsWith("first_goal") ? 7 : 8;
         setStep(back);
       } else setErrors({ create: e instanceof ApiError ? e.message : "Couldn’t create the workspace. Try again." });
     }
   };
 
   const props: StepProps = { p, set, dirs, setDirs, computer, setComputer, clis, people, errors, orgId: org.id, orgName: org.name, go: goTo };
-  const Body = [Welcome, ComputerStep, WorkspaceStep, Clis, Members, People, FirstGoal, Review][step];
+  const Body = [Welcome, ComputerStep, WorkspaceStep, Clis, SkillsStep, Members, People, FirstGoal, Review][step];
   const logout = async () => { await api("POST", "/auth/logout").catch(() => {}); hardNavigate("/login"); };
 
   return (
@@ -172,11 +173,12 @@ export function Setup({ later = false }: { later?: boolean }) {
           {step > 0 ? <button className="btn" onClick={() => goTo(step - 1)}>Back</button> : <span />}
           <div className="row">
             {errors.create && <span className="err">{errors.create}</span>}
-            {step === 5 && <button className="btn btn-ghost" onClick={() => { set((x) => ({ ...x, people: [] })); setDone((d) => new Set(d).add(5)); goTo(6); }}>Skip for now</button>}
-            {step === 6 && <button className="btn btn-ghost" onClick={() => { set((x) => ({ ...x, first_goal: null })); setDone((d) => new Set(d).add(6)); goTo(7); }}>Skip the goal</button>}
-            {step === 7 ? <button className="btn btn-primary" disabled={busy} onClick={create}>{busy ? "Creating…" : "Create workspace"}</button>
+            {step === 4 && <button className="btn btn-ghost" onClick={() => { setDone((d) => new Set(d).add(4)); goTo(5); }}>Skip for now</button>}
+            {step === 6 && <button className="btn btn-ghost" onClick={() => { set((x) => ({ ...x, people: [] })); setDone((d) => new Set(d).add(6)); goTo(7); }}>Skip for now</button>}
+            {step === 7 && <button className="btn btn-ghost" onClick={() => { set((x) => ({ ...x, first_goal: null })); setDone((d) => new Set(d).add(7)); goTo(8); }}>Skip the goal</button>}
+            {step === 8 ? <button className="btn btn-primary" disabled={busy} onClick={create}>{busy ? "Creating…" : "Create workspace"}</button>
               : <button className="btn btn-primary" onClick={next} disabled={step === 1 && !computer?.online} title={step === 1 && !computer?.online ? "Connect your computer first" : undefined}>
-                {step === 0 ? "Get started" : step === 6 ? "Review" : "Continue"}</button>}
+                {step === 0 ? "Get started" : step === 7 ? "Review" : "Continue"}</button>}
           </div>
         </footer>
       </main>

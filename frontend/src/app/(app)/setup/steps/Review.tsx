@@ -48,19 +48,25 @@ export function Review({ p, dirs, computer, people, orgName, go }: StepProps) {
         ) : <p className="hint">No directories. Members can only read the workspace notes.</p>}
       </div>
       <div className="rv">
-        <h2 className="row">Members and their access<span className="spacer" /><Edit step={4} go={go} /></h2>
+        <h2 className="row">Skills<span className="spacer" /><Edit step={4} go={go} /></h2>
+        {p.skills.length ? p.skills.map((x) => <div key={x.key} style={{ padding: "3px 0", fontSize: 13.5 }}><b>{x.name}</b> <span className="hint">{x.source_kind === "github" ? "from GitHub" : "Markdown"}</span></div>)
+          : <p className="hint">No skills yet. You can add them any time in workspace settings.</p>}
+      </div>
+      <div className="rv">
+        <h2 className="row">Team and their access<span className="spacer" /><Edit step={5} go={go} /></h2>
         {p.members.map((m) => (
           <div className="row" key={m.key} style={{ alignItems: "flex-start", padding: "6px 0", paddingLeft: m.kind === "staff" && m.reports_to_key ? 26 : 0 }}>
             <Avatar name={m.name || "?"} color={m.kind === "manager" ? "#14322A" : "#0E9AA7"} size={28} />
             <span className="spacer"><b>{m.name}</b> <span className="hint">{m.kind === "manager" ? "Manager" : SKILL_LABEL[m.skill] + (m.reports_to_key ? "" : ", independent")}, {m.model}</span><br />
-              <code style={{ fontSize: 12 }}>{access(m.key)}</code></span>
+              <code style={{ fontSize: 12 }}>{access(m.key)}</code>
+              {m.skill_keys.length > 0 && <><br /><span className="hint">Skills: {m.skill_keys.map((k) => p.skills.find((x) => x.key === k)?.name).filter(Boolean).join(", ")}</span></>}</span>
             {m.kind === "staff" && (m.grants_by === "you" ? <span className="pill">Changed by you</span> : <span className="pill info">Suggested by {m.reports_to_key ? name(m.reports_to_key) : "Canopy"}</span>)}
           </div>
         ))}
         {notesOnly.length > 0 && <div className="note-box" style={{ background: "var(--amber-soft)", marginTop: 8 }}>{notesOnly.map((m) => m.name).join(" and ")} can only read the workspace notes.</div>}
       </div>
       <div className="rv">
-        <h2 className="row">People<span className="spacer" /><Edit step={5} go={go} /></h2>
+        <h2 className="row">People<span className="spacer" /><Edit step={6} go={go} /></h2>
         {invited.map((x, i) => (
           <div style={{ padding: "4px 0", fontSize: 13.5 }} key={i}>
             <b>{x.user_id ? people.find((o) => o.id === x.user_id)?.name : x.email}</b>{" "}
@@ -70,7 +76,7 @@ export function Review({ p, dirs, computer, people, orgName, go }: StepProps) {
         {!invited.length && <p className="hint">Just you for now.</p>}
       </div>
       <div className="rv">
-        <h2 className="row">First goal<span className="spacer" /><Edit step={6} go={go} /></h2>
+        <h2 className="row">First goal<span className="spacer" /><Edit step={7} go={go} /></h2>
         {p.first_goal?.title.trim() ? <><b>{p.first_goal.title}</b> <span className="hint">for {name(p.first_goal.manager_key)}</span></> : <p className="hint">No goal yet. The workspace starts idle.</p>}
       </div>
     </>

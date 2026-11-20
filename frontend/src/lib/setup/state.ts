@@ -20,7 +20,11 @@ export type SetupMember = {
   grants: SetupGrant[];
   instructions: string;
   grants_by: "suggested" | "you";
+  skill_keys: string[]; // library skills (SetupSkill keys) this member starts with
 };
+
+/** A skill added to the workspace library during setup. GitHub skills carry the markdown already fetched. */
+export type SetupSkill = { key: string; name: string; source_kind: "md" | "github"; source_url: string; content: string };
 
 export type SetupPerson = {
   user_id: string | null;
@@ -38,6 +42,7 @@ export type SetupPayload = {
   runner_id: string | null;
   directories: SetupDir[];
   clis: SetupCLI[];
+  skills: SetupSkill[];
   members: SetupMember[];
   people: SetupPerson[];
   first_goal: { manager_key: string; title: string; done_when: string } | null;
@@ -52,6 +57,7 @@ export function emptyPayload(): SetupPayload {
     runner_id: null,
     directories: [],
     clis: [],
+    skills: [],
     members: [],
     people: [],
     first_goal: null,

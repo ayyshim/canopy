@@ -45,6 +45,7 @@ func (s *Server) workspaceRoutes(r chi.Router) {
 
 	r.Get("/workspaces/{wsID}/skills", httpx.Handler(s.handleListSkills))
 	r.Post("/workspaces/{wsID}/skills", httpx.Handler(s.handleCreateSkill))
+	r.Post("/orgs/{orgID}/skills/preview", httpx.Handler(s.handlePreviewSkill))
 	r.Patch("/skills/{skillID}", httpx.Handler(s.handlePatchSkill))
 	r.Delete("/skills/{skillID}", httpx.Handler(s.handleDeleteSkill))
 	r.Get("/workspaces/{wsID}/members/{memberID}/skills", httpx.Handler(s.handleListMemberSkills))

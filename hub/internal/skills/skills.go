@@ -100,3 +100,22 @@ func Check(content string) (string, error) {
 	}
 	return content, nil
 }
+
+// SuggestName is a skill name from a GitHub link: the file name without .md, or the folder
+// for SKILL.md files. Empty when nothing sensible is there.
+func SuggestName(link string) string {
+	u, err := url.Parse(strings.TrimSpace(link))
+	if err != nil {
+		return ""
+	}
+	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+	file := strings.TrimSuffix(parts[len(parts)-1], ".md")
+	if strings.EqualFold(file, "skill") && len(parts) >= 2 {
+		file = parts[len(parts)-2]
+	}
+	file = strings.NewReplacer("-", " ", "_", " ").Replace(file)
+	if file == "" {
+		return ""
+	}
+	return strings.ToUpper(file[:1]) + file[1:]
+}

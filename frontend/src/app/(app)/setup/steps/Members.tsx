@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Avatar } from "@/components/board/icons";
 import { Markdown } from "@/components/board/panels/bits";
+import { SkillPicker } from "@/components/skills/Skills";
 import { defaultInstructions } from "@/components/board/chat/ChatSettings";
 import { newKey, type PickedDir, type SetupMember, type SetupPayload } from "@/lib/setup/state";
 import { clamp, suggest } from "@/lib/setup/suggest";
@@ -16,7 +17,7 @@ const WHY: Record<string, string> = {
 
 function member(kind: "manager" | "staff", name: string, skill = "", reports = ""): SetupMember {
   return { key: newKey("m"), name, kind, skill, reports_to_key: reports, cli: "claude", model: kind === "manager" ? "opus" : "sonnet",
-    all_directories: kind === "manager", grants: [], instructions: defaultInstructions(kind, skill), grants_by: "suggested" };
+    all_directories: kind === "manager", grants: [], instructions: defaultInstructions(kind, skill), grants_by: "suggested", skill_keys: [] };
 }
 
 /** seedMembers starts setup with a small team: a manager, a developer on its staff and an independent researcher. */
@@ -60,37 +61,40 @@ export function Members({ p, set, dirs, errors }: StepProps) {
 
   return (
     <>
-      <h1>Add members</h1>
-      <p className="lead">Members are the agents in this workspace. Every workspace needs at least one <b>manager</b>. Managers take goals from people, plan the work and hand tasks to their own staff. <b>Independent staff</b> help whichever manager needs them. Managers suggest which directories each staff member gets, only what its work needs. You can change any of it.</p>
+      <h1>Build your team</h1>
+      <p className="lead">Your team is made of AI teammates. A <b>manager</b> plans the work and leads. <b>Staff</b> do the work. We’ve started you with a small team, so you can just press Continue, or change anyone below.</p>
+      <div className="kindcards">
+        <button type="button" className="kindcard" onClick={() => add("manager")}><b>+ Add a manager</b><span>Plans and leads. Takes goals from people and hands out tasks.</span></button>
+        <button type="button" className="kindcard" onClick={() => add("staff", managers[0]?.key ?? "")}><b>+ Add staff</b><span>Does the work. Builds, reviews, researches or writes.</span></button>
+      </div>
       {managers.map((mg) => (
         <div className="mgroup" key={mg.key}>
           <Row m={mg} p={p} update={update} remove={remove} canRemove={managers.length > 1} error={errors[`members.${p.members.indexOf(mg)}.name`]} />
-          <Access m={mg} p={p} dirs={dirs} update={update} />
-          <Instructions m={mg} update={update} />
+          <Skills m={mg} p={p} update={update} />
+          <Advanced m={mg}><Access m={mg} p={p} dirs={dirs} update={update} /><Instructions m={mg} update={update} /></Advanced>
           {p.members.filter((s) => s.kind === "staff" && s.reports_to_key === mg.key).map((s) => (
             <div className="mrow staff" style={{ border: 0, padding: "6px 0 0 22px" }} key={s.key}>
               <Row m={s} p={p} update={update} remove={remove} canRemove error={errors[`members.${p.members.indexOf(s)}.name`]} />
-              <Access m={s} p={p} dirs={dirs} update={update} />
-              <Instructions m={s} update={update} />
+              <Skills m={s} p={p} update={update} />
+              <Advanced m={s}><Access m={s} p={p} dirs={dirs} update={update} /><Instructions m={s} update={update} /></Advanced>
             </div>
           ))}
           <button type="button" className="btn btn-sm" style={{ borderStyle: "dashed", alignSelf: "flex-start" }} onClick={() => add("staff", mg.key)}>+ Add staff for {mg.name || "this manager"}</button>
         </div>
       ))}
       <div className="mgroup ind">
-        <h3>Independent staff</h3>
-        <p className="hint" style={{ margin: 0 }}>Work for any manager when they’re needed.</p>
+        <h3>Staff who help any manager</h3>
+        <p className="hint" style={{ margin: 0 }}>Independent staff work for whichever manager needs them.</p>
         {independent.map((s) => (
           <div key={s.key} className="stack-sm">
             <Row m={s} p={p} update={update} remove={remove} canRemove error={errors[`members.${p.members.indexOf(s)}.name`]} />
-            <Access m={s} p={p} dirs={dirs} update={update} />
-            <Instructions m={s} update={update} />
+            <Skills m={s} p={p} update={update} />
+            <Advanced m={s}><Access m={s} p={p} dirs={dirs} update={update} /><Instructions m={s} update={update} /></Advanced>
           </div>
         ))}
         {!independent.length && <p className="hint" style={{ margin: 0 }}>None yet.</p>}
-        <button type="button" className="btn btn-sm" style={{ borderStyle: "dashed", alignSelf: "flex-start" }} onClick={() => add("staff")}>+ Add independent staff</button>
+        <button type="button" className="btn btn-sm" style={{ borderStyle: "dashed", alignSelf: "flex-start" }} onClick={() => add("staff")}>+ Add staff for any manager</button>
       </div>
-      <div><button type="button" className="btn" onClick={() => add("manager")}>+ Add another manager</button></div>
       {errors.members && <div className="err" style={{ fontSize: 13.5 }}>{errors.members}</div>}
       {Object.keys(errors).some((k) => k.startsWith("members.") && k.endsWith(".name")) && <div className="err" style={{ fontSize: 13.5 }}>Give every member a name.</div>}
     </>
@@ -108,7 +112,7 @@ function Row({ m, p, update, remove, canRemove, error }: RowProps) {
         <input className="input" value={m.name} aria-invalid={!!error} onChange={(e) => update(m.key, { name: e.target.value })} placeholder={m.kind === "manager" ? "Atlas" : "Pike"} /></label>
       {m.kind === "staff" && (
         <>
-          <label className="field"><span className="lbl">Skill</span>
+          <label className="field"><span className="lbl">Role</span>
             <select className="input" value={m.skill} onChange={(e) => update(m.key, { skill: e.target.value, instructions: m.instructions === defaultInstructions("staff", m.skill) ? defaultInstructions("staff", e.target.value) : m.instructions })}>
               {Object.entries(SKILL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select></label>
@@ -188,6 +192,27 @@ function Instructions({ m, update }: { m: SetupMember; update: (k: string, patch
         <label className="field"><span className="lbl">Write</span><textarea value={m.instructions} onChange={(e) => update(m.key, { instructions: e.target.value })} aria-label={`Instructions for ${m.name || "member"}`} /></label>
         <div className="field"><span className="lbl">Preview</span><Markdown text={m.instructions} className="mdprev md" /></div>
       </div>
+    </details>
+  );
+}
+
+function Skills({ m, p, update }: { m: SetupMember; p: SetupPayload; update: (k: string, patch: Partial<SetupMember>) => void }) {
+  if (!p.skills.length) return null;
+  return (
+    <div className="accrow">
+      <span className="k">Skills</span>
+      <SkillPicker skills={p.skills.map((s) => ({ id: s.key, name: s.name, source_kind: s.source_kind, source_url: s.source_url, content: s.content, updated_at: "" }))}
+        selected={m.skill_keys} onToggle={(id, on) => update(m.key, { skill_keys: on ? [...m.skill_keys, id] : m.skill_keys.filter((k) => k !== id) })} />
+    </div>
+  );
+}
+
+/** Advanced tucks directory access and instructions away: the defaults are fine for most people. */
+function Advanced({ m, children }: { m: SetupMember; children: React.ReactNode }) {
+  return (
+    <details className="instr">
+      <summary>Directory access and instructions for {m.name || "this member"}</summary>
+      <div className="stack-sm" style={{ marginTop: 6 }}>{children}</div>
     </details>
   );
 }

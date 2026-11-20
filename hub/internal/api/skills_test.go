@@ -249,3 +249,45 @@ func TestAssignSkillAndPrompt(t *testing.T) {
 		t.Errorf("prompt after detach: %q", after)
 	}
 }
+
+// Setup can create the library and give members skills in one go; GitHub links are previewed first.
+func TestSetupWithSkills(t *testing.T) {
+	e := newEnv(t)
+	stubGitHub(t, e)
+	owner, me := e.signup("Setup Skills Co")
+	org := currentOrg(me)
+
+	r := owner.do("POST", "/api/v1/orgs/"+org+"/skills/preview", map[string]any{"source_url": "https://github.com/acme/skills/blob/main/review.md"})
+	if r.Status != 200 || r.Body["name"] != "Review" || !strings.Contains(str(r.Body["content"]), "error handling") {
+		t.Fatalf("preview: %d %v", r.Status, r.Body)
+	}
+	if r := owner.do("POST", "/api/v1/orgs/"+org+"/skills/preview", map[string]any{"source_url": "https://example.com/x.md"}); r.Status != http.StatusUnprocessableEntity || r.field("source_url") == "" {
+		t.Errorf("bad preview link: %d %v", r.Status, r.Body)
+	}
+
+	p := setupPayload()
+	p["skills"] = []any{
+		map[string]any{"key": "k1", "name": "Review", "source_kind": "github", "source_url": "https://github.com/acme/skills/blob/main/review.md", "content": r.Body["content"]},
+		map[string]any{"key": "k2", "name": "Style", "source_kind": "md", "content": "Be brief."},
+	}
+	p["members"].([]any)[1].(map[string]any)["skill_keys"] = []any{"k1", "k2"}
+	bad := setupPayload()
+	bad["skills"] = []any{map[string]any{"key": "k1", "name": "A", "source_kind": "md", "content": " "}}
+	if r := owner.do("POST", "/api/v1/orgs/"+org+"/workspaces", bad); r.Status != http.StatusUnprocessableEntity || r.field("skills.0.content") == "" {
+		t.Errorf("empty skill: %d %v", r.Status, r.Body)
+	}
+	ws, _ := e.createWorkspace(owner, org, p)
+	board := owner.do("GET", "/api/v1/workspaces/"+ws+"/board", nil).Body
+	if len(board["skills"].([]any)) != 2 {
+		t.Fatalf("board skills: %v", board["skills"])
+	}
+	ms := board["member_skills"].(map[string]any)
+	if len(ms) != 1 {
+		t.Errorf("member_skills: %v", ms)
+	}
+	for _, ids := range ms {
+		if len(ids.([]any)) != 2 {
+			t.Errorf("Dev's skills: %v", ids)
+		}
+	}
+}

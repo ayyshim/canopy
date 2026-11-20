@@ -204,6 +204,15 @@ paths:
         "403": { $ref: "#/components/responses/Error" }
         "409": { description: skill_name_taken, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
         "422": { $ref: "#/components/responses/Error" }
+  /orgs/{orgId}/skills/preview:
+    post:
+      summary: Fetch a GitHub markdown link for the setup wizard without saving it (org admins)
+      parameters: [{ name: orgId, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [source_url], properties: { source_url: { type: string } } } } } }
+      responses:
+        "200": { description: The markdown and a suggested name, content: { application/json: { schema: { type: object, required: [name, content], properties: { name: { type: string }, content: { type: string } } } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
   /skills/{skillId}:
     patch:
       summary: Edit a skill (admins). Send refresh to fetch a GitHub skill again.

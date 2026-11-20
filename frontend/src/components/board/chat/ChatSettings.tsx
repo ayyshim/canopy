@@ -7,6 +7,8 @@ import { isAdmin, managers, memberStatus, staffOf, visibleMember } from "@/lib/b
 import { useUI } from "@/lib/board/ui";
 import { SKILL_DESC, SKILL_LABEL, type MemberView } from "@/lib/types";
 import { useB, useBoardCtx } from "../context";
+import { SkillPicker } from "@/components/skills/Skills";
+import { friendly } from "@/lib/skills";
 import { Avatar } from "../icons";
 import { Markdown } from "../panels/bits";
 
@@ -90,6 +92,15 @@ export function ChatSettings({ m }: { m: MemberView }) {
             </div>
           </>
         ) : <Markdown text={instr} className="mdprev md" />}
+      </div>
+      <div className="field">
+        <span className="lbl">Skills</span>
+        <SkillPicker skills={b.skills ?? []} selected={b.member_skills?.[m.id] ?? []} disabled={!admin}
+          emptyHint={<>No skills in the library yet. {admin ? <a href={`/w/${wsId}/settings?tab=skills`}>Add some in workspace settings.</a> : "An admin can add some."}</>}
+          onToggle={async (id, on) => {
+            try { await api(on ? "PUT" : "DELETE", `/workspaces/${wsId}/members/${m.id}/skills/${id}`); } catch (e) { ui.toast(friendly(e), "error"); }
+          }} />
+        <span className="hint">Skills are instructions {m.name} follows. Changes apply the next time {m.name} starts a task.</span>
       </div>
       <DirAccess m={m} />
       {isM && (

@@ -1054,6 +1054,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/orgs/{orgId}/skills/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fetch a GitHub markdown link for the setup wizard without saving it (org admins) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    orgId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        source_url: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description The markdown and a suggested name */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            name: string;
+                            content: string;
+                        };
+                    };
+                };
+                403: components["responses"]["Error"];
+                422: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/skills/{skillId}": {
         parameters: {
             query?: never;

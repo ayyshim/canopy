@@ -329,3 +329,35 @@ func (s *Server) changeMemberSkill(w http.ResponseWriter, r *http.Request, ws db
 	httpx.JSON(w, http.StatusOK, map[string]any{"skills": core.ToSkills(list)})
 	return nil
 }
+
+// handlePreviewSkill fetches a GitHub link for the setup wizard, which has no workspace yet.
+// It returns the markdown and a suggested name; nothing is stored.
+func (s *Server) handlePreviewSkill(w http.ResponseWriter, r *http.Request) error {
+	orgID, err := pathID(r, "orgID")
+	if err != nil {
+		return err
+	}
+	ctx := r.Context()
+	if _, err := authz.OrgAdmin(ctx, s.Store.Queries, orgID, identity(r).UserID); err != nil {
+		return err
+	}
+	var in struct {
+		SourceURL string `json:"source_url"`
+	}
+	if err := httpx.Decode(r, &in); err != nil {
+		return err
+	}
+	link := strings.TrimSpace(in.SourceURL)
+	if link == "" {
+		return httpx.Validation{"source_url": "Paste a link to a markdown file on GitHub."}.Err()
+	}
+	body, err := s.skillFetcher().Fetch(ctx, link)
+	var se skills.Error
+	if errors.As(err, &se) {
+		return httpx.Validation{"source_url": se.Error()}.Err()
+	} else if err != nil {
+		return err
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"name": skills.SuggestName(link), "content": body})
+	return nil
+}
