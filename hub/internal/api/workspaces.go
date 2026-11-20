@@ -139,9 +139,10 @@ type setupPayload struct {
 	Members   []setupMember `json:"members"`
 	People    []setupPerson `json:"people"`
 	FirstGoal *struct {
-		ManagerKey string `json:"manager_key"`
-		Title      string `json:"title"`
-		DoneWhen   string `json:"done_when"`
+		ManagerKey  string `json:"manager_key"`
+		Title       string `json:"title"`
+		DoneWhen    string `json:"done_when"`
+		Description string `json:"description"`
 	} `json:"first_goal"`
 }
 
@@ -599,7 +600,7 @@ func (s *Server) handleCreateWorkspace(w http.ResponseWriter, r *http.Request) e
 			invites = append(invites, pendingInvite{email: pp.Email, token: raw})
 		}
 		if g := p.FirstGoal; g != nil {
-			if err := s.createGoal(ctx, t, ws, memberIDs[g.ManagerKey], g.Title, g.DoneWhen, id.UserID); err != nil {
+			if err := s.createGoal(ctx, t, ws, memberIDs[g.ManagerKey], g.Title, g.DoneWhen, g.Description, id.UserID); err != nil {
 				return err
 			}
 		}

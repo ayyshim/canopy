@@ -4,18 +4,20 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 
 	"canopy/hub/internal/core"
 	"canopy/hub/internal/httpx"
 	"canopy/hub/internal/orch"
+	"canopy/hub/internal/store"
 	"canopy/hub/internal/store/db"
 )
 
 // createGoal records a goal for a manager and wakes the orchestrator to plan it.
-func (s *Server) createGoal(ctx context.Context, t *core.Tx, ws db.Workspace, managerID uuid.UUID, title, doneWhen string, by uuid.UUID) error {
-	_, err := core.CreateGoal(ctx, t, ws, core.NewGoal{ManagerID: managerID, Title: title, DoneWhen: doneWhen, By: by})
+func (s *Server) createGoal(ctx context.Context, t *core.Tx, ws db.Workspace, managerID uuid.UUID, title, doneWhen, description string, by uuid.UUID) error {
+	_, err := core.CreateGoal(ctx, t, ws, core.NewGoal{ManagerID: managerID, Title: title, DoneWhen: doneWhen, Description: description, By: by})
 	if err != nil {
 		return err
 	}
@@ -27,6 +29,18 @@ func (s *Server) createGoal(ctx context.Context, t *core.Tx, ws db.Workspace, ma
 
 // loadOwnGoal loads a goal the caller may finish or move: its person, or a workspace admin.
 func (s *Server) loadOwnGoal(r *http.Request) (*wsView, db.Goal, error) {
+	view, g, err := s.loadMyGoal(r)
+	if err != nil {
+		return nil, g, err
+	}
+	if s.Orch == nil {
+		return nil, g, httpx.NewError(http.StatusServiceUnavailable, "unavailable", "Agents aren’t running on this hub.")
+	}
+	return view, g, nil
+}
+
+// loadMyGoal loads a goal its person, or a workspace admin, may change.
+func (s *Server) loadMyGoal(r *http.Request) (*wsView, db.Goal, error) {
 	goalID, err := pathID(r, "goalID")
 	if err != nil {
 		return nil, db.Goal{}, err
@@ -46,10 +60,98 @@ func (s *Server) loadOwnGoal(r *http.Request) (*wsView, db.Goal, error) {
 	if (g.CreatedBy == nil || *g.CreatedBy != view.v.UserID) && !view.v.Admin() {
 		return nil, g, httpx.ErrForbidden
 	}
-	if s.Orch == nil {
-		return nil, g, httpx.NewError(http.StatusServiceUnavailable, "unavailable", "Agents aren’t running on this hub.")
-	}
 	return view, g, nil
+}
+
+// loadDraft loads a draft goal the caller may change.
+func (s *Server) loadDraft(r *http.Request) (*wsView, db.Goal, error) {
+	view, g, err := s.loadMyGoal(r)
+	if err == nil && g.Status != "draft" {
+		err = httpx.NewError(http.StatusConflict, "not_draft", "This goal was already given.")
+	}
+	return view, g, err
+}
+
+// handleUpdateDraft saves changes to a draft goal.
+func (s *Server) handleUpdateDraft(w http.ResponseWriter, r *http.Request) error {
+	view, g, err := s.loadDraft(r)
+	if err != nil {
+		return err
+	}
+	ctx := r.Context()
+	var in goalInput
+	if err := httpx.Decode(r, &in); err != nil {
+		return err
+	}
+	if _, err := s.checkGoal(ctx, view, view.v.UserID, &in); err != nil {
+		return err
+	}
+	var ng db.Goal
+	err = s.Core.Tx(ctx, func(t *core.Tx) error {
+		var err error
+		ng, err = core.UpdateDraft(ctx, t, view.ws, g.ID, in.newGoal(view.v.UserID))
+		return err
+	})
+	if store.IsNotFound(err) {
+		return httpx.NewError(http.StatusConflict, "not_draft", "This goal was already given.")
+	} else if err != nil {
+		return err
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"goal": core.ToGoal(ng)})
+	return nil
+}
+
+// handleGiveDraft hands a draft to its manager; planning starts right away.
+func (s *Server) handleGiveDraft(w http.ResponseWriter, r *http.Request) error {
+	view, g, err := s.loadDraft(r)
+	if err != nil {
+		return err
+	}
+	ctx := r.Context()
+	if g.ManagerID == nil || !view.seesMember(g.ManagerID) {
+		return httpx.Validation{"manager_id": "Choose a manager."}.Err()
+	}
+	if reason, err := s.limitReason(ctx, view.ws, view.v.UserID); err != nil {
+		return err
+	} else if reason != "" {
+		return httpx.NewError(http.StatusConflict, "over_limit", strings.Replace(reason, "This starts", "Give it", 1))
+	}
+	var ng db.Goal
+	err = s.Core.Tx(ctx, func(t *core.Tx) error {
+		var err error
+		if ng, err = core.GiveDraft(ctx, t, view.ws, g.ID); err != nil {
+			return err
+		}
+		if s.Orch != nil {
+			t.AfterCommit(func() { s.Orch.Kick(context.WithoutCancel(ctx), view.ws.ID) })
+		}
+		return s.audit(ctx, t.Q, &view.ws.OrgID, &view.v.UserID, "goals.given", "Gave a draft goal: "+g.Title)
+	})
+	if store.IsNotFound(err) {
+		return httpx.NewError(http.StatusConflict, "not_draft", "This goal was already given.")
+	} else if err != nil {
+		return err
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"goal": core.ToGoal(ng)})
+	return nil
+}
+
+// handleDeleteGoal deletes a draft goal; given goals stay.
+func (s *Server) handleDeleteGoal(w http.ResponseWriter, r *http.Request) error {
+	view, g, err := s.loadDraft(r)
+	if err != nil {
+		return err
+	}
+	ctx := r.Context()
+	err = s.Core.Tx(ctx, func(t *core.Tx) error {
+		_, err := core.DeleteDraft(ctx, t, view.ws, g)
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
 }
 
 func goalError(err error) error {

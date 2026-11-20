@@ -24,7 +24,7 @@ function member(kind: "manager" | "staff", name: string, skill = "", reports = "
 export function seedMembers(p: SetupPayload): SetupPayload {
   if (p.members.length) return p;
   const lead = member("manager", "Atlas");
-  return { ...p, members: [lead, member("staff", "Pike", "developer", lead.key), member("staff", "Ivy", "researcher")], first_goal: { manager_key: lead.key, title: "", done_when: "" } };
+  return { ...p, members: [lead, member("staff", "Pike", "developer", lead.key), member("staff", "Ivy", "researcher")], first_goal: { manager_key: lead.key, title: "", description: "", done_when: "" } };
 }
 
 /** tidyGrants keeps staff access within their manager's and refreshes suggestions. */

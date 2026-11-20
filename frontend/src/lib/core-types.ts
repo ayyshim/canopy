@@ -2,6 +2,28 @@
 // Generated from hub/internal/core by tygo (make gen). Do not edit.
 
 //////////
+// source: attachments.go
+
+/**
+ * MaxAttachmentBytes caps one attached file.
+ */
+export const MaxAttachmentBytes = 25 << 20;
+/**
+ * AttachmentView is a file attached to a goal or a task.
+ */
+export interface AttachmentView {
+  id: string /* uuid */;
+  goal_id?: string /* uuid */;
+  task_id?: string /* uuid */;
+  name: string;
+  mime: string;
+  size: number /* int64 */;
+  user_id?: string /* uuid */; // a person attached it
+  member_id?: string /* uuid */; // an agent attached it
+  created_at: string /* RFC3339 */;
+}
+
+//////////
 // source: views.go
 
 export interface WorkspaceView {
@@ -122,6 +144,7 @@ export interface GoalView {
   manager_id?: string /* uuid */;
   title: string;
   done_when: string;
+  description: string;
   color: string;
   status: string;
   summary: string;

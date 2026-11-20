@@ -24,9 +24,9 @@ func (q *Queries) CountGoals(ctx context.Context, workspaceID uuid.UUID) (int64,
 }
 
 const createGoal = `-- name: CreateGoal :one
-INSERT INTO goals (id, workspace_id, manager_id, title, done_when, color, created_by, runner_id, base, branch, snapshot)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at
+INSERT INTO goals (id, workspace_id, manager_id, title, done_when, color, created_by, runner_id, base, branch, snapshot, description, status)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description
 `
 
 type CreateGoalParams struct {
@@ -41,6 +41,8 @@ type CreateGoalParams struct {
 	Base        string
 	Branch      string
 	Snapshot    bool
+	Description string
+	Status      string
 }
 
 func (q *Queries) CreateGoal(ctx context.Context, arg CreateGoalParams) (Goal, error) {
@@ -56,6 +58,8 @@ func (q *Queries) CreateGoal(ctx context.Context, arg CreateGoalParams) (Goal, e
 		arg.Base,
 		arg.Branch,
 		arg.Snapshot,
+		arg.Description,
+		arg.Status,
 	)
 	var i Goal
 	err := row.Scan(
@@ -80,12 +84,25 @@ func (q *Queries) CreateGoal(ctx context.Context, arg CreateGoalParams) (Goal, e
 		&i.ShowTasks,
 		&i.DoneBy,
 		&i.ReadyAt,
+		&i.Description,
 	)
 	return i, err
 }
 
+const deleteDraftGoal = `-- name: DeleteDraftGoal :execrows
+DELETE FROM goals WHERE id = $1 AND status = 'draft'
+`
+
+func (q *Queries) DeleteDraftGoal(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteDraftGoal, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getGoal = `-- name: GetGoal :one
-SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at FROM goals WHERE id = $1
+SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description FROM goals WHERE id = $1
 `
 
 func (q *Queries) GetGoal(ctx context.Context, id uuid.UUID) (Goal, error) {
@@ -113,6 +130,42 @@ func (q *Queries) GetGoal(ctx context.Context, id uuid.UUID) (Goal, error) {
 		&i.ShowTasks,
 		&i.DoneBy,
 		&i.ReadyAt,
+		&i.Description,
+	)
+	return i, err
+}
+
+const giveDraftGoal = `-- name: GiveDraftGoal :one
+UPDATE goals SET status = 'planning', created_at = now() WHERE id = $1 AND status = 'draft'
+RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description
+`
+
+func (q *Queries) GiveDraftGoal(ctx context.Context, id uuid.UUID) (Goal, error) {
+	row := q.db.QueryRow(ctx, giveDraftGoal, id)
+	var i Goal
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.ManagerID,
+		&i.Title,
+		&i.DoneWhen,
+		&i.Color,
+		&i.Status,
+		&i.Summary,
+		&i.CreatedBy,
+		&i.PlannedAt,
+		&i.FinishedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RunnerID,
+		&i.Base,
+		&i.Branch,
+		&i.Snapshot,
+		&i.Shipped,
+		&i.ShowTasks,
+		&i.DoneBy,
+		&i.ReadyAt,
+		&i.Description,
 	)
 	return i, err
 }
@@ -219,7 +272,7 @@ func (q *Queries) ListGoalRepos(ctx context.Context, goalID uuid.UUID) ([]GoalRe
 }
 
 const listGoals = `-- name: ListGoals :many
-SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at FROM goals WHERE workspace_id = $1 ORDER BY created_at, id
+SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description FROM goals WHERE workspace_id = $1 ORDER BY created_at, id
 `
 
 func (q *Queries) ListGoals(ctx context.Context, workspaceID uuid.UUID) ([]Goal, error) {
@@ -253,6 +306,7 @@ func (q *Queries) ListGoals(ctx context.Context, workspaceID uuid.UUID) ([]Goal,
 			&i.ShowTasks,
 			&i.DoneBy,
 			&i.ReadyAt,
+			&i.Description,
 		); err != nil {
 			return nil, err
 		}
@@ -265,7 +319,7 @@ func (q *Queries) ListGoals(ctx context.Context, workspaceID uuid.UUID) ([]Goal,
 }
 
 const listGoalsMovedSince = `-- name: ListGoalsMovedSince :many
-SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at FROM goals WHERE workspace_id = $1 AND updated_at >= $2 ORDER BY updated_at DESC LIMIT 20
+SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description FROM goals WHERE workspace_id = $1 AND updated_at >= $2 ORDER BY updated_at DESC LIMIT 20
 `
 
 type ListGoalsMovedSinceParams struct {
@@ -304,6 +358,7 @@ func (q *Queries) ListGoalsMovedSince(ctx context.Context, arg ListGoalsMovedSin
 			&i.ShowTasks,
 			&i.DoneBy,
 			&i.ReadyAt,
+			&i.Description,
 		); err != nil {
 			return nil, err
 		}
@@ -382,6 +437,65 @@ func (q *Queries) ListWorkspaceGoalRepos(ctx context.Context, workspaceID uuid.U
 	return items, nil
 }
 
+const updateDraftGoal = `-- name: UpdateDraftGoal :one
+UPDATE goals
+SET manager_id = $2, title = $3, done_when = $4, description = $5, runner_id = $6, base = $7, branch = $8, snapshot = $9
+WHERE id = $1 AND status = 'draft'
+RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description
+`
+
+type UpdateDraftGoalParams struct {
+	ID          uuid.UUID
+	ManagerID   *uuid.UUID
+	Title       string
+	DoneWhen    string
+	Description string
+	RunnerID    *uuid.UUID
+	Base        string
+	Branch      string
+	Snapshot    bool
+}
+
+func (q *Queries) UpdateDraftGoal(ctx context.Context, arg UpdateDraftGoalParams) (Goal, error) {
+	row := q.db.QueryRow(ctx, updateDraftGoal,
+		arg.ID,
+		arg.ManagerID,
+		arg.Title,
+		arg.DoneWhen,
+		arg.Description,
+		arg.RunnerID,
+		arg.Base,
+		arg.Branch,
+		arg.Snapshot,
+	)
+	var i Goal
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.ManagerID,
+		&i.Title,
+		&i.DoneWhen,
+		&i.Color,
+		&i.Status,
+		&i.Summary,
+		&i.CreatedBy,
+		&i.PlannedAt,
+		&i.FinishedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RunnerID,
+		&i.Base,
+		&i.Branch,
+		&i.Snapshot,
+		&i.Shipped,
+		&i.ShowTasks,
+		&i.DoneBy,
+		&i.ReadyAt,
+		&i.Description,
+	)
+	return i, err
+}
+
 const updateGoal = `-- name: UpdateGoal :one
 UPDATE goals
 SET status = coalesce($1, status),
@@ -395,7 +509,7 @@ SET status = coalesce($1, status),
     done_by = CASE WHEN $11::boolean THEN $12 ELSE done_by END,
     ready_at = CASE WHEN $13::boolean THEN now() ELSE ready_at END
 WHERE id = $14
-RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at
+RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description
 `
 
 type UpdateGoalParams struct {
@@ -455,6 +569,7 @@ func (q *Queries) UpdateGoal(ctx context.Context, arg UpdateGoalParams) (Goal, e
 		&i.ShowTasks,
 		&i.DoneBy,
 		&i.ReadyAt,
+		&i.Description,
 	)
 	return i, err
 }

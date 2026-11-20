@@ -10,9 +10,11 @@ import { useBoard } from "@/lib/board/store";
 import { useUI } from "@/lib/board/ui";
 import { SKILL_LABEL } from "@/lib/types";
 import { useB, useBoardCtx } from "../context";
-import { Avatar, Thumb } from "../icons";
+import { Avatar } from "../icons";
 import { RunsOn, SignalBox, StatusPill, TaskRow, shortTitle } from "./bits";
+import { Attachments } from "./Attachments";
 import { PanelBody, PanelFoot, PanelHead } from "./Panel";
+import { OutputThumb } from "../OutputThumb";
 
 export function TaskPanel({ id }: { id: string }) {
   const b = useB();
@@ -113,11 +115,12 @@ export function TaskPanel({ id }: { id: string }) {
           {t.depends_on.length ? t.depends_on.map((d) => findTask(b, d)).filter(Boolean).map((x) => <TaskRow key={x!.id} t={x!} />) : <span className="hint">Nothing</span>}
         </div>
         {unlocks.length > 0 && <div className="sb-sec"><span className="lbl">Unlocks</span>{unlocks.map((x) => <TaskRow key={x.id} t={x} />)}</div>}
+        <Attachments taskId={t.id} />
         <div className="sb-sec">
           <span className="lbl">Outputs</span>
           {outs.length ? (
             <div className="thumbs">
-              {outs.map((o) => <button key={o.id} className={`fruit${o.status === "review" ? " review" : o.status === "approved" ? " approved" : ""}`} onClick={() => ui.openViewer(o.id)} title={o.title}><Thumb kind={o.kind} /></button>)}
+              {outs.map((o) => <button key={o.id} className={`fruit${o.status === "review" ? " review" : o.status === "approved" ? " approved" : ""}`} onClick={() => ui.openViewer(o.id)} title={o.title}><OutputThumb o={o} /></button>)}
             </div>
           ) : <p className="hint">Nothing yet.</p>}
         </div>

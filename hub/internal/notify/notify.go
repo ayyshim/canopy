@@ -312,6 +312,9 @@ func (n *Notifier) summary(ctx context.Context, userID uuid.UUID, since time.Tim
 			}
 			if moved, err := q.ListGoalsMovedSince(ctx, db.ListGoalsMovedSinceParams{WorkspaceID: ws.ID, UpdatedAt: since}); err == nil {
 				for _, g := range moved {
+					if g.Status == "draft" {
+						continue
+					}
 					goals = append(goals, fmt.Sprintf("- %s (%s): %s", g.Title, ws.Name, goalStatus[g.Status]))
 				}
 			}

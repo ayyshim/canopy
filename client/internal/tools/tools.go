@@ -39,6 +39,10 @@ var Defs = []Def{
 		`{"type":"object","properties":{"title":{"type":"string"},"body":{"type":"string"},"kind":{"type":"string","enum":["note","decision"]}},"required":["title","body"]}`},
 	{protocol.ToolAssignSkill, "Managers: give one of your staff a skill from the workspace skill library (or take it away with remove). Skills are listed in your planning prompt.",
 		`{"type":"object","properties":{"member":{"type":"string","description":"name of a staff member who reports to you"},"skill":{"type":"string","description":"name of a library skill"},"remove":{"type":"boolean"}},"required":["member","skill"]}`},
+	{protocol.ToolGetAttachments, "Download the files attached to your goal and its tasks (images, documents, data) into ./attachments. Returns their paths.",
+		`{"type":"object","properties":{"name":{"type":"string","description":"only this file; leave out for all"}}}`},
+	{protocol.ToolAttachFile, "Attach a file to your goal (default) or your task, so people and other agents on the goal can use it.",
+		`{"type":"object","properties":{"path":{"type":"string"},"to":{"type":"string","enum":["goal","task"]}},"required":["path"]}`},
 }
 
 // Call is the bridge asking the runner to run a tool.
