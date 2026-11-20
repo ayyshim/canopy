@@ -28,6 +28,10 @@ workspace as a live tree: people, their workspaces, and the manager and staff ag
 their goals. Anything that needs a person, such as a question, an approval, access to a folder or
 a review, waits on the tree until someone answers.
 
+<p align="center">
+  <img src="docs/assets/board.gif" width="840" alt="A workspace board: a goal is planned, staff work on tasks, a question waits for an answer, and the goal finishes">
+</p>
+
 It comes as two programs:
 
 | Program | Runs on | What it does |
