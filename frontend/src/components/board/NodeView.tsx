@@ -160,10 +160,13 @@ export function NodeView({ n }: { n: Node }) {
       const unread = b.unread[m.id] ?? 0;
       const warn = s.k === "need";
       const sel = ui.chats.some((c) => c.id === m.id);
-      const open = () => ui.openChat(m.id);
+      const open = (e: React.SyntheticEvent<HTMLElement>) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        ui.openChat(m.id, { anchor: { left: r.left, top: r.top, right: r.right, bottom: r.bottom } });
+      };
       return (
         <div className={`node agent${n.mgr ? " mgr" : ""}${warn ? " warn" : ""}${sel ? " sel" : ""}${glow}`} style={style} role="button" tabIndex={0}
-          onClick={open} onKeyDown={keyOpen(open)} aria-label={`${m.name}, ${s.t}`}>
+          onClick={open} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), open(e))} aria-label={`${m.name}, ${s.t}`}>
           <Avatar name={m.name} color={m.avatar_color} />
           <span style={{ minWidth: 0 }}>
             <span className="nm">{m.name}{m.kind === "manager" ? <span className="tag">MANAGER</span> : !m.reports_to ? <span className="tag ind">INDEPENDENT</span> : null}</span>
