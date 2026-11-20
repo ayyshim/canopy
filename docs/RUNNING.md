@@ -328,7 +328,6 @@ Environment:
 | `CANOPY_CLAUDE_BIN` | `claude` on `PATH` | The Claude Code binary to run |
 | `CANOPY_BIN_DIR` | `~/.local/bin` | Where `install` and the install scripts put the binary |
 | `CLAUDE_CONFIG_DIR` | `~/.claude` | Where Claude Code keeps its sign-in |
-| `CANOPY_BIN_DIR` | `~/.local/bin` | Install script only: where to put `canopy` |
 
 Hub routes that serve the client: `/install.sh` (the install script) and
 `/download/canopy-<os>-<arch>` (the binary).
