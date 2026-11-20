@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -9,6 +9,14 @@ const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains" }
 export const metadata: Metadata = {
   title: { default: "Canopy", template: "%s · Canopy" },
   description: "See and steer every coding agent in one live tree.",
+  appleWebApp: { capable: true, title: "Canopy", statusBarStyle: "default" },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#16794F" },
+    { media: "(prefers-color-scheme: dark)", color: "#101419" },
+  ],
 };
 
 // Applies the saved theme before the first paint, so dark mode doesn't flash light.
