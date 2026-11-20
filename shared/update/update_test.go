@@ -1,10 +1,53 @@
 package update
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+func TestLatestTag(t *testing.T) {
+	t.Setenv("CANOPY_REPO", "")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/ayyshim/canopy/releases/latest" {
+			http.NotFound(w, r)
+			return
+		}
+		http.Redirect(w, r, githubURL+"/ayyshim/canopy/releases/tag/v0.4.3", http.StatusFound)
+	}))
+	defer srv.Close()
+	old := githubURL
+	githubURL = srv.URL
+	defer func() { githubURL = old }()
+
+	tag, err := LatestTag(context.Background())
+	if err != nil || tag != "v0.4.3" {
+		t.Fatalf("LatestTag() = %q, %v; want v0.4.3", tag, err)
+	}
+
+	t.Setenv("CANOPY_REPO", "someone/missing")
+	if tag, err := LatestTag(context.Background()); err == nil {
+		t.Errorf("LatestTag() for a missing repository = %q, want an error", tag)
+	}
+}
+
+func TestLatestTagWithoutReleases(t *testing.T) {
+	t.Setenv("CANOPY_REPO", "someone/empty")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, githubURL+"/someone/empty/releases", http.StatusFound)
+	}))
+	defer srv.Close()
+	old := githubURL
+	githubURL = srv.URL
+	defer func() { githubURL = old }()
+
+	if tag, err := LatestTag(context.Background()); err == nil {
+		t.Errorf("LatestTag() for a repository without releases = %q, want an error", tag)
+	}
+}
 
 func TestNewer(t *testing.T) {
 	for _, c := range []struct {

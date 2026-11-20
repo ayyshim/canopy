@@ -8,7 +8,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -33,27 +32,41 @@ func Repo() string {
 // Asset is the release file for this system, such as canopy-hub-linux-amd64.
 func Asset(name string) string { return name + "-" + runtime.GOOS + "-" + runtime.GOARCH }
 
+// githubURL is github.com; tests point it at a local server.
+var githubURL = "https://github.com"
+
 var client = &http.Client{Timeout: 10 * time.Minute}
 
-// get downloads url. GitHub’s download servers sometimes answer 500 for a moment, so server
-// and network errors are tried up to three times.
-func get(ctx context.Context, url string) ([]byte, error) {
+// noRedirect answers with the redirect itself instead of following it.
+var noRedirect = &http.Client{
+	Timeout:       time.Minute,
+	CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+}
+
+// retry runs once up to three times while it fails with an error worth retrying: GitHub’s
+// servers sometimes answer 500 for a moment.
+func retry[T any](ctx context.Context, once func() (T, bool, error)) (T, error) {
+	var v T
 	var err error
 	for try := range 3 {
 		if try > 0 {
 			select {
 			case <-ctx.Done():
-				return nil, ctx.Err()
+				return v, ctx.Err()
 			case <-time.After(time.Duration(try*2) * time.Second):
 			}
 		}
-		var b []byte
-		var retry bool
-		if b, retry, err = getOnce(ctx, url); err == nil || !retry {
-			return b, err
+		var again bool
+		if v, again, err = once(); err == nil || !again {
+			return v, err
 		}
 	}
-	return nil, err
+	return v, err
+}
+
+// get downloads url.
+func get(ctx context.Context, url string) ([]byte, error) {
+	return retry(ctx, func() ([]byte, bool, error) { return getOnce(ctx, url) })
 }
 
 func getOnce(ctx context.Context, url string) ([]byte, bool, error) {
@@ -75,22 +88,42 @@ func getOnce(ctx context.Context, url string) ([]byte, bool, error) {
 }
 
 // LatestTag returns the newest release's tag, such as v0.2.0. Pre-releases are skipped.
+// It reads the tag from where github.com/OWNER/REPO/releases/latest redirects rather than
+// asking GitHub’s API, which answers only 60 requests an hour from an address that isn’t
+// signed in.
 func LatestTag(ctx context.Context) (string, error) {
-	b, err := get(ctx, "https://api.github.com/repos/"+Repo()+"/releases/latest")
+	url := githubURL + "/" + Repo() + "/releases/latest"
+	tag, err := retry(ctx, func() (string, bool, error) { return latestOnce(ctx, url) })
 	if err != nil {
 		return "", fmt.Errorf("find the latest release: %w", err)
 	}
-	var r struct {
-		Tag string `json:"tag_name"`
+	return tag, nil
+}
+
+func latestOnce(ctx context.Context, url string) (string, bool, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
+	if err != nil {
+		return "", false, err
 	}
-	if err := json.Unmarshal(b, &r); err != nil || r.Tag == "" {
-		return "", fmt.Errorf("find the latest release: unexpected answer from GitHub")
+	req.Header.Set("User-Agent", "canopy-updater")
+	resp, err := noRedirect.Do(req)
+	if err != nil {
+		return "", true, err
 	}
-	return r.Tag, nil
+	resp.Body.Close()
+	if resp.StatusCode < 300 || resp.StatusCode >= 400 {
+		return "", resp.StatusCode >= 500, fmt.Errorf("%s: %s", url, resp.Status)
+	}
+	// A repository without releases redirects to its releases page instead of a tag.
+	_, tag, ok := strings.Cut(resp.Header.Get("Location"), "/releases/tag/")
+	if !ok || tag == "" || strings.Contains(tag, "/") {
+		return "", false, fmt.Errorf("%s has no releases", Repo())
+	}
+	return tag, false, nil
 }
 
 func releaseURL(tag, file string) string {
-	return "https://github.com/" + Repo() + "/releases/download/" + tag + "/" + file
+	return githubURL + "/" + Repo() + "/releases/download/" + tag + "/" + file
 }
 
 // ReleaseSum returns the checksum the release lists for asset.
