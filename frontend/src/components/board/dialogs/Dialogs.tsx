@@ -26,7 +26,7 @@ export function Dialogs() {
   if (!d) return null;
   let body: React.ReactNode;
   switch (d.kind) {
-    case "goal": body = <GoalDialog managerId={d.managerId} />; break;
+    case "goal": body = <GoalDialog key={d.draftId} managerId={d.managerId} draftId={d.draftId} />; break;
     case "task": body = <TaskDialog goalId={d.goalId} memberId={d.memberId} />; break;
     case "member": body = <MemberDialog mode={d.mode} bossId={d.bossId} />; break;
     case "invite": body = <AccessDialog />; break;
