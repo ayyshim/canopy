@@ -63,7 +63,13 @@ func (f *Fetcher) Fetch(ctx context.Context, link string) (string, error) {
 	}
 	c := f.Client
 	if c == nil {
-		c = &http.Client{Timeout: 10 * time.Second}
+		c = &http.Client{Timeout: 10 * time.Second, CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// GitHub may redirect (renamed repos); never follow one to another host or off https.
+			if len(via) >= 3 || req.URL.Scheme != "https" || req.URL.Host != rawHost {
+				return http.ErrUseLastResponse
+			}
+			return nil
+		}}
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, raw, nil)
 	if err != nil {

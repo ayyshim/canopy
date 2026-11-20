@@ -273,8 +273,10 @@ func (s *Server) validateSetup(ctx context.Context, orgID uuid.UUID, p *setupPay
 		if sk.SourceKind != "md" && sk.SourceKind != "github" {
 			v.Add(f+"source_kind", "Choose a markdown file or a GitHub link.")
 		}
-		if sk.SourceKind == "github" && strings.TrimSpace(sk.SourceURL) == "" {
-			v.Add(f+"source_url", "Paste a link to a markdown file on GitHub.")
+		if sk.SourceKind == "github" {
+			if _, err := skills.RawURL(sk.SourceURL); err != nil {
+				v.Add(f+"source_url", err.Error())
+			}
 		}
 		if sk.SourceKind == "md" {
 			sk.SourceURL = ""

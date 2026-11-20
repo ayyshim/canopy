@@ -73,7 +73,7 @@ export function SkillAdd({ orgId, taken, onAdd }: { orgId: string; taken: string
       <div className="row">
         <span className="lbl spacer">Add a skill</span>
         <div className="seg" role="group" aria-label="Where the skill comes from">
-          <button type="button" aria-pressed={source === "md"} onClick={() => { setSource("md"); setError(""); }}>Markdown file or text</button>
+          <button type="button" aria-pressed={source === "md"} onClick={() => { setSource("md"); setError(""); }}>A file or pasted text</button>
           <button type="button" aria-pressed={source === "github"} onClick={() => { setSource("github"); setError(""); }}>GitHub link</button>
         </div>
       </div>
@@ -85,7 +85,7 @@ export function SkillAdd({ orgId, taken, onAdd }: { orgId: string; taken: string
             <span className="hint">or paste it below</span>
           </div>
           <textarea className="textarea mono" rows={5} style={{ fontSize: 12.5 }} value={content} onChange={(e) => { setContent(e.target.value); setError(""); }}
-            placeholder={"# Code review checklist\n- Check error handling first\n- Ask for tests"} aria-label="Skill markdown" />
+            placeholder={"# Code review checklist\n- Check error handling first\n- Ask for tests"} aria-label="Skill text" />
         </>
       ) : (
         <>
@@ -94,7 +94,7 @@ export function SkillAdd({ orgId, taken, onAdd }: { orgId: string; taken: string
               placeholder="https://github.com/your-team/skills/blob/main/review.md" aria-label="GitHub link" />
             <button type="button" className="btn" disabled={!url.trim() || busy} onClick={fetchLink}>{busy ? "Fetching…" : fetched ? "Fetch again" : "Fetch"}</button>
           </div>
-          <span className="hint">Link to a single markdown file in a public repository. Canopy saves a copy; open the skill later to fetch it again.</span>
+          <span className="hint">Link to one file (ending in .md) on GitHub. It must be public. Canopy saves a copy; open the skill later to update it.</span>
           {fetched && <div className="mdprev md skill-prev"><Markdown text={content} className="md" /></div>}
         </>
       )}
