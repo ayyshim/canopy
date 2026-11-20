@@ -10,7 +10,7 @@ export interface WorkspaceView {
   name: string;
   about: string;
   goal_completion: string; // manual or auto
-  logo_url?: string;
+  logo_url?: string | null;
   created_at: string /* RFC3339 */;
 }
 export interface MemberView {
