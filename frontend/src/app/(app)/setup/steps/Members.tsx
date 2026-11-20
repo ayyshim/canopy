@@ -56,40 +56,63 @@ export function Members({ p, set, dirs, errors }: StepProps) {
     people: x.people.map((pp) => ({ ...pp, manager_keys: pp.manager_keys.filter((k) => k !== key) })),
     first_goal: x.first_goal?.manager_key === key ? { ...x.first_goal, manager_key: x.members.find((m) => m.kind === "manager" && m.key !== key)?.key ?? "" } : x.first_goal,
   }));
-  const add = (kind: "manager" | "staff", reports = "") => set((x) => ({ ...x, members: [...x.members, member(kind, "", kind === "staff" ? "developer" : "", reports)] }));
+  const [sel, setSel] = useState("");
+  const add = (kind: "manager" | "staff", reports = "") => {
+    const m = member(kind, "", kind === "staff" ? "developer" : "", reports);
+    set((x) => ({ ...x, members: [...x.members, m] }));
+    setSel(m.key);
+  };
+  const selected = p.members.find((m) => m.key === sel) ?? managers[0];
+  const nameErr = (m: SetupMember) => errors[`members.${p.members.indexOf(m)}.name`];
+  const card = (m: SetupMember) => (
+    <button type="button" key={m.key} className={`node agent${m.kind === "manager" ? " mgr" : ""}${selected?.key === m.key ? " sel" : ""}${nameErr(m) ? " warn" : ""}`}
+      style={{ position: "relative", width: 232, cursor: "pointer", font: "inherit", color: "inherit" }} aria-pressed={selected?.key === m.key} onClick={() => setSel(m.key)}>
+      <Avatar name={m.name || "?"} color={m.kind === "manager" ? "#14322A" : "#0E9AA7"} />
+      <span style={{ minWidth: 0 }}>
+        <span className="nm">{m.name || "Needs a name"}{m.kind === "manager" ? <span className="tag">MANAGER</span> : null}</span>
+        <span className="md">{m.kind === "manager" ? "Takes goals and leads staff" : SKILL_LABEL[m.skill] ?? "Staff"}</span>
+      </span>
+    </button>
+  );
+  const addCard = (label: string, sub: string, onClick: () => void) => (
+    <button type="button" className="node addm" style={{ position: "relative", width: 232, height: 58 }} onClick={onClick}><span>{label}</span><small>{sub}</small></button>
+  );
+  const line = { marginLeft: 24, borderLeft: "1.6px solid var(--line)", padding: "12px 0 0 18px", display: "flex", flexDirection: "column" as const, gap: 10 };
 
   return (
     <>
       <h1>Build your team</h1>
-      <p className="lead">A <b>manager</b> takes your goals, plans the work and hands tasks to their staff. <b>Staff</b> do the tasks. We started you off with a small team. Change the names or add more.</p>
-      {managers.map((mg) => (
-        <div className="mgroup" key={mg.key}>
-          <Row m={mg} p={p} update={update} remove={remove} canRemove={managers.length > 1} error={errors[`members.${p.members.indexOf(mg)}.name`]} />
-          <Advanced m={mg} p={p} dirs={dirs} update={update} />
-          {p.members.filter((s) => s.kind === "staff" && s.reports_to_key === mg.key).map((s) => (
-            <div className="mrow staff" style={{ border: 0, padding: "6px 0 0 22px" }} key={s.key}>
-              <Row m={s} p={p} update={update} remove={remove} canRemove error={errors[`members.${p.members.indexOf(s)}.name`]} />
-              <Advanced m={s} p={p} dirs={dirs} update={update} />
+      <p className="lead">A <b>manager</b> takes your goals, plans the work and hands tasks to their staff. <b>Staff</b> do the tasks. We started you off with a small team. Click anyone to change them.</p>
+      <div style={{ display: "flex", gap: 28, flexWrap: "wrap", alignItems: "flex-start", padding: "6px 2px 14px" }}>
+        {managers.map((mg) => (
+          <div key={mg.key}>
+            {card(mg)}
+            <div style={line}>
+              {p.members.filter((s) => s.kind === "staff" && s.reports_to_key === mg.key).map(card)}
+              {addCard("+ Add staff", `Reports to ${mg.name || "this manager"}`, () => add("staff", mg.key))}
             </div>
-          ))}
-          <button type="button" className="btn btn-sm" style={{ borderStyle: "dashed", alignSelf: "flex-start" }} onClick={() => add("staff", mg.key)}>+ Add staff for {mg.name || "this manager"}</button>
-        </div>
-      ))}
-      <div className="mgroup ind">
-        <h3>Shared staff</h3>
-        <p className="hint" style={{ margin: 0 }}>Help any manager who needs them.</p>
-        {independent.map((s) => (
-          <div key={s.key} className="stack-sm">
-            <Row m={s} p={p} update={update} remove={remove} canRemove error={errors[`members.${p.members.indexOf(s)}.name`]} />
-            <Advanced m={s} p={p} dirs={dirs} update={update} />
           </div>
         ))}
-        {!independent.length && <p className="hint" style={{ margin: 0 }}>No one yet.</p>}
-        <button type="button" className="btn btn-sm" style={{ borderStyle: "dashed", alignSelf: "flex-start" }} onClick={() => add("staff")}>+ Add shared staff</button>
+        <div>
+          {addCard("+ Add manager", "Takes goals and leads staff", () => add("manager"))}
+        </div>
+        <div>
+          <div className="node pool" style={{ position: "relative", width: 232 }}><b>Shared staff</b><span>Help any manager who needs them</span></div>
+          <div style={line}>
+            {independent.map(card)}
+            {addCard("+ Add shared staff", "Helps any manager", () => add("staff"))}
+          </div>
+        </div>
       </div>
-      <div><button type="button" className="btn" onClick={() => add("manager")}>+ Add another manager</button></div>
+      {selected && (
+        <div className="mgroup" aria-label={`Details for ${selected.name || "this person"}`}>
+          <h3 style={{ margin: 0 }}>{selected.name ? `About ${selected.name}` : "About this person"}</h3>
+          <Row m={selected} p={p} update={update} remove={(k) => { remove(k); setSel(""); }} canRemove={selected.kind !== "manager" || managers.length > 1} error={nameErr(selected)} />
+          <Advanced m={selected} p={p} dirs={dirs} update={update} />
+        </div>
+      )}
       {errors.members && <div className="err" style={{ fontSize: 13.5 }}>{errors.members}</div>}
-      {Object.keys(errors).some((k) => k.startsWith("members.") && k.endsWith(".name")) && <div className="err" style={{ fontSize: 13.5 }}>Give everyone a name.</div>}
+      {Object.keys(errors).some((k) => k.startsWith("members.") && k.endsWith(".name")) && <div className="err" style={{ fontSize: 13.5 }}>Give everyone a name. Click a card marked “Needs a name”.</div>}
     </>
   );
 }
