@@ -39,6 +39,7 @@ const (
 	TRepoInfo     = "repo_info"    // is this folder a git repository, and its state
 	TGitShip      = "git_ship"     // open a pull request, merge, or keep a goal's branch
 	TGoalCleanup  = "goal_cleanup" // remove a goal's worktrees from this computer
+	TAsk          = "ask"          // one short Claude answer with no tools; replies with AskResult
 )
 
 // Runner → hub.
@@ -221,6 +222,17 @@ type ToolResult struct {
 type SetAPIKey struct {
 	CLI string `json:"cli"`
 	Key string `json:"key"`
+}
+
+// Ask is a one-off question for Claude on this computer. It runs without tools.
+type Ask struct {
+	System string `json:"system"`
+	Prompt string `json:"prompt"`
+	Model  string `json:"model,omitempty"`
+}
+
+type AskResult struct {
+	Text string `json:"text"`
 }
 
 type Browse struct {
