@@ -201,7 +201,9 @@ func work(text string, resumed bool) {
 	}
 	if marker(text, "limit") && once("limit-"+key) {
 		emit(map[string]any{"type": "rate_limit_event", "session_id": sessionID, "rate_limit_info": map[string]any{
-			"status": "rejected", "resetsAt": time.Now().Add(time.Hour).Unix(), "unifiedWindows": map[string]any{"five_hour": map[string]any{"utilization": 1.0}}}})
+			"status": "rejected", "resetsAt": time.Now().Add(time.Hour).Unix(), "unifiedWindows": map[string]any{
+				"five_hour": map[string]any{"utilization": 1.0, "status": "rejected", "resetsAt": time.Now().Add(time.Hour).Unix()},
+				"seven_day": map[string]any{"utilization": 0.42, "status": "allowed", "resetsAt": time.Now().Add(48 * time.Hour).Unix()}}}})
 		result(fmt.Sprintf("Claude AI usage limit reached|%d", time.Now().Add(time.Hour).Unix()), true)
 		return
 	}

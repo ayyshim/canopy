@@ -156,18 +156,22 @@ func (o *Orch) onRateLimit(ctx context.Context, rn db.Runner, r protocol.RateLim
 		return
 	}
 	err := o.Core.Tx(ctx, func(t *core.Tx) error {
-		util := map[string]any{}
-		for k, v := range r.Utilization {
-			util[k] = v
+		params := db.UpdateAccountStateParams{RunnerID: rn.ID, Cli: r.CLI}
+		// A report without windows (the CLI's plain "limit reached" text) keeps the last windows.
+		if len(r.Utilization) > 0 || len(r.Windows) > 0 {
+			util := map[string]any{}
+			for k, v := range r.Utilization {
+				util[k] = v
+			}
+			if r.ResetsAt != nil {
+				util["resets_at"] = r.ResetsAt
+			}
+			if len(r.Windows) > 0 {
+				util["windows"] = r.Windows // percent used, reset time and status per window
+			}
+			util["reported_at"] = o.now()
+			params.Utilization = mustJSON(util)
 		}
-		if r.ResetsAt != nil {
-			util["resets_at"] = r.ResetsAt
-		}
-		if len(r.Windows) > 0 {
-			util["windows"] = r.Windows // percent used, reset time and status per window
-		}
-		util["reported_at"] = o.now()
-		params := db.UpdateAccountStateParams{RunnerID: rn.ID, Cli: r.CLI, Utilization: mustJSON(util)}
 		if r.Limited {
 			until := o.now().Add(time.Hour)
 			if r.ResetsAt != nil {
