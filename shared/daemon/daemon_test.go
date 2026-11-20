@@ -19,6 +19,9 @@ func TestLockFindsTheHolder(t *testing.T) {
 	if pid := PID(path); pid != os.Getpid() {
 		t.Errorf("PID while locked = %d, want %d", pid, os.Getpid())
 	}
+	if args := Args(path); len(args) != len(os.Args) || args[0] != os.Args[0] {
+		t.Errorf("Args = %q, want %q", args, os.Args)
+	}
 	var running RunningError
 	if _, err := Lock(path); !errors.As(err, &running) || running.PID != os.Getpid() {
 		t.Errorf("second Lock = %v, want RunningError with our pid", err)

@@ -4,6 +4,7 @@
 package daemon
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -23,8 +24,8 @@ type RunningError struct{ PID int }
 
 func (e RunningError) Error() string { return fmt.Sprintf("already running (pid %d)", e.PID) }
 
-// Lock takes the lock at path for this process and writes its pid into the file. Call the
-// returned function to let go.
+// Lock takes the lock at path for this process and writes its pid, and the command line that
+// started it, into the file. Call the returned function to let go.
 func Lock(path string) (func(), error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return nil, err
@@ -37,26 +38,41 @@ func Lock(path string) (func(), error) {
 		f.Close()
 		return nil, RunningError{PID: PID(path)}
 	}
+	args, _ := json.Marshal(os.Args)
 	_ = f.Truncate(0)
-	_, _ = f.WriteAt([]byte(strconv.Itoa(os.Getpid())+"\n"), 0)
+	_, _ = f.WriteAt([]byte(strconv.Itoa(os.Getpid())+"\n"+string(args)+"\n"), 0)
 	return func() { _ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN); f.Close() }, nil
 }
 
 // PID returns the pid of the process holding the lock at path, or 0 if none does.
 func PID(path string) int {
+	pid, _ := holder(path)
+	return pid
+}
+
+// Args returns the command line of the process holding the lock at path, or nil.
+func Args(path string) []string {
+	_, args := holder(path)
+	return args
+}
+
+func holder(path string) (int, []string) {
 	f, err := os.Open(path)
 	if err != nil {
-		return 0
+		return 0, nil
 	}
 	defer f.Close()
 	// Taking the lock works only when nobody holds it.
 	if syscall.Flock(int(f.Fd()), syscall.LOCK_SH|syscall.LOCK_NB) == nil {
 		_ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
-		return 0
+		return 0, nil
 	}
 	b, _ := io.ReadAll(f)
-	pid, _ := strconv.Atoi(strings.TrimSpace(string(b)))
-	return pid
+	first, rest, _ := strings.Cut(string(b), "\n")
+	pid, _ := strconv.Atoi(strings.TrimSpace(first))
+	var args []string
+	_ = json.Unmarshal([]byte(strings.TrimSpace(rest)), &args)
+	return pid, args
 }
 
 // Start runs bin with args in its own session, away from this terminal, with its output added
