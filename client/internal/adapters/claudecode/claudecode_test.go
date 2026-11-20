@@ -53,10 +53,17 @@ func TestRecordedTranscript(t *testing.T) {
 }
 
 func TestRateLimitEvent(t *testing.T) {
-	ok := `{"type":"rate_limit_event","rate_limit_info":{"status":"allowed","resetsAt":1795080000,"unifiedWindows":{"five_hour":{"utilization":0.37},"seven_day":{"utilization":0.47}}}}`
+	ok := `{"type":"rate_limit_event","rate_limit_info":{"status":"allowed","resetsAt":1795080000,"unifiedWindows":{"five_hour":{"utilization":0.37,"resetsAt":1795070000,"status":"allowed"},"seven_day":{"utilization":0.47}}}}`
 	evs, _ := Parse([]byte(ok))
 	if len(evs) != 1 || evs[0].Limited || evs[0].Utilization["five_hour"] != 0.37 || evs[0].ResetsAt == nil {
 		t.Errorf("allowed: %+v", evs)
+	}
+	fh := evs[0].Windows["five_hour"]
+	if fh.Utilization != 0.37 || fh.Status != "allowed" || fh.ResetsAt == nil || fh.ResetsAt.Unix() != 1795070000 {
+		t.Errorf("five_hour window: %+v", fh)
+	}
+	if sd := evs[0].Windows["seven_day"]; sd.Utilization != 0.47 || sd.ResetsAt != nil {
+		t.Errorf("seven_day window: %+v", sd)
 	}
 	bad := `{"type":"rate_limit_event","rate_limit_info":{"status":"rejected","resetsAt":1795080000}}`
 	evs, _ = Parse([]byte(bad))

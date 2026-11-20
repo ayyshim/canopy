@@ -120,6 +120,13 @@ paths:
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
+  /orgs/{orgId}/usage/claude:
+    parameters: [{ name: orgId, in: path, required: true, schema: { type: string, format: uuid } }]
+    get:
+      summary: Claude Code's own limit reports for the caller's computers
+      responses:
+        "200": { description: One entry per computer the caller owns, content: { application/json: { schema: { $ref: "#/components/schemas/ClaudeUsageResponse" } } } }
+        "404": { $ref: "#/components/responses/Error" }
   /hub:
     get:
       summary: Public hub info; setup_required until first-run setup
@@ -270,6 +277,30 @@ components:
             code: { type: string, description: "e.g. validation, email_taken, unknown_email, wrong_password, invalid_token, rate_limited, csrf, not_found" }
             message: { type: string }
             fields: { type: object, additionalProperties: { type: string }, description: "Inline message per field path, e.g. user.email" }
+    ClaudeWindow:
+      type: object
+      required: [key, used_percent]
+      properties:
+        key: { type: string, description: "five_hour, seven_day, ..." }
+        used_percent: { type: number, description: "0 to 100" }
+        resets_at: { type: string, format: date-time }
+        status: { type: string, description: "e.g. allowed, allowed_warning, rejected" }
+    ClaudeComputerUsage:
+      type: object
+      required: [runner_id, name, online, sign_in, reported, windows]
+      properties:
+        runner_id: { type: string, format: uuid }
+        name: { type: string }
+        online: { type: boolean }
+        sign_in: { type: string, description: "subscription, api_key, or empty when Claude Code isn't set up" }
+        reported: { type: boolean, description: "false until Claude Code reports its limits; show 'no data yet', not 0%" }
+        reported_at: { type: string, format: date-time }
+        windows: { type: array, items: { $ref: "#/components/schemas/ClaudeWindow" } }
+    ClaudeUsageResponse:
+      type: object
+      required: [computers]
+      properties:
+        computers: { type: array, items: { $ref: "#/components/schemas/ClaudeComputerUsage" } }
     Providers:
       type: object
       required: [github, google]

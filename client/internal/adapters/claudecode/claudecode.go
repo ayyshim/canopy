@@ -74,8 +74,16 @@ type Event struct {
 	Limited     bool
 	ResetsAt    *time.Time
 	Utilization map[string]float64
+	Windows     map[string]Window // each limit window the CLI reported (five_hour, seven_day, ...)
 
 	IsError bool
+}
+
+// Window is one of the CLI's limit windows: how much is used, when it resets and its status.
+type Window struct {
+	Utilization float64
+	ResetsAt    *time.Time
+	Status      string
 }
 
 type line struct {
@@ -152,13 +160,19 @@ func Parse(b []byte) ([]Event, error) {
 			return nil, nil
 		}
 		e := Event{Kind: "rate_limit", Limited: l.RateLimit.Status != "" && l.RateLimit.Status != "allowed" && l.RateLimit.Status != "allowed_warning",
-			Utilization: map[string]float64{}}
+			Utilization: map[string]float64{}, Windows: map[string]Window{}}
 		if l.RateLimit.ResetsAt > 0 {
 			t := time.Unix(l.RateLimit.ResetsAt, 0)
 			e.ResetsAt = &t
 		}
 		for k, w := range l.RateLimit.UnifiedWindows {
 			e.Utilization[k] = w.Utilization
+			win := Window{Utilization: w.Utilization, Status: w.Status}
+			if w.ResetsAt > 0 {
+				t := time.Unix(w.ResetsAt, 0)
+				win.ResetsAt = &t
+			}
+			e.Windows[k] = win
 		}
 		return []Event{e}, nil
 	case "result":

@@ -160,6 +160,16 @@ func TestUsageLimitAndCap(t *testing.T) {
 	if str(m(sig["payload"])["cli"]) != "claude" {
 		t.Errorf("limit payload: %v", sig["payload"])
 	}
+	// The header's usage is Claude Code's own report for this computer, not Canopy's limits.
+	cu := owner.do("GET", "/api/v1/orgs/"+org+"/usage/claude", nil, 200)
+	comps := list(cu["computers"])
+	if len(comps) != 1 || m(comps[0])["reported"] != true {
+		t.Fatalf("claude usage: %v", cu)
+	}
+	if ws := list(m(comps[0])["windows"]); len(ws) != 2 || m(ws[0])["key"] != "five_hour" || m(ws[0])["used_percent"].(float64) != 100 ||
+		m(ws[1])["key"] != "seven_day" || m(ws[1])["used_percent"].(float64) < 41.9 || m(ws[1])["used_percent"].(float64) > 42.1 || m(ws[1])["resets_at"] == nil {
+		t.Errorf("windows: %v", m(comps[0])["windows"])
+	}
 	// Use an API key until the reset: the key goes to the runner, the hub keeps a fingerprint.
 	conns := owner.do("PUT", "/api/v1/runners/"+mc.id+"/connections/claude", map[string]any{"enabled": true, "mode": "subscription", "api_key": "sk-ant-test-9876"}, 200)
 	if conns["key_delivered"] != true || str(m(list(conns["connections"])[0])["key_fingerprint"]) != "…9876" {

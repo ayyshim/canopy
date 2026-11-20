@@ -2,9 +2,11 @@ package api_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -181,5 +183,69 @@ func TestGoalComputerAndLifecycle(t *testing.T) {
 	stranger, _ := e.signup("Strangers")
 	if r := stranger.do("POST", "/api/v1/goals/"+goal+"/ship", map[string]any{"action": "pr"}); r.Status != http.StatusNotFound {
 		t.Errorf("stranger shipped: %d", r.Status)
+	}
+}
+
+// The header shows Claude Code's own limit reports for the caller's computers, never Canopy's limits.
+func TestClaudeUsagePerComputer(t *testing.T) {
+	e := newEnv(t)
+	owner, me := e.signup("Claude Usage Co")
+	org := currentOrg(me)
+	ctx := context.Background()
+	orgID, ownerID := uuid.MustParse(org), uuid.MustParse(userID(me))
+	laptop := uuid.MustParse(e.addRunner(org, userID(me), "Laptop", "computer"))
+	desktop := uuid.MustParse(e.addRunner(org, userID(me), "Desktop", "computer"))
+	bob, bobID := e.joinOrg(owner, org, "Bob")
+	e.addRunner(org, bobID, "Bob’s laptop", "computer")
+
+	for _, rn := range []uuid.UUID{laptop, desktop} {
+		if _, err := e.store.UpsertCliConnection(ctx, db.UpsertCliConnectionParams{ID: uuid.Must(uuid.NewV7()), OrgID: orgID, RunnerID: rn, Cli: "claude", Mode: "subscription", Enabled: true}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.store.EnsureAccount(ctx, db.EnsureAccountParams{ID: uuid.Must(uuid.NewV7()), OrgID: orgID, RunnerID: rn, Cli: "claude", Mode: "subscription"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_ = ownerID
+	reset := time.Now().Add(time.Hour).UTC().Truncate(time.Second)
+	util, _ := json.Marshal(map[string]any{
+		"five_hour": 0.37, "reported_at": time.Now().UTC(),
+		"windows": map[string]any{
+			"seven_day": map[string]any{"utilization": 0.47, "status": "allowed"},
+			"five_hour": map[string]any{"utilization": 0.37, "resets_at": reset, "status": "allowed_warning"},
+		}})
+	if _, err := e.store.UpdateAccountState(ctx, db.UpdateAccountStateParams{RunnerID: laptop, Cli: "claude", Utilization: util}); err != nil {
+		t.Fatal(err)
+	}
+
+	r := owner.do("GET", "/api/v1/orgs/"+org+"/usage/claude", nil)
+	if r.Status != http.StatusOK {
+		t.Fatalf("usage: %d %v", r.Status, r.Body)
+	}
+	byName := map[string]map[string]any{}
+	for _, c := range r.Body["computers"].([]any) {
+		m := c.(map[string]any)
+		byName[str(m["name"])] = m
+	}
+	if len(byName) != 2 {
+		t.Fatalf("only the caller's computers: %v", byName)
+	}
+	if byName["Desktop"]["reported"] != false || len(byName["Desktop"]["windows"].([]any)) != 0 {
+		t.Errorf("no report yet must not read as 0%%: %v", byName["Desktop"])
+	}
+	l := byName["Laptop"]
+	ws, _ := l["windows"].([]any)
+	if l["reported"] != true || l["sign_in"] != "subscription" || l["reported_at"] == nil || len(ws) != 2 {
+		t.Fatalf("laptop: %v", l)
+	}
+	if w := ws[0].(map[string]any); w["key"] != "five_hour" || w["used_percent"].(float64) < 36.9 || w["used_percent"].(float64) > 37.1 ||
+		w["status"] != "allowed_warning" || str(w["resets_at"]) != reset.Format(time.RFC3339) {
+		t.Errorf("five_hour: %v", w)
+	}
+	if w := ws[1].(map[string]any); w["key"] != "seven_day" || w["resets_at"] != nil {
+		t.Errorf("seven_day: %v", w)
+	}
+	if r := bob.do("GET", "/api/v1/orgs/"+org+"/usage/claude", nil); len(r.Body["computers"].([]any)) != 1 {
+		t.Errorf("Bob sees only his own computer: %v", r.Body)
 	}
 }

@@ -8,11 +8,14 @@ import { useBoard } from "@/lib/board/store";
 import { useUI } from "@/lib/board/ui";
 import { useMe } from "@/lib/me";
 import { setTheme, useTheme, type Theme } from "@/lib/theme";
+import type { components } from "@/lib/api-types";
 import type { WorkspaceSummary } from "@/lib/types";
 import { useB, useBoardCtx } from "./context";
 import { Avatar, Brand, Chevron, DotsIcon, GridIcon, LogoutIcon } from "./icons";
 
-type Usage = { session_used: number; session_limit: number; session_reset_at: string; week_used: number; week_limit: number; week_reset_at: string };
+type ClaudeUsage = components["schemas"]["ClaudeComputerUsage"];
+type ClaudeWindow = components["schemas"]["ClaudeWindow"];
+const win = (c: ClaudeUsage, key: string): ClaudeWindow | undefined => c.windows.find((w) => w.key === key);
 
 /** useMenu opens one menu at a time and closes it on Escape or an outside click. */
 function useMenu() {
@@ -33,6 +36,10 @@ const resetIn = (iso?: string) => {
   if (!iso) return "";
   const mins = Math.max(0, Math.round((new Date(iso).getTime() - Date.now()) / 60000));
   return mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
+};
+const ago = (iso: string) => {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  return mins < 1 ? "just now" : mins < 60 ? `${mins}m ago` : `${Math.floor(mins / 60)}h ago`;
 };
 const col = (p: number) => (p >= 90 ? "var(--red)" : p >= 70 ? "var(--amber)" : "var(--green)");
 
@@ -56,7 +63,7 @@ export function TopBar() {
   const org = currentOrg(meState);
   const orgAdmin = isOrgAdmin(org?.role);
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
-  const [usage, setUsage] = useState<Usage | null>(null);
+  const [computers, setComputers] = useState<ClaudeUsage[] | null>(null);
   const theme = useTheme();
   const need = needsMe(b, me);
   const [walk, setWalk] = useState(0);
@@ -64,8 +71,18 @@ export function TopBar() {
   useEffect(() => {
     if (!org) return;
     api<{ workspaces: WorkspaceSummary[] }>("GET", `/orgs/${org.id}/workspaces`).then((r) => setWorkspaces(r.workspaces), () => {});
-    api<{ usage: Usage }>("GET", `/orgs/${org.id}/usage/people/${me}`).then((r) => setUsage(r.usage), () => {});
-  }, [org, me]);
+  }, [org]);
+
+  // Claude Code usage per connected computer. Refetch (debounced) when the board reports
+  // an account/rate-limit change over the socket.
+  const orgId = org?.id;
+  useEffect(() => {
+    if (!orgId) return;
+    const t = setTimeout(() => {
+      api<{ computers: ClaudeUsage[] }>("GET", `/orgs/${orgId}/usage/claude`).then((r) => setComputers(r.computers), () => {});
+    }, 300);
+    return () => clearTimeout(t);
+  }, [orgId, b.accounts, b.signals]);
 
   // Walk the items that need me: center the next one and open what it needs.
   const go = (step: number) => {
@@ -98,8 +115,10 @@ export function TopBar() {
     await api("POST", "/auth/logout").catch(() => {});
     hardNavigate("/login");
   };
-  const sp = usage ? (usage.session_used / Math.max(1, usage.session_limit)) * 100 : 0;
-  const wp = usage ? (usage.week_used / Math.max(1, usage.week_limit)) * 100 : 0;
+  const reported = (computers ?? []).filter((c) => c.reported);
+  const sp = Math.max(0, ...reported.map((c) => win(c, "five_hour")?.used_percent ?? 0));
+  const hasData = reported.length > 0;
+  const lastUpdated = reported.map((c) => c.reported_at ?? "").sort().pop();
   const shown = presence.slice(0, 4);
   const newOutputs = unseen(b).length;
   const roleLabel = org?.role === "owner" ? "Owner" : org?.role === "admin" ? "Admin" : "Member";
@@ -162,19 +181,32 @@ export function TopBar() {
       </div>
       <div className="mw hide-sm">
         <button className="usage-btn" onClick={() => menu.toggle("usage")} aria-haspopup="dialog" aria-expanded={menu.open === "usage"}
-          aria-label={`Your usage: current session ${Math.round(sp)} percent, this week ${Math.round(wp)} percent`}>
-          <span className="ub-row"><b>Session</b><span className="tr"><i style={{ width: `${Math.min(100, sp)}%`, background: col(sp) }} /></span><span>{Math.round(sp)}%</span></span>
-          <span className="ub-row"><b>Week</b><span className="tr"><i style={{ width: `${Math.min(100, wp)}%`, background: col(wp) }} /></span><span>{Math.round(wp)}%</span></span>
+          aria-label={hasData ? `Claude Code usage: current session ${Math.round(sp)} percent` : "Claude Code usage: no data yet"}>
+          <span className="ub-row"><b>Session</b><span className="tr"><i style={{ width: `${Math.min(100, sp)}%`, background: col(sp) }} /></span><span>{hasData ? `${Math.round(sp)}%` : "–"}</span></span>
         </button>
         {menu.open === "usage" && (
-          <div className="menu" style={{ right: 0, width: 340, padding: "14px 16px" }} role="dialog" aria-label="Your usage">
-            <div className="row"><b className="spacer" style={{ fontSize: 14 }}>Your usage</b><span className="hint">{org?.name}</span></div>
-            <p className="hint" style={{ margin: "2px 0 10px" }}>Agent work you started: goals, tasks and chats.</p>
-            <div className="stack-sm" style={{ gap: 14 }}>
-              <Meter label="Current session" pct={sp} sub={sp >= 100 ? "At your limit. New goals and chats wait." : `Resets in ${resetIn(usage?.session_reset_at)}`} />
-              <Meter label="This week" pct={wp} sub={`Resets ${usage ? new Date(usage.week_reset_at).toLocaleString([], { weekday: "long", hour: "2-digit", minute: "2-digit" }) : ""}`} />
-            </div>
-            <div className="row" style={{ marginTop: 12 }}><span className="spacer" /><Link className="linkbtn" href={`/org/usage/${me}`}>See details</Link></div>
+          <div className="menu" style={{ right: 0, width: 340, padding: "14px 16px" }} role="dialog" aria-label="Claude Code usage">
+            <div className="row"><b className="spacer" style={{ fontSize: 14 }}>Claude Code usage</b>{lastUpdated && <span className="hint">Updated {ago(lastUpdated)}</span>}</div>
+            {!computers?.length ? (
+              <p className="hint" style={{ margin: "8px 0 4px" }}>No computer connected yet. <Link className="linkbtn" href="/org/computers" onClick={menu.close}>Connect a computer</Link></p>
+            ) : (
+              <div className="stack-sm" style={{ gap: 16, marginTop: 10 }}>
+                {computers.map((c) => {
+                  const five = win(c, "five_hour"), week = win(c, "seven_day");
+                  return (
+                    <div key={c.runner_id} className="stack-sm" style={{ gap: 10 }}>
+                      <div className="row"><b className="spacer">{c.name}</b><span className="hint">{c.online ? "Online" : "Offline"}</span></div>
+                      {!c.reported || (!five && !week) ? (
+                        <span className="hint">{c.sign_in === "api_key" ? "Signed in with an API key, so there are no plan limits to show." : "No data yet. It appears after Claude Code runs on this computer."}</span>
+                      ) : (<>
+                        {five && <Meter label="Current session" pct={five.used_percent} sub={five.resets_at ? `Resets in ${resetIn(five.resets_at)}` : ""} />}
+                        {week && <Meter label="This week" pct={week.used_percent} sub={week.resets_at ? `Resets ${new Date(week.resets_at).toLocaleString([], { weekday: "long", hour: "2-digit", minute: "2-digit" })}` : ""} />}
+                      </>)}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>

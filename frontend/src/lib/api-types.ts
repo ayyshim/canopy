@@ -607,6 +607,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/orgs/{orgId}/usage/claude": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: string;
+            };
+            cookie?: never;
+        };
+        /** Claude Code's own limit reports for the caller's computers */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    orgId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description One entry per computer the caller owns */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ClaudeUsageResponse"];
+                    };
+                };
+                404: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/hub": {
         parameters: {
             query?: never;
@@ -1307,6 +1348,32 @@ export interface components {
                     [key: string]: string;
                 };
             };
+        };
+        ClaudeWindow: {
+            /** @description five_hour, seven_day, ... */
+            key: string;
+            /** @description 0 to 100 */
+            used_percent: number;
+            /** Format: date-time */
+            resets_at?: string;
+            /** @description e.g. allowed, allowed_warning, rejected */
+            status?: string;
+        };
+        ClaudeComputerUsage: {
+            /** Format: uuid */
+            runner_id: string;
+            name: string;
+            online: boolean;
+            /** @description subscription, api_key, or empty when Claude Code isn't set up */
+            sign_in: string;
+            /** @description false until Claude Code reports its limits; show 'no data yet', not 0% */
+            reported: boolean;
+            /** Format: date-time */
+            reported_at?: string;
+            windows: components["schemas"]["ClaudeWindow"][];
+        };
+        ClaudeUsageResponse: {
+            computers: components["schemas"]["ClaudeComputerUsage"][];
         };
         Providers: {
             github: boolean;
