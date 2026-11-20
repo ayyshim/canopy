@@ -26,7 +26,7 @@ func Run(name string, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := copySelf(target); err != nil {
+	if err := Copy(target); err != nil {
 		return err
 	}
 	fmt.Printf("Installed %s to %s\n", name, target)
@@ -62,9 +62,9 @@ func DefaultDir() string {
 	return filepath.Join(home, ".local", "bin")
 }
 
-// copySelf writes this binary to target. It writes a temporary file and renames it, so it
-// can replace a copy that is running.
-func copySelf(target string) error {
+// Copy writes this binary to target. It writes a temporary file and renames it, so it can
+// replace a copy that is running.
+func Copy(target string) error {
 	self, err := os.Executable()
 	if err != nil {
 		return err
