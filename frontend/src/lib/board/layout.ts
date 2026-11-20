@@ -101,6 +101,13 @@ export function layout(b: Board, heights: Record<string, number>, focusGoal: str
         y += h + GEO.gap;
       }
     }
+    // Items from a chat, not a task (such as a chat that stopped on an error), sit under the agent.
+    for (const s of b.signals.filter((z) => z.member_id === id && !z.task_id && !["usage_limit", "cap", "goal_ready", "sync_conflict"].includes(z.type))) {
+      const kind = s.type === "question" ? "fork" : s.type === "error" ? "errc" : "gate";
+      const h = heights[s.id] ?? SIZE[kind];
+      list.push(add({ id: s.id, type: "sig", kind, s, x: x + GEO.cx, y, w: GEO.cw, h }));
+      y += h + GEO.gap;
+    }
     const sessions = b.sessions
       .filter((s) => s.member_id === id && s.status !== "ended")
       .sort((a, c) => (sessionOrder[a.status] ?? 4) - (sessionOrder[c.status] ?? 4) || c.last_active_at.localeCompare(a.last_active_at))

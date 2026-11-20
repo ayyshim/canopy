@@ -85,11 +85,20 @@ export function SignalCard({ s, style, dim }: { s: SignalView; style: React.CSSP
       return (
         <div className={cls("errc")} style={style} data-sig={s.id}>
           <span className="xmark" aria-hidden="true">!</span>
-          <span className="h">{m?.name ?? "An agent"} stopped on an error</span>
+          <span className="h">{m?.name ?? "An agent"} stopped on an error{s.task_id ? "" : " in a chat"}</span>
           <p>{p.message}</p>
           <span className="bs">
-            <button className="mini dark" onClick={act("retry")}>Retry</button>
-            <button className="mini" onClick={act("skip")}>Skip this step</button>
+            {s.task_id ? (
+              <>
+                <button className="mini dark" onClick={act("retry")}>Retry</button>
+                <button className="mini" onClick={act("skip")}>Skip this step</button>
+              </>
+            ) : (
+              <>
+                {m && <button className="mini dark" onClick={() => ui.openChat(m.id)}>Open chat</button>}
+                <button className="mini" onClick={act("skip")}>Dismiss</button>
+              </>
+            )}
           </span>
         </div>
       );
