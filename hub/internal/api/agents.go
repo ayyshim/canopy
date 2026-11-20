@@ -91,18 +91,19 @@ func (s *Server) handleCreateGoal(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 	var in struct {
-		ManagerID uuid.UUID  `json:"manager_id"`
-		Title     string     `json:"title"`
-		DoneWhen  string     `json:"done_when"`
-		RunnerID  *uuid.UUID `json:"runner_id"` // empty: the person's own computer, else a shared one
-		Base      string     `json:"base"`      // empty: each repository's default branch
-		Snapshot  bool       `json:"snapshot"`  // include their uncommitted changes
+		ManagerID   uuid.UUID  `json:"manager_id"`
+		Title       string     `json:"title"`
+		DoneWhen    string     `json:"done_when"`
+		Description string     `json:"description"`
+		RunnerID    *uuid.UUID `json:"runner_id"` // empty: the person's own computer, else a shared one
+		Base        string     `json:"base"`      // empty: each repository's default branch
+		Snapshot    bool       `json:"snapshot"`  // include their uncommitted changes
 	}
 	if err := httpx.Decode(r, &in); err != nil {
 		return err
 	}
 	val := httpx.Validation{}
-	in.Title, in.DoneWhen = strings.TrimSpace(in.Title), strings.TrimSpace(in.DoneWhen)
+	in.Title, in.DoneWhen, in.Description = strings.TrimSpace(in.Title), strings.TrimSpace(in.DoneWhen), strings.TrimSpace(in.Description)
 	m, ok := view.members[in.ManagerID]
 	// People give goals only to managers they can see.
 	if !ok || m.Kind != "manager" || !view.v.CanSeeMember(m) {
@@ -126,7 +127,7 @@ func (s *Server) handleCreateGoal(w http.ResponseWriter, r *http.Request) error 
 	if err := val.Err(); err != nil {
 		return err
 	}
-	if queued, reason, err := s.queueIfOverLimit(ctx, view.ws, uid, "goal", map[string]any{"manager_id": in.ManagerID, "title": in.Title, "done_when": in.DoneWhen}); err != nil {
+	if queued, reason, err := s.queueIfOverLimit(ctx, view.ws, uid, "goal", map[string]any{"manager_id": in.ManagerID, "title": in.Title, "done_when": in.DoneWhen, "description": in.Description}); err != nil {
 		return err
 	} else if queued {
 		httpx.JSON(w, http.StatusAccepted, map[string]any{"queued": true, "reason": reason})
@@ -135,7 +136,7 @@ func (s *Server) handleCreateGoal(w http.ResponseWriter, r *http.Request) error 
 	var goal db.Goal
 	err = s.Core.Tx(ctx, func(t *core.Tx) error {
 		var err error
-		goal, err = core.CreateGoal(ctx, t, view.ws, core.NewGoal{ManagerID: in.ManagerID, Title: in.Title, DoneWhen: in.DoneWhen, By: uid,
+		goal, err = core.CreateGoal(ctx, t, view.ws, core.NewGoal{ManagerID: in.ManagerID, Title: in.Title, DoneWhen: in.DoneWhen, Description: in.Description, By: uid,
 			RunnerID: in.RunnerID, Base: in.Base, Snapshot: in.Snapshot})
 		if err != nil {
 			return err

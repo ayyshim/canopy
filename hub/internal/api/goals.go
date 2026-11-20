@@ -14,8 +14,8 @@ import (
 )
 
 // createGoal records a goal for a manager and wakes the orchestrator to plan it.
-func (s *Server) createGoal(ctx context.Context, t *core.Tx, ws db.Workspace, managerID uuid.UUID, title, doneWhen string, by uuid.UUID) error {
-	_, err := core.CreateGoal(ctx, t, ws, core.NewGoal{ManagerID: managerID, Title: title, DoneWhen: doneWhen, By: by})
+func (s *Server) createGoal(ctx context.Context, t *core.Tx, ws db.Workspace, managerID uuid.UUID, title, doneWhen, description string, by uuid.UUID) error {
+	_, err := core.CreateGoal(ctx, t, ws, core.NewGoal{ManagerID: managerID, Title: title, DoneWhen: doneWhen, Description: description, By: by})
 	if err != nil {
 		return err
 	}

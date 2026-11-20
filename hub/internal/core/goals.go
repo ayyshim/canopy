@@ -13,13 +13,14 @@ import (
 
 // NewGoal is a goal a person gives to a manager.
 type NewGoal struct {
-	ManagerID uuid.UUID
-	Title     string
-	DoneWhen  string
-	By        uuid.UUID
-	RunnerID  *uuid.UUID // where it runs; empty = the person's own computer, else a shared one
-	Base      string     // branch to start from in its repositories; "" = their default branch
-	Snapshot  bool       // include the person's uncommitted changes
+	ManagerID   uuid.UUID
+	Title       string
+	DoneWhen    string
+	Description string
+	By          uuid.UUID
+	RunnerID    *uuid.UUID // where it runs; empty = the person's own computer, else a shared one
+	Base        string     // branch to start from in its repositories; "" = their default branch
+	Snapshot    bool       // include the person's uncommitted changes
 }
 
 // CreateGoal records a goal given to a manager, with the next goal color, its own branch
@@ -32,7 +33,7 @@ func CreateGoal(ctx context.Context, t *Tx, ws db.Workspace, ng NewGoal) (db.Goa
 	branch := GoalBranch(ng.Title, goals)
 	g, err := t.Q.CreateGoal(ctx, db.CreateGoalParams{ID: uuid.Must(uuid.NewV7()), WorkspaceID: ws.ID, ManagerID: &ng.ManagerID, Title: ng.Title,
 		DoneWhen: ng.DoneWhen, Color: domain.GoalColors[len(goals)%len(domain.GoalColors)], CreatedBy: &ng.By,
-		RunnerID: ng.RunnerID, Base: ng.Base, Branch: branch, Snapshot: ng.Snapshot})
+		RunnerID: ng.RunnerID, Description: ng.Description, Base: ng.Base, Branch: branch, Snapshot: ng.Snapshot})
 	if err != nil {
 		return g, err
 	}

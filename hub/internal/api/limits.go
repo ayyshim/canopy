@@ -134,11 +134,12 @@ func (s *Server) DrainQueue(ctx context.Context) {
 			continue
 		}
 		var p struct {
-			ManagerID uuid.UUID `json:"manager_id"`
-			MemberID  uuid.UUID `json:"member_id"`
-			Title     string    `json:"title"`
-			DoneWhen  string    `json:"done_when"`
-			Text      string    `json:"text"`
+			ManagerID   uuid.UUID `json:"manager_id"`
+			MemberID    uuid.UUID `json:"member_id"`
+			Title       string    `json:"title"`
+			DoneWhen    string    `json:"done_when"`
+			Description string    `json:"description"`
+			Text        string    `json:"text"`
 		}
 		_ = json.Unmarshal(it.Payload, &p)
 		err = s.Core.Tx(ctx, func(t *core.Tx) error {
@@ -147,7 +148,7 @@ func (s *Server) DrainQueue(ctx context.Context) {
 			}
 			switch it.Kind {
 			case "goal":
-				if _, err := core.CreateGoal(ctx, t, ws, core.NewGoal{ManagerID: p.ManagerID, Title: p.Title, DoneWhen: p.DoneWhen, By: it.UserID}); err != nil {
+				if _, err := core.CreateGoal(ctx, t, ws, core.NewGoal{ManagerID: p.ManagerID, Title: p.Title, DoneWhen: p.DoneWhen, Description: p.Description, By: it.UserID}); err != nil {
 					return err
 				}
 			case "chat":

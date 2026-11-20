@@ -10,29 +10,30 @@ import (
 )
 
 type GoalView struct {
-	ID         uuid.UUID       `json:"id"`
-	ManagerID  *uuid.UUID      `json:"manager_id"`
-	Title      string          `json:"title"`
-	DoneWhen   string          `json:"done_when"`
-	Color      string          `json:"color"`
-	Status     string          `json:"status"`
-	Summary    string          `json:"summary"`
-	CreatedBy  *uuid.UUID      `json:"created_by"`
-	PlannedAt  *time.Time      `json:"planned_at"`
-	FinishedAt *time.Time      `json:"finished_at"`
-	ReadyAt    *time.Time      `json:"ready_at"`
-	RunnerID   *uuid.UUID      `json:"runner_id"`
-	Base       string          `json:"base"`
-	Branch     string          `json:"branch"`
-	Snapshot   bool            `json:"snapshot"`
-	Shipped    json.RawMessage `json:"shipped"`
-	ShowTasks  bool            `json:"show_tasks"`
-	DoneBy     *uuid.UUID      `json:"done_by"`
-	CreatedAt  time.Time       `json:"created_at"`
+	ID          uuid.UUID       `json:"id"`
+	ManagerID   *uuid.UUID      `json:"manager_id"`
+	Title       string          `json:"title"`
+	DoneWhen    string          `json:"done_when"`
+	Description string          `json:"description"`
+	Color       string          `json:"color"`
+	Status      string          `json:"status"`
+	Summary     string          `json:"summary"`
+	CreatedBy   *uuid.UUID      `json:"created_by"`
+	PlannedAt   *time.Time      `json:"planned_at"`
+	FinishedAt  *time.Time      `json:"finished_at"`
+	ReadyAt     *time.Time      `json:"ready_at"`
+	RunnerID    *uuid.UUID      `json:"runner_id"`
+	Base        string          `json:"base"`
+	Branch      string          `json:"branch"`
+	Snapshot    bool            `json:"snapshot"`
+	Shipped     json.RawMessage `json:"shipped"`
+	ShowTasks   bool            `json:"show_tasks"`
+	DoneBy      *uuid.UUID      `json:"done_by"`
+	CreatedAt   time.Time       `json:"created_at"`
 }
 
 func ToGoal(g db.Goal) GoalView {
-	v := GoalView{ID: g.ID, ManagerID: g.ManagerID, Title: g.Title, DoneWhen: g.DoneWhen, Color: g.Color, Status: g.Status,
+	v := GoalView{ID: g.ID, ManagerID: g.ManagerID, Title: g.Title, DoneWhen: g.DoneWhen, Description: g.Description, Color: g.Color, Status: g.Status,
 		Summary: g.Summary, CreatedBy: g.CreatedBy, PlannedAt: g.PlannedAt, FinishedAt: g.FinishedAt, CreatedAt: g.CreatedAt,
 		ReadyAt: g.ReadyAt, RunnerID: g.RunnerID, Base: g.Base, Branch: g.Branch, Snapshot: g.Snapshot, Shipped: g.Shipped,
 		ShowTasks: g.ShowTasks, DoneBy: g.DoneBy}
