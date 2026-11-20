@@ -5,7 +5,8 @@ import { task as findTask, visibleMember } from "@/lib/board/derive";
 import { useUI } from "@/lib/board/ui";
 import type { OutputView } from "@/lib/types";
 import { useB } from "../context";
-import { KIND_LABEL, Thumb } from "../icons";
+import { KIND_LABEL } from "../icons";
+import { OutputThumb } from "../OutputThumb";
 
 const KINDS = ["all", "image", "recording", "document", "diff", "report"];
 
@@ -24,7 +25,7 @@ export function Tray() {
     const isNew = (b.seen[o.id] ?? 0) < o.versions.length;
     return (
       <div className="ocard" key={o.id} role="button" tabIndex={0} onClick={() => ui.openViewer(o.id)} onKeyDown={(e) => e.key === "Enter" && ui.openViewer(o.id)}>
-        <div className="thumb"><Thumb kind={o.kind} /><span className="kind">{KIND_LABEL[o.kind]}</span></div>
+        <div className="thumb"><OutputThumb o={o} /><span className="kind">{KIND_LABEL[o.kind]}</span></div>
         <div className="meta">
           <b>{o.title}</b>
           <span className="by">{visibleMember(b, o.member_id)?.name ?? "An agent"}, version {o.versions.length}</span>

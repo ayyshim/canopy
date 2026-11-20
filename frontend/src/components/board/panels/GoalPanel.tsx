@@ -10,11 +10,12 @@ import { useUI } from "@/lib/board/ui";
 import type { GoalView } from "@/lib/types";
 import { useNow } from "@/lib/useNow";
 import { useB, useBoardCtx } from "../context";
-import { Avatar, RepoIcon, Thumb } from "../icons";
+import { Avatar, RepoIcon } from "../icons";
 import { RunsOn, SignalBox, TaskRow, goalLabel } from "./bits";
 import { Attachments } from "./Attachments";
 import { DraftPanel } from "./DraftPanel";
 import { PanelBody, PanelFoot, PanelHead } from "./Panel";
+import { OutputThumb } from "../OutputThumb";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function shippedText(shipped: any, base: string, branch: string): string {
@@ -186,7 +187,7 @@ function GivenGoalPanel({ g }: { g: GoalView }) {
             <div className="thumbs">
               {outs.map((o) => (
                 <button key={o.id} className={`fruit${o.status === "review" ? " review" : o.status === "approved" ? " approved" : (b.seen[o.id] ?? 0) < o.versions.length ? " new" : ""}`}
-                  onClick={() => ui.openViewer(o.id)} title={o.title}><Thumb kind={o.kind} /></button>
+                  onClick={() => ui.openViewer(o.id)} title={o.title}><OutputThumb o={o} /></button>
               ))}
             </div>
           ) : <p className="hint">Nothing yet.</p>}

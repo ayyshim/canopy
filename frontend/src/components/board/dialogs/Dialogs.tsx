@@ -6,12 +6,12 @@ import { account, computer, fmtTokens, payload, personName, visibleMember } from
 import { useUI } from "@/lib/board/ui";
 import { SKILL_LABEL, isHidden, type MemberView } from "@/lib/types";
 import { useB } from "../context";
-import { Thumb } from "../icons";
 import { goalLabel } from "../panels/bits";
 import { AccessDialog } from "./AccessDialog";
 import { GoalDialog } from "./GoalDialog";
 import { MemberDialog } from "./MemberDialog";
 import { TaskDialog } from "./TaskDialog";
+import { OutputThumb } from "../OutputThumb";
 
 /** Dialogs shows the open dialog over the board. Esc or a click outside closes it. */
 export function Dialogs() {
@@ -75,7 +75,7 @@ function SummaryDialog() {
         <><span className="lbl">Outputs</span>
           <div className="ocards">{b.outputs.map((o) => (
             <div className="ocard" style={{ width: 150 }} key={o.id} role="button" tabIndex={0} onClick={() => { ui.openDialog(null); ui.openViewer(o.id); }}>
-              <div className="thumb" style={{ height: 84 }}><Thumb kind={o.kind} /></div><div className="meta"><b>{o.title}</b></div>
+              <div className="thumb" style={{ height: 84 }}><OutputThumb o={o} /></div><div className="meta"><b>{o.title}</b></div>
             </div>
           ))}</div></>
       )}

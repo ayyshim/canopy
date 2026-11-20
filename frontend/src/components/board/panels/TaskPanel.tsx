@@ -10,10 +10,11 @@ import { useBoard } from "@/lib/board/store";
 import { useUI } from "@/lib/board/ui";
 import { SKILL_LABEL } from "@/lib/types";
 import { useB, useBoardCtx } from "../context";
-import { Avatar, Thumb } from "../icons";
+import { Avatar } from "../icons";
 import { RunsOn, SignalBox, StatusPill, TaskRow, shortTitle } from "./bits";
 import { Attachments } from "./Attachments";
 import { PanelBody, PanelFoot, PanelHead } from "./Panel";
+import { OutputThumb } from "../OutputThumb";
 
 export function TaskPanel({ id }: { id: string }) {
   const b = useB();
@@ -119,7 +120,7 @@ export function TaskPanel({ id }: { id: string }) {
           <span className="lbl">Outputs</span>
           {outs.length ? (
             <div className="thumbs">
-              {outs.map((o) => <button key={o.id} className={`fruit${o.status === "review" ? " review" : o.status === "approved" ? " approved" : ""}`} onClick={() => ui.openViewer(o.id)} title={o.title}><Thumb kind={o.kind} /></button>)}
+              {outs.map((o) => <button key={o.id} className={`fruit${o.status === "review" ? " review" : o.status === "approved" ? " approved" : ""}`} onClick={() => ui.openViewer(o.id)} title={o.title}><OutputThumb o={o} /></button>)}
             </div>
           ) : <p className="hint">Nothing yet.</p>}
         </div>

@@ -10,8 +10,9 @@ import { useUI } from "@/lib/board/ui";
 import { skillNames } from "@/lib/skills";
 import { SKILL_LABEL } from "@/lib/types";
 import { useB, useBoardCtx } from "./context";
-import { Avatar, KIND_LABEL, Thumb } from "./icons";
+import { Avatar, KIND_LABEL } from "./icons";
 import { SignalCard } from "./SignalCard";
+import { OutputThumb } from "./OutputThumb";
 
 /** NodeView draws one card on the tree. */
 export function NodeView({ n }: { n: Node }) {
@@ -249,7 +250,7 @@ export function NodeView({ n }: { n: Node }) {
       return (
         <button className={`node fruit${cls}${dimFor(n.taskId)}`} style={style} onClick={() => ui.openViewer(o.id)}
           aria-label={`${KIND_LABEL[o.kind] ?? "Output"}: ${o.title}${o.status === "review" ? ", waiting for your review" : ""}`}>
-          <Thumb kind={o.kind} />
+          <OutputThumb o={o} />
         </button>
       );
     }
