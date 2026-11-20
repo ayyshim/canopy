@@ -2,7 +2,7 @@
 
 import { resolveSignal } from "@/lib/board/actions";
 import {
-  account, blockReason, blockedOnPerson, computer, fmtTokens, goalProgress, goalRepos, isAdmin, memberStatus, needsMe, payload,
+  account, blockReason, chatLocked, blockedOnPerson, computer, fmtTokens, goalProgress, goalRepos, isAdmin, memberStatus, needsMe, payload,
   runnerForTask, signInLabel, signalsForTask, task as findTask, whyWaiting, workTasks, firstName, clock, plural,
 } from "@/lib/board/derive";
 import type { Node } from "@/lib/board/layout";
@@ -162,7 +162,9 @@ export function NodeView({ n }: { n: Node }) {
       const unread = b.unread[m.id] ?? 0;
       const warn = s.k === "need";
       const sel = ui.chats.some((c) => c.id === m.id);
+      const locked = chatLocked(m, me);
       const open = (e: React.SyntheticEvent<HTMLElement>) => {
+        if (locked) return ui.toast(`${m.name} is isolated. Only the person who added them can chat.`, "info");
         const r = e.currentTarget.getBoundingClientRect();
         ui.openChat(m.id, { anchor: { left: r.left, top: r.top, right: r.right, bottom: r.bottom } });
       };
@@ -171,7 +173,7 @@ export function NodeView({ n }: { n: Node }) {
           onClick={open} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), open(e))} aria-label={`${m.name}, ${s.t}`}>
           <Avatar name={m.name} color={m.avatar_color} />
           <span style={{ minWidth: 0 }}>
-            <span className="nm">{m.name}{m.kind === "manager" ? <span className="tag">MANAGER</span> : !m.reports_to ? <span className="tag ind">INDEPENDENT</span> : null}</span>
+            <span className="nm">{m.name}{m.kind === "manager" ? <span className="tag">MANAGER</span> : !m.reports_to ? <span className="tag ind">INDEPENDENT</span> : null}{m.isolated && <span className="tag ind" title="Isolated: only its creator can chat, managers can’t borrow it" aria-label="Isolated">🔒</span>}</span>
             <span className="md" title={skillNames(b.member_skills?.[m.id], b.skills ?? []).join(", ") || undefined}>{m.kind === "staff" && m.skill ? SKILL_LABEL[m.skill] + ", " : ""}{m.model}{(b.member_skills?.[m.id]?.length ?? 0) > 0 ? ` · ${b.member_skills[m.id].length} skill${b.member_skills[m.id].length === 1 ? "" : "s"}` : ""}</span>
             <span className={`stat${warn ? " warn" : s.k === "error" ? " err" : ""}`}><span className={`dot ${s.k}`} />{s.t}</span>
           </span>
