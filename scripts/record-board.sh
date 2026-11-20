@@ -57,7 +57,7 @@ echo "==> GIF"
 mkdir -p "$(dirname "$GIF")"
 # Skip the first second, play 1.5x faster, drop the empty right and bottom edge, 8 fps, 840px wide.
 FILTER="setpts=PTS/1.5,fps=8,crop=iw*0.8:ih*0.88:0:0,scale=840:-1:flags=lanczos"
-ffmpeg -v error -y -ss 1 -i "$OUT/board.webm" -vf "$FILTER,palettegen=max_colors=24:stats_mode=diff" "$WORK/palette.png"
+ffmpeg -v error -y -ss 1 -i "$OUT/board.webm" -vf "$FILTER,palettegen=max_colors=16:stats_mode=diff" "$WORK/palette.png"
 ffmpeg -v error -y -ss 1 -i "$OUT/board.webm" -i "$WORK/palette.png" \
   -lavfi "[0:v]$FILTER[x];[x][1:v]paletteuse=dither=none:diff_mode=rectangle" -loop 0 "$GIF"
 echo "Wrote $GIF ($(du -h "$GIF" | cut -f1))"
