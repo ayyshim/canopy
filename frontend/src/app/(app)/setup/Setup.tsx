@@ -107,6 +107,7 @@ export function Setup({ later = false }: { later?: boolean }) {
     setErrors({});
     setStep(i);
     main.current?.scrollTo?.(0, 0);
+    main.current?.parentElement?.scrollTo?.(0, 0);
   };
   const next = () => {
     const e = problem(step);
