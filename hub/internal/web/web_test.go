@@ -52,3 +52,20 @@ func TestServeSiteHasNoRedirectLoop(t *testing.T) {
 		t.Errorf("GET /nope = %d %q, want 404 with the 404 page", rec.Code, rec.Body.String())
 	}
 }
+
+func TestServeSitePWAFiles(t *testing.T) {
+	h := serveSite(fstest.MapFS{
+		"manifest.webmanifest": {Data: []byte(`{"name":"Canopy"}`)},
+		"icons/icon-192.png":   {Data: []byte("\x89PNG\r\n\x1a\n")},
+	})
+	for path, want := range map[string]string{
+		"/manifest.webmanifest": "application/manifest+json",
+		"/icons/icon-192.png":   "image/png",
+	} {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest("GET", path, nil))
+		if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != want {
+			t.Errorf("%s: %d %q, want 200 %q", path, rec.Code, rec.Header().Get("Content-Type"), want)
+		}
+	}
+}
