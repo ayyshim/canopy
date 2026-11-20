@@ -77,7 +77,7 @@ const storage = await setupCtx.storageState();
 const W = 1100, H = 640;
 const browser = await chromium.launch();
 const ctx = await browser.newContext({
-  baseURL: BASE, storageState: storage, viewport: { width: W, height: H },
+  baseURL: BASE, storageState: storage, viewport: { width: W, height: H }, colorScheme: "dark",
   recordVideo: { dir: OUT, size: { width: W, height: H } },
 });
 const page = await ctx.newPage();
