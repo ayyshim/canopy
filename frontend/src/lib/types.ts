@@ -1,12 +1,12 @@
 // Shapes the hub returns beyond the generated core types.
 import type {
   AccountView, DirectoryView, GoalEventView, GoalView, GrantView, MemberView, OutputView, SessionView, SignalView, TaskView, WorkspaceView,
-  ChatMessageView, LogLineView, RunnerView, CLIStatus, CloneView, GoalRepoView, NoteView, SkillView,
+  ChatMessageView, LogLineView, RunnerView, CLIStatus, CloneView, GoalRepoView, NoteView, SkillView, StaffProposalView, DraftSkill,
 } from "./core-types";
 
 export type {
   AccountView, DirectoryView, GoalEventView, GoalView, GrantView, MemberView, OutputView, SessionView, SignalView, TaskView, WorkspaceView,
-  ChatMessageView, LogLineView, RunnerView, CLIStatus, CloneView, GoalRepoView, NoteView, SkillView,
+  ChatMessageView, LogLineView, RunnerView, CLIStatus, CloneView, GoalRepoView, NoteView, SkillView, StaffProposalView, DraftSkill,
 };
 
 export type HiddenMember = { id: string; kind: string; reports_to?: string | null; hidden: true; position: number };

@@ -490,6 +490,7 @@ components:
         name: { type: string }
         slug: { type: string }
         role: { $ref: "#/components/schemas/OrgRole" }
+        logo_url: { type: [string, "null"] }
     DraftSkill:
       type: object
       required: [name, content, source_url]
@@ -583,6 +584,7 @@ components:
         default_session_limit: { type: integer, format: int64 }
         default_weekly_limit: { type: integer, format: int64 }
         timezone: { type: string }
+        logo_url: { type: [string, "null"] }
         created_at: { type: string, format: date-time }
     OrgResponse:
       type: object
