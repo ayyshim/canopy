@@ -32,6 +32,41 @@ git push origin v0.1.0
 A tag with a dash, such as `v0.2.0-rc.1`, becomes a pre-release. Running the workflow by hand
 from the Actions tab builds the binaries and attaches them to the run without publishing.
 
+## Install
+
+Both programs install themselves into a folder on your `PATH`, so you can run them from any
+folder. The quickest way is the installer attached to each release. It picks the build for your
+system, checks it against `SHA256SUMS`, and installs it:
+
+```sh
+# the client, as canopy
+curl -fsSL https://github.com/ayyshim/canopy/releases/latest/download/install.sh | sh
+
+# the hub, as canopy-hub
+curl -fsSL https://github.com/ayyshim/canopy/releases/latest/download/install.sh | sh -s -- hub
+```
+
+Add `--version v0.1.0` after `--` for a particular release. While the repository is private,
+`curl` can’t download it. Use the GitHub CLI, signed in:
+`gh release download -R ayyshim/canopy -p install.sh -O - | sh`.
+
+If you downloaded or built a binary yourself, let it install itself:
+
+```sh
+chmod +x canopy-linux-amd64
+./canopy-linux-amd64 install          # becomes canopy
+./canopy-hub-linux-amd64 install      # becomes canopy-hub
+```
+
+`install` copies the binary to `~/.local/bin` (`/usr/local/bin` when run with `sudo`; choose
+another folder with `--dir` or `CANOPY_BIN_DIR`). If that folder isn’t on your `PATH`, it adds it to
+your shell’s startup file (`~/.zshrc`, `~/.bashrc`, `~/.bash_profile` on macOS, fish’s
+`conf.d`, or `~/.profile`). Open a new terminal afterwards. `--no-path` leaves startup files
+alone. To upgrade, install the new version the same way.
+
+On macOS, a file downloaded in a browser is blocked until you clear its quarantine flag:
+`xattr -d com.apple.quarantine canopy-darwin-arm64`. The installer above doesn’t need this.
+
 ## Try it on one computer (about 5 minutes)
 
 What the computer needs:
@@ -42,13 +77,14 @@ What the computer needs:
 - bubblewrap for the sandbox: `sudo apt install bubblewrap`, `sudo pacman -S bubblewrap` or
   `sudo dnf install bubblewrap`.
 
-1. Start the hub:
+1. [Install](#install) the hub, then start it from any folder:
 
    ```sh
-   ./dist/canopy-hub-linux-amd64
+   canopy-hub
    ```
 
-   It creates `./canopy-data`, starts its own PostgreSQL inside it, and prints a setup link:
+   It keeps its data in `~/.local/share/canopy-hub`, starts its own PostgreSQL there, and prints
+   a setup link:
 
    ```
    WARN this hub isn't set up yet; open the setup link ... setup_url="http://localhost:8080/hub-setup?token=..."
@@ -65,9 +101,9 @@ What the computer needs:
    # downloads canopy from the hub, pairs it, and keeps it running as a user service
    curl -fsSL http://localhost:8080/install.sh | sh -s -- --code ABCD-EFGH
 
-   # or, with the binary you already have
-   ./dist/canopy-linux-amd64 pair --hub http://localhost:8080 --code ABCD-EFGH
-   ./dist/canopy-linux-amd64 run
+   # or, with canopy already installed
+   canopy pair --hub http://localhost:8080 --code ABCD-EFGH
+   canopy run
    ```
 
    The setup page turns green when the hub can reach the computer.
@@ -75,7 +111,10 @@ What the computer needs:
    how Claude Code signs in, review the members, and press **Create workspace**. Give a manager a
    goal and watch the tree.
 
-Stop the hub with Ctrl+C. Start it again with the same command; everything is in `canopy-data`.
+Stop the hub with Ctrl+C. Start it again with `canopy-hub` from any folder; everything is in
+`~/.local/share/canopy-hub`. Hubs before this change kept their data in `./canopy-data` under the
+folder they started in; the hub warns when it finds one. Keep using it with
+`canopy-hub --data ./canopy-data`.
 
 ## Run it for a team
 
@@ -85,10 +124,12 @@ runner port (8443).
 
 ### Option A: the hub handles HTTPS itself
 
-Point a DNS name at the server, then:
+Point a DNS name at the server, install the hub for every user (`sudo` puts it in
+`/usr/local/bin`), then start it:
 
 ```sh
-sudo ./canopy-hub-linux-amd64 --domain canopy.example.com --data /var/lib/canopy
+sudo ./canopy-hub-linux-amd64 install
+sudo canopy-hub --domain canopy.example.com --data /var/lib/canopy
 ```
 
 It gets certificates from Let’s Encrypt automatically. It listens on 80 and 443 for people and on
@@ -97,7 +138,7 @@ It gets certificates from Let’s Encrypt automatically. It listens on 80 and 44
 ### Option B: behind Caddy or nginx
 
 ```sh
-TRUST_PROXY=true ./canopy-hub-linux-amd64 \
+TRUST_PROXY=true canopy-hub \
   --addr 127.0.0.1:8080 \
   --public-url https://canopy.example.com \
   --data /var/lib/canopy
@@ -113,7 +154,7 @@ Without SMTP the hub writes emails (invites, password resets, notifications) to 
 them:
 
 ```sh
-SMTP_ADDR=smtp.example.com:587 SMTP_FROM="Canopy <canopy@example.com>" ./canopy-hub-linux-amd64 ...
+SMTP_ADDR=smtp.example.com:587 SMTP_FROM="Canopy <canopy@example.com>" canopy-hub ...
 ```
 
 People choose their own notifications on **Account and notifications**. Questions, approvals,
@@ -153,12 +194,12 @@ Browsers only keep secure cookies on https and on localhost. For a quick test fr
 machines over http, turn that off:
 
 ```sh
-COOKIE_SECURE=false ./canopy-hub-linux-amd64 --public-url http://192.168.1.20:8080 --addr :8080
+COOKIE_SECURE=false canopy-hub --public-url http://192.168.1.20:8080 --addr :8080
 ```
 
 ### Upgrades and backups
 
-- **Upgrade:** stop the hub, replace the binary, start it. It backs up the database into
+- **Upgrade:** stop the hub, install the new binary (see [Install](#install)), start it. It backs up the database into
   `DATA/backups` and then upgrades it. `canopy-hub migrate status` shows what an upgrade would
   change; `--no-auto-migrate` makes the hub refuse to start until you run `canopy-hub migrate up`.
 - **Back up:** stop the hub and run `canopy-hub backup --data /var/lib/canopy`. Also copy
@@ -181,8 +222,9 @@ Each person connects their own computer. Their goals run there with their own Cl
    curl -fsSL https://canopy.example.com/install.sh | sh -s -- --code ABCD-EFGH --name "Sam’s laptop"
    ```
 
-   On Linux with systemd this installs `~/.local/bin/canopy`, pairs it, and runs it as a user
-   service. Manage it with:
+   This installs `~/.local/bin/canopy`, adds that folder to their `PATH` if needed (open a new
+   terminal afterwards), and pairs it. On Linux with systemd it also runs it as a user service.
+   Manage it with:
 
    ```sh
    systemctl --user status canopy
@@ -204,6 +246,8 @@ their own computer then run goals there.
 
 ```
 canopy-hub [serve] [flags]     run the hub (the default)
+canopy-hub install [--dir DIR] [--no-path]
+                               copy this binary into a folder on PATH as canopy-hub
 canopy-hub migrate status      show the data's version and what an upgrade would change
 canopy-hub migrate up          upgrade the data now (the hub also does this on start)
 canopy-hub backup [--data DIR] copy the database into DIR/backups (stop the hub first)
@@ -215,7 +259,7 @@ Flags for `serve` (`migrate` and `backup` take `--data` too):
 
 | Flag | Environment | Default | Meaning |
 |---|---|---|---|
-| `--data DIR` | `CANOPY_DATA_DIR` | `./canopy-data` | Where the hub keeps everything |
+| `--data DIR` | `CANOPY_DATA_DIR` | `~/.local/share/canopy-hub` (`$XDG_DATA_HOME/canopy-hub` if set), `/var/lib/canopy` as root | Where the hub keeps everything |
 | `--addr ADDR` | `HUB_ADDR` | `:8080` | Web and API listen address |
 | `--public-url URL` | `PUBLIC_URL` | `http://localhost:8080` | The address people open; used in links and emails |
 | `--domain NAME` | | | Serve HTTPS for NAME on 443, with automatic certificates |
@@ -244,6 +288,7 @@ Other environment variables:
 ### canopy
 
 ```
+canopy install [--dir DIR] [--no-path]
 canopy pair --hub URL --code CODE [--name NAME] [--address HOST] [--run]
 canopy run [--hub URL] [--sandbox auto|bwrap|none] [--unsafe-no-sandbox] [--foreground] [-v]
 canopy stop
@@ -254,6 +299,9 @@ canopy help
 
 | Command and flag | Meaning |
 |---|---|
+| `install` | Copy this binary into a folder on `PATH` as `canopy`, adding the folder to `PATH` if needed |
+| `install --dir DIR` | Install into DIR (default `~/.local/bin`, `/usr/local/bin` as root, or `CANOPY_BIN_DIR`) |
+| `install --no-path` | Don’t change shell startup files |
 | `pair --hub URL` | The hub’s address, as people open it |
 | `pair --code CODE` | One-time code from Canopy (valid 15 minutes) |
 | `pair --name NAME` | Name shown in Canopy (default: the hostname) |
@@ -278,6 +326,7 @@ Environment:
 | `CANOPY_HOME` | `~/.config/canopy` | Pairings and keys, one folder per hub under `hubs/`. Delete one to unpair. |
 | `CANOPY_DATA` | `~/.local/share/canopy` | Work folders (git worktrees), folder copies, sockets, `canopy.log` and `canopy.pid` |
 | `CANOPY_CLAUDE_BIN` | `claude` on `PATH` | The Claude Code binary to run |
+| `CANOPY_BIN_DIR` | `~/.local/bin` | Where `install` and the install scripts put the binary |
 | `CLAUDE_CONFIG_DIR` | `~/.claude` | Where Claude Code keeps its sign-in |
 | `CANOPY_BIN_DIR` | `~/.local/bin` | Install script only: where to put `canopy` |
 
