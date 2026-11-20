@@ -172,7 +172,7 @@ BIN_DIR="${CANOPY_BIN_DIR:-$HOME/.local/bin}"
 mkdir -p "$BIN_DIR"
 DOWNLOAD="$BIN_DIR/.canopy-download.$$"
 trap 'rm -f "$DOWNLOAD"' EXIT
-echo "Downloading canopy for $OS/$ARCH from $HUB…"
+echo "Downloading canopy for $OS/$ARCH from ${HUB}…"
 curl -fsSL "$HUB/download/canopy-$OS-$ARCH" -o "$DOWNLOAD"
 chmod +x "$DOWNLOAD"
 # Puts it at $BIN_DIR/canopy and adds $BIN_DIR to PATH if it isn't there yet.

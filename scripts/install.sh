@@ -52,7 +52,7 @@ fetch() {
   exit 1
 }
 
-echo "Downloading $ASSET ($VERSION) from github.com/$REPO…"
+echo "Downloading $ASSET ($VERSION) from github.com/${REPO}…"
 fetch "$ASSET"
 fetch SHA256SUMS
 WANT=$(grep " $ASSET\$" "$WORK/SHA256SUMS" | cut -d' ' -f1)
