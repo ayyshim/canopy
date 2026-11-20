@@ -1,4 +1,7 @@
 
+/* Breakpoints (media queries cannot read custom properties, so use these literals):
+   sm = max-width:640px (phones), md = max-width:900px (tablets and below).
+   Helpers: .hide-sm/.show-sm (<=900), .hide-xs/.show-xs (<=640), .tap (touch-sized target). */
 /* Canopy design system: tokens and components follow the Canopy design prototype
    (claude.ai/artifact/Qv5vgXvQUP9xVWDGkhQ813). */
 :root{
@@ -406,7 +409,7 @@ code,.mono{font-family:var(--font-mono);font-size:.92em}
 .toast button{border:0;background:rgba(255,255,255,.14);color:#fff;min-height:32px;padding:0 11px;border-radius:8px;font-weight:600;font-size:12.5px}
 @keyframes tin{from{opacity:0;transform:translateY(8px)}}
 body:not(.on-board) .toasts{top:max(14px,env(safe-area-inset-top,0px));bottom:auto}
-@media (min-width:861px){body.on-board.side-open .toasts{right:374px}}
+@media (min-width:901px){body.on-board.side-open .toasts{right:374px}}
 body.on-board.tray-open .toasts{bottom:314px}
 
 /* Pages: settings-style pages, sign-in, setup */
@@ -580,10 +583,10 @@ body.on-board.tray-open .toasts{bottom:314px}
 .term .you{color:#9FE0BE}.term .ask{color:#FFD58A}.term .err{color:#FF9C8F}
 .pw{position:relative}.pw .input{padding-right:64px}.pw button{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;font-weight:600;font-size:12.5px;color:var(--muted);padding:6px 8px;border-radius:8px}
 .sso{display:flex;flex-direction:column;gap:10px}.sso .btn{width:100%;min-height:46px}
-@media (max-width:860px){.chat.full{grid-template-columns:1fr}.chat.full>.cside{display:none}.wrow,.wrow.mgr{grid-template-columns:32px minmax(0,1fr) 36px}.wrow>*:nth-child(n+3):not(:last-child){grid-column:2/3}.pgrid{grid-template-columns:1fr}}
+@media (max-width:900px){.chat.full{grid-template-columns:1fr}.chat.full>.cside{display:none}.wrow,.wrow.mgr{grid-template-columns:32px minmax(0,1fr) 36px}.wrow>*:nth-child(n+3):not(:last-child){grid-column:2/3}.pgrid{grid-template-columns:1fr}}
 /* Prototype controls (not part of the product) */
 
-@media (max-width:860px){
+@media (max-width:900px){
   .auth-art,.onb-rail,.pnav{display:none}
   .auth-main{padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
   .onb-body{padding-block:32px 20px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
@@ -633,3 +636,21 @@ body.on-board.tray-open .toasts{bottom:314px}
 .kindcard:focus-visible{outline:2px solid var(--green);outline-offset:2px}
 @media (max-width:520px){.kindcards{grid-template-columns:1fr}}
 .skill-item .linkbtn{font-size:14px;text-decoration:none;padding:2px 0}
+
+/* Responsive helpers */
+.show-sm,.show-xs{display:none!important}
+@media (max-width:900px){.show-sm{display:revert!important}}
+@media (max-width:640px){.hide-xs{display:none!important}.show-xs{display:revert!important}}
+@media (pointer:coarse){.menu .mi,.tap{min-height:44px}.icon-btn{width:44px;height:44px}}
+
+/* Menus: the Menu component wrapper, and menus that must fit a narrow screen */
+.menu-wrap{position:relative}
+.menu-right{right:0}
+.menu{max-width:calc(100vw - 16px);max-height:calc(100dvh - 80px);overflow-y:auto}
+.wsbtn{max-width:min(240px,40vw)}
+@media (max-width:640px){
+  .topbar{gap:6px;padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px))}
+  .topbar .btn{padding:0 12px}
+  .needpill .count{padding:0 4px}
+  .wsbtn{max-width:44vw}
+}
