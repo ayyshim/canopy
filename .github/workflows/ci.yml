@@ -1,0 +1,88 @@
+# Checks every push to main and every pull request: Go vet and tests (with PostgreSQL), the
+# system tests that run the hub and client as real processes, and the web app's lint, types
+# and build.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    name: Go
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: canopy
+          POSTGRES_PASSWORD: canopy
+          POSTGRES_DB: canopy
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U canopy"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.work
+          cache-dependency-path: |
+            go.work.sum
+            hub/go.sum
+            client/go.sum
+            shared/go.sum
+            e2e/system/go.sum
+
+      - name: Vet
+        run: go vet ./hub/... ./client/... ./shared/...
+
+      - name: Tests
+        run: go test ./hub/... ./client/... ./shared/...
+
+      - name: System tests
+        working-directory: e2e/system
+        run: go test -count=1 ./...
+
+  web:
+    name: Web app
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: frontend/package.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        working-directory: frontend
+        run: pnpm lint
+
+      - name: Types
+        working-directory: frontend
+        run: pnpm exec tsc --noEmit
+
+      - name: Build
+        working-directory: frontend
+        run: NEXT_TELEMETRY_DISABLED=1 NEXT_OUTPUT=export pnpm exec next build
