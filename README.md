@@ -1,4 +1,27 @@
-# Canopy
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
+    <img src="docs/assets/logo.svg" width="112" height="112" alt="Canopy logo">
+  </picture>
+</p>
+
+<h1 align="center">Canopy</h1>
+
+<p align="center">
+  <a href="https://github.com/ayyshim/canopy/actions/workflows/ci.yml"><img src="https://github.com/ayyshim/canopy/actions/workflows/ci.yml/badge.svg" alt="Build status"></a>
+  <a href="https://github.com/ayyshim/canopy/releases"><img src="https://img.shields.io/github/v/release/ayyshim/canopy?include_prereleases&amp;sort=semver&amp;label=version" alt="Latest version"></a>
+  <img src="https://img.shields.io/badge/price-free-brightgreen" alt="Free">
+  <img src="https://img.shields.io/badge/open%20source-yes-brightgreen?logo=opensourceinitiative&amp;logoColor=white" alt="Open source">
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Go-1.27-00ADD8?logo=go&amp;logoColor=white" alt="Go 1.27">
+  <img src="https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&amp;logoColor=white" alt="Next.js 16">
+  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&amp;logoColor=black" alt="React 19">
+  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&amp;logoColor=white" alt="TypeScript 5">
+  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&amp;logoColor=white" alt="PostgreSQL 16">
+  <img src="https://img.shields.io/badge/agents-Claude%20Code-D97757?logo=claude&amp;logoColor=white" alt="Runs Claude Code">
+</p>
 
 Canopy runs teams of coding agents (Claude Code today) on your own computers and shows each
 workspace as a live tree: people, their workspaces, and the manager and staff agents working on
@@ -38,9 +61,6 @@ curl -fsSL https://github.com/ayyshim/canopy/releases/latest/download/install.sh
 Open a new terminal afterwards if the installer says it added a folder to your `PATH`.
 
 - **A particular version:** add `--version v0.1.0` after `--`.
-- **Private repository:** `curl` can’t download from it. Sign in to the GitHub CLI
-  (`gh auth login`) and run
-  `gh release download -R ayyshim/canopy -p install.sh -O - | sh` (add `-s -- hub` for the hub).
 - **A binary you downloaded yourself:** let it install itself.
 
   ```sh
@@ -64,10 +84,13 @@ These steps run everything on one computer. [Run it for a team](#run-it-for-a-te
    canopy-hub
    ```
 
-   It keeps its data in `~/.local/share/canopy-hub` and prints a setup link the first time:
+   It starts in the background, keeps its data in `~/.local/share/canopy-hub`, and prints
+   where to open it and a setup link:
 
    ```
-   WARN this hub isn't set up yet; open the setup link ... setup_url="http://localhost:8080/hub-setup?token=..."
+   The hub is running (pid 4182).
+     Open:   http://localhost:8080
+     Set up: http://localhost:8080/hub-setup?token=...
    ```
 
 2. **Create the hub admin.** Open the setup link, name the hub, and create your account.
@@ -94,31 +117,41 @@ These steps run everything on one computer. [Run it for a team](#run-it-for-a-te
 6. **Give a goal.** Give the manager a goal and watch the tree. Answer questions and approvals
    where they appear.
 
-Stop the hub with Ctrl+C and start it again with `canopy-hub`. Your data stays in
-`~/.local/share/canopy-hub`.
+`canopy-hub status` shows the address and setup link again, `canopy-hub stop` stops the hub,
+and `canopy-hub` starts it again. Your data stays in `~/.local/share/canopy-hub`.
 
 ## Run it for a team
 
 People open the hub in a browser. Their computers connect to it on a second port (8443) with
-mutual TLS, so open that port too. With a DNS name pointing at the server:
+mutual TLS, so open that port too. With a DNS name pointing at the server, install the hub as
+a service that starts at every boot (Linux with systemd):
 
 ```sh
-sudo canopy-hub --domain canopy.example.com --data /var/lib/canopy
+sudo SMTP_ADDR=smtp.example.com:587 SMTP_FROM="Canopy <canopy@example.com>" \
+  canopy-hub --as-srv --domain canopy.example.com
 ```
 
-The hub gets HTTPS certificates from Let’s Encrypt by itself. To send invites and notifications
-by email, set `SMTP_ADDR` and `SMTP_FROM`. Each person then connects their own computer from
+The hub gets HTTPS certificates from Let’s Encrypt by itself and sends invites and
+notifications through your SMTP server. It runs as the user `canopy` with its data in
+`/var/lib/canopy`, and prints the setup link when it starts. Manage it with
+`sudo canopy-hub status`, `sudo canopy-hub stop`, `sudo canopy-hub` (start) and
+`sudo canopy-hub remove-srv`. Each person then connects their own computer from
 **Organization → Computers → Get install command**. Admins can also share one server for
 people who don’t have their own computer.
 
-[docs/RUNNING.md](docs/RUNNING.md) covers running behind Caddy or nginx, a systemd service,
-upgrades and backups, and plain http on a home network.
+[docs/RUNNING.md](docs/RUNNING.md) covers running behind Caddy or nginx, the boot service in
+detail, upgrades and backups, and plain http on a home network.
 
 ## Everyday commands
 
 | Command | What it does |
 |---|---|
-| `canopy-hub` | Run the hub |
+| `canopy-hub` | Start the hub in the background (log: `~/.local/share/canopy-hub/hub.log`) |
+| `canopy-hub status` | Show whether it’s running, its address, and the setup link |
+| `canopy-hub stop` | Stop it |
+| `canopy-hub --foreground` | Run it in this terminal instead |
+| `sudo canopy-hub --as-srv` | Install it as a service that starts at boot (Linux) |
+| `sudo canopy-hub remove-srv` | Remove that service; the data stays |
 | `canopy-hub backup` | Copy the database (stop the hub first) |
 | `canopy-hub migrate status` | Show what an upgrade would change |
 | `canopy pair --hub URL --code CODE` | Pair this computer with a hub |
@@ -151,7 +184,8 @@ make system    # hub, client and a fake Claude as real processes
 make release   # both binaries for Linux and macOS, in dist/
 ```
 
-Pushing a tag such as `v0.1.0` builds and publishes a GitHub release with every binary and the
+Every push and pull request runs the Go tests, the system tests and the web app checks
+(`.github/workflows/ci.yml`). Pushing a tag such as `v0.1.0` builds and publishes a GitHub release with every binary and the
 installer.
 
 - [docs/SPEC.md](docs/SPEC.md): what Canopy does.

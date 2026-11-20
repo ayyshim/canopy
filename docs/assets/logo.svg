@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 28 28" role="img" aria-label="Canopy">
+  <rect x="9" y="2" width="10" height="7" rx="2" fill="#16794F"/>
+  <path d="M14 9v4M6 13h16M6 13v4M14 13v4M22 13v4" stroke="#14181F" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+  <rect x="2" y="17" width="8" height="8" rx="2" fill="#FFE58A"/>
+  <rect x="10" y="17" width="8" height="8" rx="2" fill="#BFE6D1"/>
+  <rect x="18" y="17" width="8" height="8" rx="2" fill="#D9D0FA"/>
+</svg>
