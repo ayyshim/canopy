@@ -1,0 +1,45 @@
+name: canopy-dev
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: canopy
+      POSTGRES_PASSWORD: canopy
+      POSTGRES_DB: canopy
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U canopy"]
+      interval: 2s
+      retries: 30
+
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+
+  # S3-compatible object storage for outputs and the directory mirror.
+  rustfs:
+    image: rustfs/rustfs:latest
+    environment:
+      RUSTFS_ACCESS_KEY: canopy
+      RUSTFS_SECRET_KEY: canopy-dev-secret
+      RUSTFS_CONSOLE_ENABLE: "true"
+    ports: ["9000:9000", "9001:9001"]
+    volumes: [rustfsdata:/data]
+
+  mailpit:
+    image: axllent/mailpit
+    ports: ["1025:1025", "8025:8025"]
+
+  # Single origin for the browser: /api and /ws go to the hub, the rest to Next.js.
+  # Both run on the host during development, so Caddy shares the host network (Linux) and
+  # listens on :8000.
+  caddy:
+    image: caddy:2
+    network_mode: host
+    volumes: ["./Caddyfile.dev:/etc/caddy/Caddyfile:ro"]
+
+volumes:
+  pgdata:
+  rustfsdata:
