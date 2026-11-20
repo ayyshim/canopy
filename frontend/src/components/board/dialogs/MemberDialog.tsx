@@ -20,6 +20,7 @@ export function MemberDialog({ mode, bossId }: { mode: "manager" | "staff" | "po
   const [reports, setReports] = useState(mode === "staff" ? bossId ?? "" : "");
   const [skill, setSkill] = useState("developer");
   const [skillIds, setSkillIds] = useState<string[]>([]);
+  const [isolated, setIsolated] = useState(false);
   const [busy, setBusy] = useState(false);
   const [model, setModel] = useState(mode === "manager" ? "opus" : "sonnet");
   const [instr, setInstr] = useState<string | null>(null);
@@ -33,7 +34,7 @@ export function MemberDialog({ mode, bossId }: { mode: "manager" | "staff" | "po
     try {
       const r = await api<{ member: MemberView }>("POST", `/workspaces/${wsId}/members`, {
         name, kind, cli: "claude", model, instructions: text,
-        ...(kind === "staff" ? { skill, reports_to: reports || null, set_reports_to: true } : {}),
+        ...(kind === "staff" ? { skill, reports_to: reports || null, set_reports_to: true, isolated: !reports && isolated } : {}),
       });
       let missed = false;
       for (const id of skillIds) {
@@ -80,6 +81,10 @@ export function MemberDialog({ mode, bossId }: { mode: "manager" | "staff" | "po
         </div>
       )}
       {!isMgr && <p className="hint">{SKILL_DESC[skill]}.</p>}
+      {!isMgr && !reports && (
+        <label className="field"><span><input type="checkbox" checked={isolated} onChange={(e) => setIsolated(e.target.checked)} /> Isolated</span>
+          <span className="hint">Only you can chat with them. Managers can’t borrow them.</span></label>
+      )}
       <div className="field"><span>Skills <span style={{ fontWeight: 500 }}>(optional)</span></span>
         <SkillPicker skills={b.skills ?? []} selected={skillIds} onToggle={(id, on) => setSkillIds((x) => on ? [...x, id] : x.filter((y) => y !== id))}
           emptyHint={<>No skills yet. Add some in <a href={`/w/${wsId}/settings?tab=skills`}>workspace settings</a> and give them to {name || "anyone"} later.</>} />
