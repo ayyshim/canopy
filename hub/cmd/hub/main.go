@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -38,6 +39,7 @@ import (
 	"canopy/hub/internal/store"
 	"canopy/hub/internal/store/db"
 	"canopy/hub/internal/web"
+	"canopy/shared/daemon"
 	"canopy/shared/selfinstall"
 )
 
@@ -46,7 +48,14 @@ var version = "0.1.0-dev"
 const usage = `canopy-hub runs a self-hosted Canopy hub.
 
 Usage:
-  canopy-hub [serve] [flags]     run the hub (the default)
+  canopy-hub [serve] [flags]     start the hub in the background (the default)
+  canopy-hub --foreground [flags]
+                                 run the hub in this terminal (for service managers and debugging)
+  canopy-hub --as-srv [flags]    install the hub as a system service that starts at boot (Linux,
+                                 run with sudo); it runs as the user canopy
+  canopy-hub status [--data DIR] show whether the hub is running, its address and setup link
+  canopy-hub stop [--data DIR]   stop the hub (a boot service still starts at the next boot)
+  canopy-hub remove-srv          remove the boot service; its data stays
   canopy-hub install [--dir DIR] [--no-path]
                                  copy this binary to ~/.local/bin/canopy-hub (/usr/local/bin as
                                  root) and add that folder to your PATH
@@ -64,7 +73,9 @@ Serve flags (each also readable from the environment, shown in brackets):
   --runner-addr ADDR   where machines connect, mutual TLS [RUNNER_ADDR] (default :8443)
   --no-auto-migrate    refuse to start if the data needs an upgrade
 
-Without DATABASE_URL the hub runs its own PostgreSQL ` + pgserver.Major + ` inside the data directory.
+Without DATABASE_URL the hub runs its own PostgreSQL ` + pgserver.Major + ` inside the data directory. That
+PostgreSQL can't run as root: start the hub as a normal user, or use --as-srv.
+In the background the hub logs to DATA/hub.log; as a boot service, to journalctl -u canopy-hub.
 
 Other settings (environment):
   DATABASE_URL         use your own PostgreSQL instead of the built-in one
@@ -81,9 +92,11 @@ Other settings (environment):
   AUTH_RATE_LIMIT      sign-in attempts per minute per address (default 10)
   DEFAULT_SESSION_LIMIT, DEFAULT_WEEKLY_LIMIT
                        token limits for new organizations (default 2000000 and 20000000)
+These can also go in DATA/hub.env as KEY=value lines; --as-srv saves the ones set when it runs.
 `
 
 func main() {
+	startEnv = settingsFromEnv()
 	args := os.Args[1:]
 	cmd := "serve"
 	if len(args) > 0 && (!strings.HasPrefix(args[0], "-") || args[0] == "-h" || args[0] == "--help" || args[0] == "--version") {
@@ -93,6 +106,12 @@ func main() {
 	switch cmd {
 	case "serve":
 		err = serve(args)
+	case "status":
+		err = statusCmd(args)
+	case "stop":
+		err = stopCmd(args)
+	case "remove-srv":
+		err = removeService()
 	case "install":
 		err = selfinstall.Run("canopy-hub", args)
 	case "migrate":
@@ -115,11 +134,16 @@ func main() {
 type options struct {
 	data, addr, publicURL, domain, runnerAddr string
 	noAutoMigrate                             bool
+	foreground, asService                     bool // serve only
 }
 
 func parseFlags(name string, args []string) (options, error) {
 	var o options
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
+	if name == "serve" {
+		fs.BoolVar(&o.foreground, "foreground", false, "run in this terminal")
+		fs.BoolVar(&o.asService, "as-srv", false, "install as a boot service")
+	}
 	fs.StringVar(&o.data, "data", envOr("CANOPY_DATA_DIR", defaultDataDir()), "data directory")
 	fs.StringVar(&o.addr, "addr", "", "listen address")
 	fs.StringVar(&o.publicURL, "public-url", "", "public URL")
@@ -134,6 +158,9 @@ func parseFlags(name string, args []string) (options, error) {
 		return o, err
 	}
 	o.data = abs
+	if err := loadEnvFile(envFilePath(o.data)); err != nil {
+		return o, err
+	}
 	// Flags win over the environment; config reads the environment.
 	set := func(k, v string) {
 		if v != "" {
@@ -147,8 +174,12 @@ func parseFlags(name string, args []string) (options, error) {
 		set("PUBLIC_URL", "https://"+o.domain)
 		os.Setenv("COOKIE_SECURE", "true")
 	}
-	if os.Getenv("PUBLIC_URL") == "" && os.Getenv("HUB_ADDR") == "" {
-		os.Setenv("PUBLIC_URL", "http://localhost:8080")
+	if os.Getenv("PUBLIC_URL") == "" {
+		_, port, err := net.SplitHostPort(envOr("HUB_ADDR", ":8080"))
+		if err != nil {
+			port = "8080"
+		}
+		os.Setenv("PUBLIC_URL", "http://localhost:"+port)
 		os.Setenv("COOKIE_SECURE", envOr("COOKIE_SECURE", "false"))
 	}
 	if os.Getenv("BLOB_DIR") == "" {
@@ -187,20 +218,15 @@ func warnOldDataDir(using string) {
 	}
 }
 
-// lockData keeps two hubs from using one data directory.
+// lockData keeps two hubs from using one data directory. The lock file holds the pid, which
+// canopy-hub status and stop use.
 func lockData(dir string) (func(), error) {
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return nil, err
+	release, err := daemon.Lock(lockPath(dir))
+	var running daemon.RunningError
+	if errors.As(err, &running) {
+		return nil, fmt.Errorf("a hub is already using %s (pid %d). Stop it with: canopy-hub stop", dir, running.PID)
 	}
-	f, err := os.OpenFile(filepath.Join(dir, "hub.lock"), os.O_CREATE|os.O_RDWR, 0o600)
-	if err != nil {
-		return nil, err
-	}
-	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		f.Close()
-		return nil, fmt.Errorf("another hub is using %s; stop it first", dir)
-	}
-	return func() { _ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN); f.Close() }, nil
+	return release, err
 }
 
 // database opens the store: the hub's own PostgreSQL or DATABASE_URL. Before an upgrade it
@@ -340,6 +366,23 @@ func serve(args []string) error {
 	if err != nil {
 		return err
 	}
+	if o.asService {
+		return installService(o)
+	}
+	if !o.foreground {
+		if handled, err := startServiceInstead(args); handled {
+			return err
+		}
+	}
+	if switched, err := runAsDataOwner(o.data); switched {
+		return err
+	}
+	if os.Geteuid() == 0 && os.Getenv("DATABASE_URL") == "" {
+		return errRootPostgres
+	}
+	if !o.foreground {
+		return startBackground(o, args)
+	}
 	warnOldDataDir(o.data)
 	unlock, err := lockData(o.data)
 	if err != nil {
@@ -428,50 +471,67 @@ func serve(args []string) error {
 	if err != nil {
 		return err
 	}
-	runnerSrv := &http.Server{Addr: cfg.RunnerAddr, Handler: rh.Routes(), TLSConfig: tlsCfg, ReadHeaderTimeout: 10 * time.Second}
-	go func() {
-		if err := runnerSrv.ListenAndServeTLS("", ""); !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("runner listener stopped", "err", err)
-			stop()
-		}
-	}()
+	setupURL := ""
 	if _, err := st.GetHubSettings(ctx); store.IsNotFound(err) {
 		if app.SetupToken == "" {
 			app.SetupToken, _ = auth.NewToken()
 		}
-		slog.Warn("this hub isn't set up yet; open the setup link to name it and create the first hub admin",
-			"setup_url", cfg.PublicURL+"/hub-setup?token="+app.SetupToken)
+		setupURL = cfg.PublicURL + "/hub-setup?token=" + app.SetupToken
+		slog.Warn("this hub isn't set up yet; open the setup link to name it and create the first hub admin", "setup_url", setupURL)
 	} else if err != nil {
 		return err
 	}
 
-	handler := app.Routes()
-	servers := []*http.Server{runnerSrv}
-	if o.domain != "" {
-		m := &autocert.Manager{Prompt: autocert.AcceptTOS, HostPolicy: autocert.HostWhitelist(o.domain), Cache: autocert.DirCache(filepath.Join(o.data, "certs"))}
-		https := &http.Server{Addr: ":443", Handler: handler, TLSConfig: m.TLSConfig(), ReadHeaderTimeout: 10 * time.Second}
-		redirect := &http.Server{Addr: ":80", Handler: m.HTTPHandler(nil), ReadHeaderTimeout: 10 * time.Second}
-		servers = append(servers, https, redirect)
-		go func() { _ = redirect.ListenAndServe() }()
-		go func() {
-			if err := https.ListenAndServeTLS("", ""); !errors.Is(err, http.ErrServerClosed) {
-				slog.Error("https stopped", "err", err)
-				stop()
-			}
-		}()
-	} else {
-		srv := &http.Server{Addr: cfg.Addr, Handler: handler, ReadHeaderTimeout: 10 * time.Second}
+	// Each server binds its port first, so a port that is taken stops the start with a clear error.
+	var servers []*http.Server
+	serveOn := func(srv *http.Server, addr string, tls bool) error {
+		ln, err := net.Listen("tcp", addr)
+		if err != nil {
+			return err
+		}
 		servers = append(servers, srv)
 		go func() {
-			if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-				slog.Error("hub stopped", "err", err)
+			var err error
+			if tls {
+				err = srv.ServeTLS(ln, "", "")
+			} else {
+				err = srv.Serve(ln)
+			}
+			if !errors.Is(err, http.ErrServerClosed) {
+				slog.Error("a listener stopped", "addr", addr, "err", err)
 				stop()
 			}
 		}()
+		return nil
+	}
+	runnerSrv := &http.Server{Handler: rh.Routes(), TLSConfig: tlsCfg, ReadHeaderTimeout: 10 * time.Second}
+	if err := serveOn(runnerSrv, cfg.RunnerAddr, true); err != nil {
+		return err
+	}
+	handler := app.Routes()
+	localURL := ""
+	if o.domain != "" {
+		m := &autocert.Manager{Prompt: autocert.AcceptTOS, HostPolicy: autocert.HostWhitelist(o.domain), Cache: autocert.DirCache(filepath.Join(o.data, "certs"))}
+		if err := serveOn(&http.Server{Handler: handler, TLSConfig: m.TLSConfig(), ReadHeaderTimeout: 10 * time.Second}, ":443", true); err != nil {
+			return err
+		}
+		if err := serveOn(&http.Server{Handler: m.HTTPHandler(nil), ReadHeaderTimeout: 10 * time.Second}, ":80", false); err != nil {
+			return err
+		}
+		localURL = "https://" + o.domain
+	} else {
+		if err := serveOn(&http.Server{Handler: handler, ReadHeaderTimeout: 10 * time.Second}, cfg.Addr, false); err != nil {
+			return err
+		}
+		localURL = "http://" + loopback(cfg.Addr)
 	}
 	u, _ := url.Parse(cfg.PublicURL)
 	slog.Info("canopy-hub is running", "version", version, "open", cfg.PublicURL, "web_app", app.WebApp != nil,
 		"machines_connect_to", cfg.RunnerURL, "data", o.data, "host", u.Host)
+	if err := writeState(o.data, hubState{PID: os.Getpid(), URL: cfg.PublicURL, LocalURL: localURL, SetupURL: setupURL, StartedAt: time.Now()}); err != nil {
+		slog.Warn("couldn’t save the hub’s address for canopy-hub status", "err", err)
+	}
+	defer os.Remove(statePath(o.data))
 	<-ctx.Done()
 	slog.Info("stopping")
 	shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -490,6 +550,12 @@ func migrateCmd(args []string) error {
 	o, err := parseFlags("migrate", args[1:])
 	if err != nil {
 		return err
+	}
+	if switched, err := runAsDataOwner(o.data); switched {
+		return err
+	}
+	if os.Geteuid() == 0 && os.Getenv("DATABASE_URL") == "" {
+		return errRootPostgres
 	}
 	unlock, err := lockData(o.data)
 	if err != nil {
@@ -531,6 +597,9 @@ func migrateCmd(args []string) error {
 func backupCmd(args []string) error {
 	o, err := parseFlags("backup", args)
 	if err != nil {
+		return err
+	}
+	if switched, err := runAsDataOwner(o.data); switched {
 		return err
 	}
 	if os.Getenv("DATABASE_URL") != "" {

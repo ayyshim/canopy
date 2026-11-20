@@ -113,7 +113,7 @@ func startHub(t *testing.T) *hub {
 	h := &hub{t: t, dbURL: u.String(), tmp: t.TempDir(), logs: &lockedBuf{}}
 	port, rport := freePort(t), freePort(t)
 	h.url = fmt.Sprintf("http://127.0.0.1:%d", port)
-	h.cmd = exec.Command(bins.hub, "--data", filepath.Join(h.tmp, "data"))
+	h.cmd = exec.Command(bins.hub, "--foreground", "--data", filepath.Join(h.tmp, "data"))
 	h.cmd.Env = append(os.Environ(), "DATABASE_URL="+h.dbURL, fmt.Sprintf("HUB_ADDR=127.0.0.1:%d", port), fmt.Sprintf("RUNNER_ADDR=127.0.0.1:%d", rport),
 		"PUBLIC_URL="+h.url, "COOKIE_SECURE=false", "BLOB_DIR="+filepath.Join(h.tmp, "blobs"), "HUB_SETUP_TOKEN=system-test", "REDIS_URL=", "SMTP_ADDR=", "AUTH_RATE_LIMIT=1000")
 	h.cmd.Stdout, h.cmd.Stderr = h.logs, h.logs

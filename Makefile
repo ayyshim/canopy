@@ -18,7 +18,7 @@ infra-down:
 	$(COMPOSE) down
 
 hub: ## API on :8080 against the dev Postgres; prints a setup link on first start
-	cd hub && $(HUB_ENV) go run ./cmd/hub serve --data ../.dev-data
+	cd hub && $(HUB_ENV) go run ./cmd/hub serve --foreground --data ../.dev-data
 
 web: ## Next.js on :3000 (open http://localhost:8000)
 	cd frontend && pnpm dev
