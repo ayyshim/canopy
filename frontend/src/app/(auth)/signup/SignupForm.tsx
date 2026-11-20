@@ -28,17 +28,17 @@ export function SignupForm() {
 
   function validateOrg(): boolean {
     const e: Errors = {};
-    if (!org.name.trim()) e["org.name"] = "Enter your organization’s name.";
-    if (!org.size) e["org.size"] = "Choose how big your organization is.";
+    if (!org.name.trim()) e["org.name"] = "Enter your company or team name.";
+    if (!org.size) e["org.size"] = "Choose how many people.";
     return show(e);
   }
 
   function validateUser(): boolean {
     const e: Errors = {};
     if (!user.name.trim()) e["user.name"] = "Enter your name.";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.email.trim())) e["user.email"] = "Enter a valid work email.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.email.trim())) e["user.email"] = "Enter a valid email address.";
     if (user.password.length < 8) e["user.password"] = "Use at least 8 characters.";
-    if (!user.accept_terms) e["user.accept_terms"] = "Accept the terms to continue.";
+    if (!user.accept_terms) e["user.accept_terms"] = "Please tick the box to continue.";
     return show(e);
   }
 
@@ -75,7 +75,7 @@ export function SignupForm() {
     return (
       <div className="authcard">
         <h1>Sign-ups are closed</h1>
-        <p className="muted">{hub.name} isn’t taking new organizations. Ask the hub admin or an organization admin for an invitation.</p>
+        <p className="muted">{hub.name} isn’t accepting new sign-ups. Ask the person who runs it to invite you.</p>
         <Link className="btn wide" href="/login">Sign in</Link>
       </div>
     );
@@ -85,20 +85,20 @@ export function SignupForm() {
     <form ref={form} className="authcard" onSubmit={onSubmit} noValidate>
       <div className="stack-sm">
         <span className="muted">Step {step} of 2</span>
-        <h1>{step === 1 ? "Create your organization" : "About you"}</h1>
+        <h1>{step === 1 ? "Create your account" : "About you"}</h1>
       </div>
       {formError && <div className="banner bad" role="alert">{formError}</div>}
 
       {step === 1 ? (
         <>
-          <Field label="Organization name" error={errors["org.name"]}>
+          <Field label="Company or team name" error={errors["org.name"]}>
             {(p) => (
               <input {...p} className="input" autoFocus autoComplete="organization" value={org.name}
                 onChange={(e) => setOrg({ ...org, name: e.target.value })} />
             )}
           </Field>
           <div className="field">
-            <span className="label" id="size-label">How many people?</span>
+            <span className="label" id="size-label">How many people will use it?</span>
             <div className="seg" role="radiogroup" aria-labelledby="size-label" aria-invalid={Boolean(errors["org.size"])} tabIndex={-1}>
               {ORG_SIZES.map((s) => (
                 <button type="button" key={s.value} role="radio" aria-checked={org.size === s.value}
@@ -109,9 +109,9 @@ export function SignupForm() {
             </div>
             {errors["org.size"] && <span className="err">{errors["org.size"]}</span>}
           </div>
-          <Field label="What will agents work on? (optional)" error={errors["org.about"]}>
+          <Field label="What will your AI team help with? (optional)" error={errors["org.about"]}>
             {(p) => (
-              <textarea {...p} className="textarea" placeholder="For example: our payments service and its docs" value={org.about}
+              <textarea {...p} className="textarea" placeholder="For example: building our website" value={org.about}
                 onChange={(e) => setOrg({ ...org, about: e.target.value })} />
             )}
           </Field>
@@ -126,11 +126,11 @@ export function SignupForm() {
             )}
           </Field>
           <Field
-            label="Work email"
+            label="Email"
             error={errors["user.email"]}
             hint={emailTaken ? (
               <>
-                <Link href={`/login?email=${encodeURIComponent(user.email.trim())}`}>Sign in</Link> and create the organization from the switcher.
+                <Link href={`/login?email=${encodeURIComponent(user.email.trim())}`}>Sign in</Link> to continue.
               </>
             ) : undefined}
           >
@@ -156,7 +156,7 @@ export function SignupForm() {
           <div className="row">
             <button className="btn" type="button" onClick={() => { setStep(1); setErrors({}); }}>Back</button>
             <span className="spacer" />
-            <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? "Creating…" : "Create organization"}</button>
+            <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? "Creating…" : "Create account"}</button>
           </div>
         </>
       )}
