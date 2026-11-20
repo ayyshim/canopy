@@ -70,18 +70,18 @@ export async function api<T>(method: Method, path: string, body?: unknown, retri
   return data as T;
 }
 
-/** Sends a file as the raw request body (used for logo uploads). */
-export async function uploadFile<T>(path: string, file: File, retried = false): Promise<T> {
+/** Sends a file as the raw request body (logos, attachments). */
+export async function uploadFile<T>(path: string, file: File, method: "PUT" | "POST" = "PUT", retried = false): Promise<T> {
   const res = await fetch("/api/v1" + path, {
-    method: "PUT",
-    headers: { Accept: "application/json", "Content-Type": file.type, "X-CSRF-Token": await csrfToken(retried) },
+    method,
+    headers: { Accept: "application/json", "Content-Type": file.type || "application/octet-stream", "X-CSRF-Token": await csrfToken(retried) },
     body: file,
     credentials: "same-origin",
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = data?.error ?? {};
-    if (err.code === "csrf" && !retried) return uploadFile<T>(path, file, true);
+    if (err.code === "csrf" && !retried) return uploadFile<T>(path, file, method, true);
     throw new ApiError(res.status, err.code ?? "internal", err.message ?? "Something went wrong. Try again.", err.fields ?? {});
   }
   return data as T;
