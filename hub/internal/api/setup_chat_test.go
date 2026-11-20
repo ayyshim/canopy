@@ -19,6 +19,9 @@ func TestParseSetupChat(t *testing.T) {
 	if m[1].Skill != "developer" || m[1].ReportsToKey != "m1" || len(m[1].SkillKeys) != 1 {
 		t.Errorf("staff not cleaned: %+v", m[1])
 	}
+	if m[0].SkillKeys == nil {
+		t.Error("skill_keys must be [] not null")
+	}
 	if m[2].ReportsToKey != "" {
 		t.Errorf("unknown manager kept: %+v", m[2])
 	}

@@ -70,7 +70,7 @@ export function Members({ p, set, dirs, errors, orgId, computer }: StepProps) {
     const members = team.map((c): SetupMember => ({
       ...member(c.kind, c.name, c.kind === "staff" ? c.skill : "", c.reports_to_key ? keys.get(c.reports_to_key) ?? "" : ""),
       key: keys.get(c.key) ?? newKey("m"), instructions: c.instructions.trim() || defaultInstructions(c.kind, c.skill),
-      skill_keys: c.skill_keys.filter((k) => p.skills.some((s) => s.key === k)),
+      skill_keys: (c.skill_keys ?? []).filter((k) => p.skills.some((s) => s.key === k)),
     }));
     const lead = members.find((m) => m.kind === "manager");
     set((x) => ({ ...x, members, people: x.people.map((pp) => ({ ...pp, manager_keys: [] })), first_goal: x.first_goal ? { ...x.first_goal, manager_key: lead?.key ?? "" } : x.first_goal }));

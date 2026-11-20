@@ -72,7 +72,7 @@ func parseSetupChat(text string, skillKeys map[string]bool) setupChatReply {
 		} else if !staffSkills[m.Skill] {
 			m.Skill = "developer"
 		}
-		var sk []string
+		sk := []string{}
 		for _, k := range m.SkillKeys {
 			if skillKeys[k] {
 				sk = append(sk, k)
