@@ -34,6 +34,8 @@ type hubState struct {
 	LocalURL  string    `json:"local_url"` // the same hub, reachable from this machine
 	SetupURL  string    `json:"setup_url,omitempty"`
 	StartedAt time.Time `json:"started_at"`
+	// Settings it was started with from the environment, so an update can restart it the same way.
+	Env map[string]string `json:"env,omitempty"`
 }
 
 func writeState(data string, s hubState) error {

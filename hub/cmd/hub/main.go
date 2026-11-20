@@ -56,6 +56,9 @@ Usage:
   canopy-hub status [--data DIR] show whether the hub is running, its address and setup link
   canopy-hub stop [--data DIR]   stop the hub (a boot service still starts at the next boot)
   canopy-hub remove-srv          remove the boot service; its data stays
+  canopy-hub update [--check] [--version vX.Y.Z]
+                                 replace this binary with the latest GitHub release (checked
+                                 against its SHA256SUMS) and restart the hub if it was running
   canopy-hub install [--dir DIR] [--no-path]
                                  copy this binary to ~/.local/bin/canopy-hub (/usr/local/bin as
                                  root) and add that folder to your PATH
@@ -112,6 +115,8 @@ func main() {
 		err = stopCmd(args)
 	case "remove-srv":
 		err = removeService()
+	case "update":
+		err = updateCmd(args)
 	case "install":
 		err = selfinstall.Run("canopy-hub", args)
 	case "migrate":
@@ -528,7 +533,7 @@ func serve(args []string) error {
 	u, _ := url.Parse(cfg.PublicURL)
 	slog.Info("canopy-hub is running", "version", version, "open", cfg.PublicURL, "web_app", app.WebApp != nil,
 		"machines_connect_to", cfg.RunnerURL, "data", o.data, "host", u.Host)
-	if err := writeState(o.data, hubState{PID: os.Getpid(), URL: cfg.PublicURL, LocalURL: localURL, SetupURL: setupURL, StartedAt: time.Now()}); err != nil {
+	if err := writeState(o.data, hubState{PID: os.Getpid(), URL: cfg.PublicURL, LocalURL: localURL, SetupURL: setupURL, StartedAt: time.Now(), Env: startEnv}); err != nil {
 		slog.Warn("couldn’t save the hub’s address for canopy-hub status", "err", err)
 	}
 	defer os.Remove(statePath(o.data))
