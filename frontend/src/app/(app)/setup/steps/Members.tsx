@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Avatar } from "@/components/board/icons";
 import { Markdown } from "@/components/board/panels/bits";
+import { SkillPicker } from "@/components/skills/Skills";
 import { defaultInstructions } from "@/components/board/chat/ChatSettings";
 import { newKey, type PickedDir, type SetupMember, type SetupPayload } from "@/lib/setup/state";
 import { clamp, suggest } from "@/lib/setup/suggest";
@@ -10,13 +11,13 @@ import { SKILL_LABEL } from "@/lib/types";
 import type { StepProps } from "../Setup";
 
 const WHY: Record<string, string> = {
-  developer: "builds in the main codebase, so only that is shared for now", reviewer: "reviews changes in the main codebase",
-  designer: "works on design files and docs", writer: "writes in the docs", researcher: "reads docs and code to research",
+  developer: "builds in your main project", reviewer: "checks your main project",
+  designer: "works on design files and documents", writer: "writes in your documents", researcher: "reads your files to research",
 };
 
 function member(kind: "manager" | "staff", name: string, skill = "", reports = ""): SetupMember {
   return { key: newKey("m"), name, kind, skill, reports_to_key: reports, cli: "claude", model: kind === "manager" ? "opus" : "sonnet",
-    all_directories: kind === "manager", grants: [], instructions: defaultInstructions(kind, skill), grants_by: "suggested" };
+    all_directories: kind === "manager", grants: [], instructions: defaultInstructions(kind, skill), grants_by: "suggested", skill_keys: [] };
 }
 
 /** seedMembers starts setup with a small team: a manager, a developer on its staff and an independent researcher. */
@@ -56,43 +57,70 @@ export function Members({ p, set, dirs, errors }: StepProps) {
     people: x.people.map((pp) => ({ ...pp, manager_keys: pp.manager_keys.filter((k) => k !== key) })),
     first_goal: x.first_goal?.manager_key === key ? { ...x.first_goal, manager_key: x.members.find((m) => m.kind === "manager" && m.key !== key)?.key ?? "" } : x.first_goal,
   }));
-  const add = (kind: "manager" | "staff", reports = "") => set((x) => ({ ...x, members: [...x.members, member(kind, "", kind === "staff" ? "developer" : "", reports)] }));
+  const [sel, setSel] = useState("");
+  const add = (kind: "manager" | "staff", reports = "") => {
+    const m = member(kind, "", kind === "staff" ? "developer" : "", reports);
+    set((x) => ({ ...x, members: [...x.members, m] }));
+    setSel(m.key);
+  };
+  const selected = p.members.find((m) => m.key === sel) ?? managers[0];
+  const nameErr = (m: SetupMember) => errors[`members.${p.members.indexOf(m)}.name`];
+  const card = (m: SetupMember) => (
+    <button type="button" key={m.key} className={`node agent${m.kind === "manager" ? " mgr" : ""}${selected?.key === m.key ? " sel" : ""}${nameErr(m) ? " warn" : ""}`}
+      style={{ position: "relative", width: 232, cursor: "pointer", font: "inherit", color: "inherit" }} aria-pressed={selected?.key === m.key} onClick={() => setSel(m.key)}>
+      <Avatar name={m.name || "?"} color={m.kind === "manager" ? "#14322A" : "#0E9AA7"} />
+      <span style={{ minWidth: 0 }}>
+        <span className="nm">{m.name || "Needs a name"}{m.kind === "manager" ? <span className="tag">MANAGER</span> : null}</span>
+        <span className="md">{m.kind === "manager" ? "Takes goals and leads staff" : SKILL_LABEL[m.skill] ?? "Staff"}{m.skill_keys.length > 0 ? ` · ${m.skill_keys.length} skill${m.skill_keys.length === 1 ? "" : "s"}` : ""}</span>
+      </span>
+    </button>
+  );
+  const addCard = (label: string, sub: string, onClick: () => void) => (
+    <button type="button" className="node addm" style={{ position: "relative", width: 232, height: 58 }} onClick={onClick}><span>{label}</span><small>{sub}</small></button>
+  );
+  const line = { marginLeft: 24, borderLeft: "1.6px solid var(--line)", padding: "12px 0 0 18px", display: "flex", flexDirection: "column" as const, gap: 10 };
 
   return (
     <>
-      <h1>Add members</h1>
-      <p className="lead">Members are the agents in this workspace. Every workspace needs at least one <b>manager</b>. Managers take goals from people, plan the work and hand tasks to their own staff. <b>Independent staff</b> help whichever manager needs them. Managers suggest which directories each staff member gets, only what its work needs. You can change any of it.</p>
-      {managers.map((mg) => (
-        <div className="mgroup" key={mg.key}>
-          <Row m={mg} p={p} update={update} remove={remove} canRemove={managers.length > 1} error={errors[`members.${p.members.indexOf(mg)}.name`]} />
-          <Access m={mg} p={p} dirs={dirs} update={update} />
-          <Instructions m={mg} update={update} />
-          {p.members.filter((s) => s.kind === "staff" && s.reports_to_key === mg.key).map((s) => (
-            <div className="mrow staff" style={{ border: 0, padding: "6px 0 0 22px" }} key={s.key}>
-              <Row m={s} p={p} update={update} remove={remove} canRemove error={errors[`members.${p.members.indexOf(s)}.name`]} />
-              <Access m={s} p={p} dirs={dirs} update={update} />
-              <Instructions m={s} update={update} />
+      <h1>Build your team</h1>
+      <p className="lead">A <b>manager</b> takes your goals, plans the work and hands tasks to their staff. <b>Staff</b> do the tasks. We started you off with a small team. Click anyone to change them.</p>
+      <div style={{ display: "flex", gap: 28, flexWrap: "wrap", alignItems: "flex-start", padding: "6px 2px 14px" }}>
+        {managers.map((mg) => (
+          <div key={mg.key}>
+            {card(mg)}
+            <div style={line}>
+              {p.members.filter((s) => s.kind === "staff" && s.reports_to_key === mg.key).map(card)}
+              {addCard("+ Add staff", `Reports to ${mg.name || "this manager"}`, () => add("staff", mg.key))}
             </div>
-          ))}
-          <button type="button" className="btn btn-sm" style={{ borderStyle: "dashed", alignSelf: "flex-start" }} onClick={() => add("staff", mg.key)}>+ Add staff for {mg.name || "this manager"}</button>
-        </div>
-      ))}
-      <div className="mgroup ind">
-        <h3>Independent staff</h3>
-        <p className="hint" style={{ margin: 0 }}>Work for any manager when they’re needed.</p>
-        {independent.map((s) => (
-          <div key={s.key} className="stack-sm">
-            <Row m={s} p={p} update={update} remove={remove} canRemove error={errors[`members.${p.members.indexOf(s)}.name`]} />
-            <Access m={s} p={p} dirs={dirs} update={update} />
-            <Instructions m={s} update={update} />
           </div>
         ))}
-        {!independent.length && <p className="hint" style={{ margin: 0 }}>None yet.</p>}
-        <button type="button" className="btn btn-sm" style={{ borderStyle: "dashed", alignSelf: "flex-start" }} onClick={() => add("staff")}>+ Add independent staff</button>
+        <div>
+          {addCard("+ Add manager", "Takes goals and leads staff", () => add("manager"))}
+        </div>
+        <div>
+          <div className="node pool" style={{ position: "relative", width: 232 }}><b>Shared staff</b><span>Help any manager who needs them</span></div>
+          <div style={line}>
+            {independent.map(card)}
+            {addCard("+ Add shared staff", "Helps any manager", () => add("staff"))}
+          </div>
+        </div>
       </div>
-      <div><button type="button" className="btn" onClick={() => add("manager")}>+ Add another manager</button></div>
+      {selected && (
+        <div className="mgroup" aria-label={`Details for ${selected.name || "this person"}`}>
+          <h3 style={{ margin: 0 }}>{selected.name ? `About ${selected.name}` : "About this person"}</h3>
+          <Row m={selected} p={p} update={update} remove={(k) => { remove(k); setSel(""); }} canRemove={selected.kind !== "manager" || managers.length > 1} error={nameErr(selected)} />
+          {p.skills.length > 0 && (
+            <div className="accrow">
+              <span className="k">Skills</span>
+              <SkillPicker skills={p.skills.map((k) => ({ id: k.key, name: k.name, source_kind: k.source_kind, source_url: k.source_url, content: k.content, updated_at: "" }))}
+                selected={selected.skill_keys} onToggle={(id, on) => update(selected.key, { skill_keys: on ? [...selected.skill_keys, id] : selected.skill_keys.filter((k) => k !== id) })} />
+            </div>
+          )}
+          <Advanced m={selected} p={p} dirs={dirs} update={update} />
+        </div>
+      )}
       {errors.members && <div className="err" style={{ fontSize: 13.5 }}>{errors.members}</div>}
-      {Object.keys(errors).some((k) => k.startsWith("members.") && k.endsWith(".name")) && <div className="err" style={{ fontSize: 13.5 }}>Give every member a name.</div>}
+      {Object.keys(errors).some((k) => k.startsWith("members.") && k.endsWith(".name")) && <div className="err" style={{ fontSize: 13.5 }}>Give everyone a name. Click a card marked “Needs a name”.</div>}
     </>
   );
 }
@@ -104,39 +132,35 @@ function Row({ m, p, update, remove, canRemove, error }: RowProps) {
   return (
     <div className={"wrow" + (m.kind === "manager" ? " mgr" : "")}>
       <Avatar name={m.name || "?"} color={m.kind === "manager" ? "#14322A" : "#0E9AA7"} size={32} />
-      <label className="field"><span className="lbl">{m.kind === "manager" ? "Manager name" : "Name"}</span>
+      <label className="field"><span className="lbl">{m.kind === "manager" ? "Manager’s name" : "Name"}</span>
         <input className="input" value={m.name} aria-invalid={!!error} onChange={(e) => update(m.key, { name: e.target.value })} placeholder={m.kind === "manager" ? "Atlas" : "Pike"} /></label>
       {m.kind === "staff" && (
         <>
-          <label className="field"><span className="lbl">Skill</span>
+          <label className="field"><span className="lbl">Good at</span>
             <select className="input" value={m.skill} onChange={(e) => update(m.key, { skill: e.target.value, instructions: m.instructions === defaultInstructions("staff", m.skill) ? defaultInstructions("staff", e.target.value) : m.instructions })}>
               {Object.entries(SKILL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select></label>
-          <label className="field"><span className="lbl">Works for</span>
+          <label className="field"><span className="lbl">Reports to</span>
             <select className="input" value={m.reports_to_key} onChange={(e) => update(m.key, { reports_to_key: e.target.value })}>
-              <option value="">Independent</option>
+              <option value="">Anyone</option>
               {managers.map((x) => <option key={x.key} value={x.key}>{x.name || "Manager"}</option>)}
             </select></label>
         </>
       )}
-      <label className="field"><span className="lbl">Model</span>
-        <select className="input" value={m.model} onChange={(e) => update(m.key, { model: e.target.value })}>
-          <option value="opus">Opus</option><option value="sonnet">Sonnet</option><option value="haiku">Haiku</option>
-        </select></label>
-      <button type="button" className="icon-btn" onClick={() => remove(m.key)} aria-label={`Remove ${m.name || "member"}`} disabled={!canRemove}>✕</button>
+      <button type="button" className="icon-btn" onClick={() => remove(m.key)} aria-label={`Remove ${m.name || "this person"}`} disabled={!canRemove}>✕</button>
     </div>
   );
 }
 
 function Access({ m, p, dirs, update }: { m: SetupMember; p: SetupPayload; dirs: PickedDir[]; update: (k: string, patch: Partial<SetupMember>) => void }) {
-  if (!dirs.length) return <div className="accrow"><span className="why">No directories yet. Add some on the Create a workspace step.</span></div>;
+  if (!dirs.length) return <div className="accrow"><span className="why">No folders yet. You can add some on the “Name your workspace” step.</span></div>;
   if (m.kind === "manager") {
     return (
       <div className="accrow">
-        <span className="k">Directories</span>
-        <span className="seg" role="group" aria-label={`${m.name || "Manager"} directory access`}>
-          <button type="button" aria-pressed={m.all_directories} onClick={() => update(m.key, { all_directories: true, grants: [] })}>All workspace directories</button>
-          <button type="button" aria-pressed={!m.all_directories} onClick={() => update(m.key, { all_directories: false, grants: dirs.map((d) => ({ directory_key: d.key, mode: "read_write", source: "human", reason: "" })) })}>Only selected</button>
+        <span className="k">Folders</span>
+        <span className="seg" role="group" aria-label={`${m.name || "Manager"} folder access`}>
+          <button type="button" aria-pressed={m.all_directories} onClick={() => update(m.key, { all_directories: true, grants: [] })}>All folders</button>
+          <button type="button" aria-pressed={!m.all_directories} onClick={() => update(m.key, { all_directories: false, grants: dirs.map((d) => ({ directory_key: d.key, mode: "read_write", source: "human", reason: "" })) })}>Only some</button>
         </span>
         {!m.all_directories && dirs.map((d) => {
           const on = m.grants.some((g) => g.directory_key === d.key);
@@ -154,7 +178,7 @@ function Access({ m, p, dirs, update }: { m: SetupMember; p: SetupPayload; dirs:
   const writes = ["developer", "designer", "writer"].includes(m.skill);
   return (
     <div className="accrow">
-      <span className="k">Access</span>
+      <span className="k">Can use</span>
       {pool.map((d) => {
         const g = m.grants.find((x) => x.directory_key === d.key);
         return (
@@ -162,18 +186,18 @@ function Access({ m, p, dirs, update }: { m: SetupMember; p: SetupPayload; dirs:
             <input type="checkbox" checked={!!g} onChange={(e) => update(m.key, {
               grants_by: "you",
               grants: e.target.checked ? [...m.grants, { directory_key: d.key, mode: writes ? "read_write" : "read", source: "human", reason: "" }] : m.grants.filter((x) => x.directory_key !== d.key),
-            })} />{d.name}{g && <small>{g.mode === "read_write" ? "read & write" : "read"}</small>}
+            })} />{d.name}{g && <small>{g.mode === "read_write" ? "can edit" : "view only"}</small>}
           </label>
         );
       })}
-      {!pool.length && <span className="hint">Its manager has no directories to share</span>}
+      {!pool.length && <span className="hint">Their manager has no folders to share</span>}
       {m.grants_by === "you" ? (
         <>
-          <span className="pill">Changed by you</span>
-          <button type="button" className="linkbtn" onClick={() => update(m.key, { grants_by: "suggested" })}>Ask {by} to suggest again</button>
+          <span className="pill">Set by you</span>
+          <button type="button" className="linkbtn" onClick={() => update(m.key, { grants_by: "suggested" })}>Let {by} choose again</button>
         </>
-      ) : <span className="pill info">Suggested by {by}</span>}
-      <span className="why">{m.grants_by === "you" ? `Only the ticked directories are shared with ${m.name || "this member"}.` : `${m.name || "This member"} ${WHY[m.skill] ?? "gets only what it needs"}. Everything else stays hidden from it.`}</span>
+      ) : <span className="pill info">Chosen by {by}</span>}
+      <span className="why">{m.grants_by === "you" ? `Only the ticked folders are shared with ${m.name || "this person"}.` : `${m.name || "This person"} ${WHY[m.skill] ?? "gets only what is needed"}. Everything else stays hidden.`}</span>
     </div>
   );
 }
@@ -183,10 +207,27 @@ function Instructions({ m, update }: { m: SetupMember; update: (k: string, patch
   const edited = m.instructions !== defaultInstructions(m.kind, m.skill);
   return (
     <details className="instr" open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
-      <summary>Instructions for {m.name || "this member"} (Markdown){edited ? " · edited" : ""}</summary>
+      <summary>Custom instructions for {m.name || "this person"}{edited ? " · edited" : ""}</summary>
       <div className="pgrid" style={{ marginTop: 6 }}>
-        <label className="field"><span className="lbl">Write</span><textarea value={m.instructions} onChange={(e) => update(m.key, { instructions: e.target.value })} aria-label={`Instructions for ${m.name || "member"}`} /></label>
+        <label className="field"><span className="lbl">Instructions</span><textarea value={m.instructions} onChange={(e) => update(m.key, { instructions: e.target.value })} aria-label={`Instructions for ${m.name || "this person"}`} /></label>
         <div className="field"><span className="lbl">Preview</span><Markdown text={m.instructions} className="mdprev md" /></div>
+      </div>
+    </details>
+  );
+}
+
+/** Everything most people never need to change, folded away with good defaults. */
+function Advanced({ m, p, dirs, update }: { m: SetupMember; p: SetupPayload; dirs: PickedDir[]; update: (k: string, patch: Partial<SetupMember>) => void }) {
+  return (
+    <details className="instr">
+      <summary>Advanced for {m.name || "this person"}</summary>
+      <div className="stack-sm" style={{ marginTop: 8 }}>
+        <label className="field"><span className="lbl">How capable</span>
+          <select className="input" value={m.model} onChange={(e) => update(m.key, { model: e.target.value })}>
+            <option value="opus">Most capable (slower)</option><option value="sonnet">Balanced</option><option value="haiku">Fastest (simpler work)</option>
+          </select></label>
+        <Access m={m} p={p} dirs={dirs} update={update} />
+        <Instructions m={m} update={update} />
       </div>
     </details>
   );

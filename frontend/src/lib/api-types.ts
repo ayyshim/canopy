@@ -1019,6 +1019,321 @@ export interface paths {
         };
         trace?: never;
     };
+    "/workspaces/{wsId}/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the workspace skill library, and which skills each member has */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    wsId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Skills */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SkillList"];
+                    };
+                };
+                404: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        /** Add a skill to the library (admins). GitHub links are fetched and stored. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    wsId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SkillInput"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SkillResponse"];
+                    };
+                };
+                403: components["responses"]["Error"];
+                /** @description skill_name_taken */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                422: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orgs/{orgId}/skills/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fetch a GitHub markdown link for the setup wizard without saving it (org admins) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    orgId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        source_url: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description The markdown and a suggested name */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            name: string;
+                            content: string;
+                        };
+                    };
+                };
+                403: components["responses"]["Error"];
+                422: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/skills/{skillId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a skill; members lose it (admins) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    skillId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                403: components["responses"]["Error"];
+                404: components["responses"]["Error"];
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Edit a skill (admins). Send refresh to fetch a GitHub skill again. */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    skillId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SkillInput"];
+                };
+            };
+            responses: {
+                /** @description Saved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SkillResponse"];
+                    };
+                };
+                403: components["responses"]["Error"];
+                404: components["responses"]["Error"];
+                /** @description skill_name_taken */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                422: components["responses"]["Error"];
+            };
+        };
+        trace?: never;
+    };
+    "/workspaces/{wsId}/members/{memberId}/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Skills attached to a member */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    wsId: string;
+                    memberId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Skills */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            skills: components["schemas"]["Skill"][];
+                        };
+                    };
+                };
+                404: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{wsId}/members/{memberId}/skills/{skillId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Attach a library skill to a member (admins; managers use the assign_skill tool) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    wsId: string;
+                    memberId: string;
+                    skillId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The member's skills */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            skills: components["schemas"]["Skill"][];
+                        };
+                    };
+                };
+                403: components["responses"]["Error"];
+                404: components["responses"]["Error"];
+            };
+        };
+        post?: never;
+        /** Detach a skill from a member (admins) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    wsId: string;
+                    memberId: string;
+                    skillId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The member's skills */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            skills: components["schemas"]["Skill"][];
+                        };
+                    };
+                };
+                403: components["responses"]["Error"];
+                404: components["responses"]["Error"];
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1245,6 +1560,37 @@ export interface components {
             name: string;
             slug: string;
             role: components["schemas"]["OrgRole"];
+        };
+        Skill: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @enum {string} */
+            source_kind: "md" | "github";
+            /** @description The GitHub link; empty for markdown skills */
+            source_url: string;
+            content: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        /** @description Create needs name and source_kind, plus content (md) or source_url (github). Edits send only what changes. */
+        SkillInput: {
+            name?: string;
+            /** @enum {string} */
+            source_kind?: "md" | "github";
+            source_url?: string;
+            content?: string;
+            refresh?: boolean;
+        };
+        SkillResponse: {
+            skill: components["schemas"]["Skill"];
+        };
+        SkillList: {
+            skills: components["schemas"]["Skill"][];
+            /** @description Member id to the ids of the library skills attached to them */
+            member_skills: {
+                [key: string]: string[];
+            };
         };
         Me: {
             user: components["schemas"]["User"];

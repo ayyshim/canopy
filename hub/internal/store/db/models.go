@@ -293,6 +293,12 @@ type Member struct {
 	UpdatedAt      time.Time
 }
 
+type MemberSkill struct {
+	MemberID  uuid.UUID
+	SkillID   uuid.UUID
+	CreatedAt time.Time
+}
+
 type Membership struct {
 	ID                   uuid.UUID
 	OrgID                uuid.UUID
@@ -603,4 +609,15 @@ type WorkspaceAccess struct {
 	IndependentStaff bool
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+}
+
+type WorkspaceSkill struct {
+	ID          uuid.UUID
+	WorkspaceID uuid.UUID
+	Name        string
+	SourceKind  string
+	SourceUrl   string
+	Content     string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }

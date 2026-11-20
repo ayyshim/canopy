@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import type {
   AccountView, AnyMember, Board, ChatMessageView, Cursor, GoalRepoView, GrantView, LogLineView, NoteView, OutputView,
-  PresenceUser, SessionView, SignalView,
+  PresenceUser, SessionView, SignalView, SkillView,
 } from "../types";
 
 export type Comment = { id: string; task_id: string; author_user_id?: string | null; author_member_id?: string | null; text: string; created_at: string };
@@ -148,6 +148,17 @@ function applyEvent(s: BoardState, type: string, data: unknown): Partial<BoardSt
       return nb({ notes: upsert(b.notes, d as NoteView, byId) });
     case "note.deleted":
       return nb({ notes: b.notes.filter((n) => n.id !== d.id) });
+    case "skill.saved":
+      return nb({ skills: upsert(b.skills ?? [], d as SkillView, byId) });
+    case "skill.deleted": {
+      const member_skills = Object.fromEntries(Object.entries(b.member_skills ?? {}).map(([k, v]) => [k, v.filter((id) => id !== d.id)]));
+      return nb({ skills: (b.skills ?? []).filter((x) => x.id !== d.id), member_skills });
+    }
+    case "member.skills":
+      return nb({
+        skills: (d.skills as SkillView[]).reduce((list, x) => upsert(list, x, byId), b.skills ?? []),
+        member_skills: { ...b.member_skills, [d.member_id]: (d.skills as SkillView[]).map((x) => x.id) },
+      });
     case "account.updated":
       return nb({ accounts: upsert(b.accounts, d as AccountView, accountKey) });
     case "runner.updated": {

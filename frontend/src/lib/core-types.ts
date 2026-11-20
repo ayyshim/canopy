@@ -259,3 +259,14 @@ export interface AccountView {
   key_fingerprint: string;
   enabled: boolean;
 }
+/**
+ * SkillView is one skill in a workspace's library.
+ */
+export interface SkillView {
+  id: string /* uuid */;
+  name: string;
+  source_kind: string; // md or github
+  source_url: string;
+  content: string;
+  updated_at: string /* RFC3339 */;
+}

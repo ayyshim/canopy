@@ -332,6 +332,7 @@ const (
 	ToolOwnerChange    = "request_owner_change"
 	ToolReadNotes      = "read_notes"
 	ToolWriteNote      = "write_note"
+	ToolAssignSkill    = "assign_skill"
 )
 
 // ---- Directory mirror (DECISIONS: Directories) ----

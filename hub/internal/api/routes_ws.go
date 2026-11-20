@@ -43,6 +43,15 @@ func (s *Server) workspaceRoutes(r chi.Router) {
 	r.Put("/workspaces/{wsID}/members/{memberID}/grants", httpx.Handler(s.handlePutGrants))
 	r.Post("/workspaces/{wsID}/members/{memberID}/suggest-grants", httpx.Handler(s.handleSuggestGrants))
 
+	r.Get("/workspaces/{wsID}/skills", httpx.Handler(s.handleListSkills))
+	r.Post("/workspaces/{wsID}/skills", httpx.Handler(s.handleCreateSkill))
+	r.Post("/orgs/{orgID}/skills/preview", httpx.Handler(s.handlePreviewSkill))
+	r.Patch("/skills/{skillID}", httpx.Handler(s.handlePatchSkill))
+	r.Delete("/skills/{skillID}", httpx.Handler(s.handleDeleteSkill))
+	r.Get("/workspaces/{wsID}/members/{memberID}/skills", httpx.Handler(s.handleListMemberSkills))
+	r.Put("/workspaces/{wsID}/members/{memberID}/skills/{skillID}", httpx.Handler(s.handleAttachSkill))
+	r.Delete("/workspaces/{wsID}/members/{memberID}/skills/{skillID}", httpx.Handler(s.handleDetachSkill))
+
 	r.Post("/workspaces/{wsID}/directories", httpx.Handler(s.handleCreateDirectory))
 	r.Patch("/workspaces/{wsID}/directories/{dirID}", httpx.Handler(s.handlePatchDirectory))
 	r.Delete("/workspaces/{wsID}/directories/{dirID}", httpx.Handler(s.handleDeleteDirectory))

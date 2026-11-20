@@ -7,6 +7,7 @@ import {
 } from "@/lib/board/derive";
 import type { Node } from "@/lib/board/layout";
 import { useUI } from "@/lib/board/ui";
+import { skillNames } from "@/lib/skills";
 import { SKILL_LABEL } from "@/lib/types";
 import { useB, useBoardCtx } from "./context";
 import { Avatar, KIND_LABEL, Thumb } from "./icons";
@@ -170,7 +171,7 @@ export function NodeView({ n }: { n: Node }) {
           <Avatar name={m.name} color={m.avatar_color} />
           <span style={{ minWidth: 0 }}>
             <span className="nm">{m.name}{m.kind === "manager" ? <span className="tag">MANAGER</span> : !m.reports_to ? <span className="tag ind">INDEPENDENT</span> : null}</span>
-            <span className="md">{m.kind === "staff" && m.skill ? SKILL_LABEL[m.skill] + ", " : ""}{m.model}</span>
+            <span className="md" title={skillNames(b.member_skills?.[m.id], b.skills ?? []).join(", ") || undefined}>{m.kind === "staff" && m.skill ? SKILL_LABEL[m.skill] + ", " : ""}{m.model}{(b.member_skills?.[m.id]?.length ?? 0) > 0 ? ` · ${b.member_skills[m.id].length} skill${b.member_skills[m.id].length === 1 ? "" : "s"}` : ""}</span>
             <span className={`stat${warn ? " warn" : s.k === "error" ? " err" : ""}`}><span className={`dot ${s.k}`} />{s.t}</span>
           </span>
           {unread > 0 && <span className="ubadge" aria-label={`${unread} new in chat`}>{unread}</span>}

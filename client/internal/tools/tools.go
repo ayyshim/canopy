@@ -37,6 +37,8 @@ var Defs = []Def{
 		`{"type":"object","properties":{"query":{"type":"string"}}}`},
 	{protocol.ToolWriteNote, "Save a note for the workspace: a decision, or something the next person or agent should know.",
 		`{"type":"object","properties":{"title":{"type":"string"},"body":{"type":"string"},"kind":{"type":"string","enum":["note","decision"]}},"required":["title","body"]}`},
+	{protocol.ToolAssignSkill, "Managers: give one of your staff a skill from the workspace skill library (or take it away with remove). Skills are listed in your planning prompt.",
+		`{"type":"object","properties":{"member":{"type":"string","description":"name of a staff member who reports to you"},"skill":{"type":"string","description":"name of a library skill"},"remove":{"type":"boolean"}},"required":["member","skill"]}`},
 }
 
 // Call is the bridge asking the runner to run a tool.
