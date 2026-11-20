@@ -330,3 +330,9 @@ computers; folders and branches stay on their disks.
 **macOS computers** have no sandbox yet, so the client refuses to run agents there without
 `--unsafe-no-sandbox`, and the install script doesn't start a background service on macOS.
 A Seatbelt (`sandbox-exec`) profile per session is the planned fix.
+
+**Draft goals.** A goal can be saved as a draft (status `draft`). It shows on the board as a
+dashed card, but no one plans or works on it. Its person (or an admin) can edit, give or delete
+it: `PUT /goals/:id/draft`, `POST /goals/:id/give`, `DELETE /goals/:id` (drafts only). Giving a
+draft over a usage limit is refused instead of queued, so the draft stays put. Deleting sends a
+`goal.deleted` board event.
