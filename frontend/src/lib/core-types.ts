@@ -121,6 +121,7 @@ export interface GoalView {
   id: string /* uuid */;
   manager_id?: string /* uuid */;
   title: string;
+  description?: string;
   done_when: string;
   color: string;
   status: string;

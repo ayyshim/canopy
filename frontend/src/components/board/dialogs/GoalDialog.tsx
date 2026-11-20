@@ -17,6 +17,7 @@ export function GoalDialog({ managerId }: { managerId?: string }) {
   const ctxManager = managerId ?? (side?.type === "goal" ? findGoal(b, side.id)?.manager_id : undefined) ?? managers(b).find((m) => visibleMember(b, m.id))?.id ?? "";
   const [manager, setManager] = useState(ctxManager ?? "");
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [doneWhen, setDoneWhen] = useState("");
   const [base, setBase] = useState("");
   const [snapshot, setSnapshot] = useState(false);
@@ -34,7 +35,7 @@ export function GoalDialog({ managerId }: { managerId?: string }) {
     e.preventDefault();
     setBusy(true);
     try {
-      const res = await giveGoal(wsId, { manager_id: manager, title, done_when: doneWhen, runner_id: runner || undefined, base, snapshot: snapshot && base === myClone?.current_branch });
+      const res = await giveGoal(wsId, { manager_id: manager, title, description: description.trim() || undefined, done_when: doneWhen, runner_id: runner || undefined, base, snapshot: snapshot && base === myClone?.current_branch });
       if (res.queued) ui.toast(res.reason ?? "You’re at your usage limit. The goal starts when it resets.", "warn");
       else ui.toast(`Goal given to ${visibleMember(b, manager)?.name}.`, "ok");
       ui.openDialog(null);
@@ -64,6 +65,9 @@ export function GoalDialog({ managerId }: { managerId?: string }) {
       <label className="field"><span>Goal</span>
         <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Let admins refund a payment from the dashboard" autoComplete="off" autoFocus />
         {errors.title && <span className="err">{errors.title}</span>}
+      </label>
+      <label className="field"><span>Description <span style={{ fontWeight: 500 }}>(optional)</span></span>
+        <textarea className="input" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Add any details, context or links that help the team" />
       </label>
       <label className="field"><span>Done when <span style={{ fontWeight: 500 }}>(optional)</span></span>
         <input className="input" value={doneWhen} onChange={(e) => setDoneWhen(e.target.value)} placeholder="A refund shows up in the payment’s history" autoComplete="off" />

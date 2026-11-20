@@ -24,7 +24,7 @@ async function run<T>(p: Promise<T>, done?: string): Promise<T | undefined> {
 export const resolveSignal = (id: string, action: string, extra: Record<string, unknown> = {}) =>
   run(api("POST", `/signals/${id}/resolve`, { action, ...extra }));
 
-export async function giveGoal(wsId: string, body: { manager_id: string; title: string; done_when?: string; runner_id?: string; base?: string; snapshot?: boolean }) {
+export async function giveGoal(wsId: string, body: { manager_id: string; title: string; description?: string; done_when?: string; runner_id?: string; base?: string; snapshot?: boolean }) {
   return api<{ goal?: GoalView; queued?: boolean; reason?: string }>("POST", `/workspaces/${wsId}/goals`, body);
 }
 
