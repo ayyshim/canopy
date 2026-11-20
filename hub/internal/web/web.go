@@ -6,10 +6,16 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"mime"
 	"net/http"
 	"path"
 	"strings"
 )
+
+func init() {
+	// Not in Go's built-in table, so the type would depend on the host's mime files.
+	_ = mime.AddExtensionType(".webmanifest", "application/manifest+json")
+}
 
 //go:embed all:dist
 var dist embed.FS
