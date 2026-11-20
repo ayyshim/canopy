@@ -15,6 +15,7 @@ PIDS=()
 cleanup() {
   [ -z "${KEEP_LOGS:-}" ] || cp "$WORK"/*.log "$WORK"/video/board.webm /tmp/ 2>/dev/null || true
   for p in "${PIDS[@]:-}"; do [ -n "$p" ] && kill "$p" 2>/dev/null || true; done
+  lsof -ti tcp:$WEB_PORT 2>/dev/null | xargs kill 2>/dev/null || true
   docker rm -f "$PGC" >/dev/null 2>&1 || true
   rm -rf "$WORK"
 }
