@@ -62,11 +62,15 @@ export function ChatSettings({ m }: { m: MemberView }) {
               </select></label>
             <label className="field"><span>Works for</span>
               <select className="input" value={m.reports_to ?? ""} disabled={!admin}
-                onChange={(e) => patch({ reports_to: e.target.value || null, set_reports_to: true }, e.target.value ? `${m.name} now reports to ${visibleMember(b, e.target.value)?.name}` : `${m.name} is now independent staff`)}>
+                onChange={(e) => patch({ reports_to: e.target.value || null, set_reports_to: true, ...(e.target.value ? { isolated: false } : {}) }, e.target.value ? `${m.name} now reports to ${visibleMember(b, e.target.value)?.name}` : `${m.name} is now independent staff`)}>
                 <option value="">Independent</option>
                 {managers(b).map((x) => <option key={x.id} value={x.id}>{visibleMember(b, x.id)?.name ?? "Manager"}</option>)}
               </select></label>
           </>
+        )}
+        {!isM && !m.reports_to && (
+          <label className="field full"><span><input type="checkbox" checked={m.isolated} disabled={!admin} onChange={(e) => patch({ isolated: e.target.checked })} /> Isolated</span>
+            <span className="hint">Only you can chat with them. Managers can’t borrow them.</span></label>
         )}
         <label className="field"><span>CLI</span><select className="input" disabled><option>Claude Code</option></select></label>
         <label className="field"><span>Model</span>

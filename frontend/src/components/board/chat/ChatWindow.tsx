@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { loadActivity, loadChat, markChatRead, sendChat } from "@/lib/board/actions";
-import { clock, computer, computerFor, fmtTokens, memberStatus, visibleMember } from "@/lib/board/derive";
+import { chatLocked, clock, computer, computerFor, fmtTokens, memberStatus, visibleMember } from "@/lib/board/derive";
 import { useBoard } from "@/lib/board/store";
 import { useUI, type ChatWin } from "@/lib/board/ui";
 import { isHidden, SKILL_LABEL, type ChatMessageView, type MemberView } from "@/lib/types";
@@ -138,6 +138,9 @@ export function ChatWindow({ win, index }: { win: ChatWin; index: number }) {
           <button role="tab" key={t} aria-selected={tab === t} onClick={() => ui.updateChat(m.id, { tab: t })}>{t[0].toUpperCase() + t.slice(1)}</button>
         ))}
       </div>
+      {chatLocked(m, me) ? (
+        <div className="thread"><p className="hint" style={{ padding: 16 }}>🔒 {m.name} is isolated. Only the person who added them can chat.</p></div>
+      ) : <>
       <div className="thread" ref={threadRef} aria-live="polite" role="log" aria-label={`Conversation with ${m.name}`}>
         {tab === "chat" && <Thread m={m} msgs={msgs ?? []} typing={!!typing} jump={jump} mine={mine} greet={greeting(b, m)} />}
         {tab === "activity" && (
@@ -186,6 +189,7 @@ export function ChatWindow({ win, index }: { win: ChatWin; index: number }) {
           </div>
         </div>
       )}
+      </>}
     </section>
   );
 }

@@ -100,6 +100,7 @@ type setupMember struct {
 	AllDirectories bool         `json:"all_directories"`
 	Grants         []setupGrant `json:"grants"`
 	Instructions   string       `json:"instructions"`
+	Isolated       bool         `json:"isolated"`
 	SkillKeys      []string     `json:"skill_keys"` // library skills (setupSkill keys) this member starts with
 }
 
@@ -547,7 +548,7 @@ func (s *Server) handleCreateWorkspace(w http.ResponseWriter, r *http.Request) e
 					ID: newID(), WorkspaceID: ws.ID, Name: m.Name, Kind: m.Kind, Skill: skill, ReportsTo: reports,
 					Cli: m.CLI, Model: m.Model, AvatarColor: domain.AvatarColors[pos%len(domain.AvatarColors)],
 					AllDirectories: m.AllDirectories, Position: int32(pos), Instructions: m.Instructions,
-					CreatedBy: &id.UserID,
+					Isolated: m.Isolated && m.Kind == "staff" && reports == nil, CreatedBy: &id.UserID,
 				})
 				if err != nil {
 					return err

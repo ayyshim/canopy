@@ -19,6 +19,8 @@ export const computer = (b: Board, id?: string | null): Computer | undefined => 
 
 export const managers = (b: Board) => b.members.filter((m) => m.kind === "manager");
 export const staffOf = (b: Board, managerId: string) => b.members.filter((m) => m.kind === "staff" && m.reports_to === managerId);
+/** Isolated staff only talk to the person who created them. */
+export const chatLocked = (m: MemberView, me: string) => m.isolated && m.created_by !== me;
 export const independentStaff = (b: Board) => b.members.filter((m) => m.kind === "staff" && !m.reports_to);
 
 export const goalTasks = (b: Board, goalId: string) => b.tasks.filter((t) => t.goal_id === goalId);
