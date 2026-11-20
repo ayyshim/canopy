@@ -1095,6 +1095,167 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/workspaces/{wsId}/staff-proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List managers' drafts of new staff and instruction updates (workspace admins only) */
+        get: {
+            parameters: {
+                query?: {
+                    status?: "pending" | "approved" | "rejected";
+                };
+                header?: never;
+                path: {
+                    wsId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Drafts */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            proposals: components["schemas"]["StaffProposal"][];
+                        };
+                    };
+                };
+                403: components["responses"]["Error"];
+                404: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{wsId}/staff-proposals/{proposalId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a draft (workspace admins only). New staff are created under the drafting manager; their new skills join the library. Updates change the member's instructions. Any field sent replaces the draft's. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    wsId: string;
+                    proposalId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["StaffProposalEdit"];
+                };
+            };
+            responses: {
+                /** @description Approved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            proposal: components["schemas"]["StaffProposal"];
+                            /** @description The new or updated member (MemberView in core-types) */
+                            member: Record<string, never>;
+                        };
+                    };
+                };
+                403: components["responses"]["Error"];
+                404: components["responses"]["Error"];
+                /** @description proposal_decided */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                422: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{wsId}/staff-proposals/{proposalId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject a draft (workspace admins only) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    wsId: string;
+                    proposalId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        reason?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Rejected */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            proposal: components["schemas"]["StaffProposal"];
+                        };
+                    };
+                };
+                403: components["responses"]["Error"];
+                404: components["responses"]["Error"];
+                /** @description proposal_decided */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/orgs/{orgId}/skills/preview": {
         parameters: {
             query?: never;
@@ -1561,6 +1722,47 @@ export interface components {
             slug: string;
             role: components["schemas"]["OrgRole"];
             logo_url?: string | null;
+        };
+        DraftSkill: {
+            name: string;
+            content: string;
+            /** @description Where the skill was found; empty when written by the manager */
+            source_url: string;
+        };
+        StaffProposal: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "new" | "update";
+            /** Format: uuid */
+            manager_id: string;
+            /**
+             * Format: uuid
+             * @description The staff member an update changes
+             */
+            member_id: string | null;
+            name: string;
+            /** @enum {string|null} */
+            role: "developer" | "reviewer" | "researcher" | "designer" | "writer" | null;
+            instructions: string;
+            skills: components["schemas"]["DraftSkill"][];
+            /** @enum {string} */
+            status: "pending" | "approved" | "rejected";
+            reason: string;
+            /** Format: uuid */
+            result_member_id: string | null;
+            /** Format: date-time */
+            decided_at: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        /** @description Edits an admin makes while approving; omitted fields keep the draft's values. */
+        StaffProposalEdit: {
+            name?: string;
+            /** @enum {string} */
+            role?: "developer" | "reviewer" | "researcher" | "designer" | "writer";
+            instructions?: string;
+            skills?: components["schemas"]["DraftSkill"][];
         };
         Skill: {
             /** Format: uuid */
