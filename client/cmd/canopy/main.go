@@ -41,6 +41,9 @@ Usage:
       connect and run agents in the background (--hub: only this hub; --foreground: stay in
       this terminal, for systemd or debugging; -v: verbose logs)
   canopy stop        stop canopy running in the background
+  canopy update [--check] [--version vX.Y.Z] [--hub URL]
+      replace this binary with the build your hub serves (or the latest GitHub release when
+      not paired, or the release --version names), then restart canopy if it was running
   canopy status      show whether canopy is running, pairings and installed CLIs
   canopy version
 
@@ -68,6 +71,8 @@ func main() {
 		err = cmdRun(os.Args[2:])
 	case "stop":
 		err = cmdStop()
+	case "update":
+		err = cmdUpdate(os.Args[2:])
 	case "status":
 		err = cmdStatus()
 	case "mcp":
