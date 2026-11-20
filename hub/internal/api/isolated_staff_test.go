@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"context"
 	"net/http"
 	"testing"
 )
@@ -44,5 +45,39 @@ func TestIsolatedStaff(t *testing.T) {
 	}
 	if r := owner.do("PATCH", base+"/"+id, map[string]any{"isolated": true}); r.Status != http.StatusUnprocessableEntity {
 		t.Errorf("isolate staff with manager: %d", r.Status)
+	}
+}
+
+// Only the creator can chat with isolated staff; other admins get 403.
+func TestIsolatedStaffChat(t *testing.T) {
+	e := newEnv(t)
+	owner, me := e.signup("Isolated Chat Co")
+	org := currentOrg(me)
+	ws, _ := e.createWorkspace(owner, org, setupPayload())
+	other, otherMe := e.signup("Other Home")
+	otherID := str(otherMe["user"].(map[string]any)["id"])
+	if _, err := e.store.Pool.Exec(context.Background(), `INSERT INTO memberships (id, org_id, user_id, org_role) VALUES (gen_random_uuid(), $1, $2, 'admin')`, org, otherID); err != nil {
+		t.Fatal(err)
+	}
+	r := owner.do("POST", "/api/v1/workspaces/"+ws+"/members", map[string]any{"name": "Sol", "kind": "staff", "skill": "developer", "isolated": true})
+	if r.Status != http.StatusCreated {
+		t.Fatalf("create: %d %v", r.Status, r.Body)
+	}
+	chat := "/api/v1/workspaces/" + ws + "/members/" + str(r.Body["member"].(map[string]any)["id"]) + "/chat"
+
+	if r := owner.do("POST", chat, map[string]any{"text": "hi"}); r.Status != http.StatusCreated {
+		t.Errorf("creator send: %d %v", r.Status, r.Body)
+	}
+	if r := owner.do("GET", chat, nil); r.Status != http.StatusOK {
+		t.Errorf("creator read: %d", r.Status)
+	}
+	if r := other.do("GET", chat, nil); r.Status != http.StatusForbidden {
+		t.Errorf("other read: %d", r.Status)
+	}
+	if r := other.do("POST", chat, map[string]any{"text": "hi"}); r.Status != http.StatusForbidden {
+		t.Errorf("other send: %d", r.Status)
+	}
+	if r := other.do("POST", chat+"/read", nil); r.Status != http.StatusForbidden {
+		t.Errorf("other mark read: %d", r.Status)
 	}
 }
