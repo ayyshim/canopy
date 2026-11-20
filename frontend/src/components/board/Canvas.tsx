@@ -42,8 +42,11 @@ export function Canvas() {
     const el = boardRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect(), bx = layoutRef.current.box, over = tray ? 300 : 0;
-    const k = Math.max(0.3, Math.min(1.05, (r.width - 48) / (bx.x1 - bx.x0), (r.height - 90 - over) / (bx.y1 - bx.y0)));
-    Object.assign(cam.current, { z: k, x: (r.width - (bx.x1 - bx.x0) * k) / 2 - bx.x0 * k, y: 40 - bx.y0 * k });
+    const small = r.width < 640;
+    // On phones keep text readable: never fit below 0.55 and start at the top left, then pan.
+    const k = Math.max(small ? 0.55 : 0.3, Math.min(1.05, (r.width - 48) / (bx.x1 - bx.x0), (r.height - 90 - over) / (bx.y1 - bx.y0)));
+    const w = (bx.x1 - bx.x0) * k;
+    Object.assign(cam.current, { z: k, x: (w > r.width - 24 ? 16 : (r.width - w) / 2) - bx.x0 * k, y: 40 - bx.y0 * k });
     if (!soft) cam.current.auto = true;
     apply();
   }, [apply, tray]);
@@ -118,7 +121,7 @@ export function Canvas() {
       }
       if (!drag) return;
       const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-      if (!drag.moved && Math.hypot(dx, dy) > 4) {
+      if (!drag.moved && Math.hypot(dx, dy) > (e.pointerType === "touch" ? 8 : 4)) {
         drag.moved = true;
         el.classList.add("panning");
         try { el.setPointerCapture(drag.id); } catch { /* the pointer may be gone */ }
