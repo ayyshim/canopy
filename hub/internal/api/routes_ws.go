@@ -75,6 +75,7 @@ func (s *Server) workspaceRoutes(r chi.Router) {
 	r.Post("/outputs/{outputID}/seen", httpx.Handler(s.handleOutputSeen))
 
 	r.Get("/orgs/{orgID}/usage", httpx.Handler(s.handleOrgUsage))
+	r.Get("/orgs/{orgID}/usage/claude", httpx.Handler(s.handleClaudeUsage))
 	r.Get("/orgs/{orgID}/usage/people/{userID}", httpx.Handler(s.handlePersonUsage))
 	r.Get("/orgs/{orgID}/activity", httpx.Handler(s.handleActivity))
 
