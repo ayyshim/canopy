@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ApiError } from "@/lib/api";
-import { giveDraft, giveGoal, saveDraft } from "@/lib/board/actions";
+import { attachFiles, giveDraft, giveGoal, saveDraft } from "@/lib/board/actions";
 import { computer, computerFor, goal as findGoal, managers, signInLabel, staffOf, visibleMember } from "@/lib/board/derive";
 import { useUI } from "@/lib/board/ui";
 import { useB, useBoardCtx } from "../context";
+import { FilePicker, MAX_FILE_MB } from "../panels/Attachments";
 
 /** GoalDialog gives a goal to a manager, or saves it as a draft to give later. */
 export function GoalDialog({ managerId, draftId }: { managerId?: string; draftId?: string }) {
@@ -24,6 +25,8 @@ export function GoalDialog({ managerId, draftId }: { managerId?: string; draftId
   const [snapshot, setSnapshot] = useState(draft?.snapshot ?? false);
   const runOptions = b.runners.filter((r) => r.owner_user_id === me || r.shared);
   const [runner, setRunner] = useState(draft?.runner_id ?? computerFor(b, me) ?? "");
+  const [files, setFiles] = useState<File[]>([]);
+  const tooBig = files.some((f) => f.size > MAX_FILE_MB << 20);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<"" | "give" | "draft">("");
 
@@ -37,15 +40,26 @@ export function GoalDialog({ managerId, draftId }: { managerId?: string; draftId
     const body = { manager_id: manager, title, description: description.trim() || undefined, done_when: doneWhen, runner_id: runner || undefined, base, snapshot: snapshot && base === myClone?.current_branch };
     try {
       let id: string | undefined;
-      if (draft) {
-        id = (await saveDraft(draft.id, body)).goal.id;
-        if (!asDraft) await giveDraft(draft.id);
+      let given = !asDraft;
+      if (draft || files.length) {
+        // With files, save a draft first so they are there before the manager starts planning.
+        id = draft ? (await saveDraft(draft.id, body)).goal.id : (await giveGoal(wsId, { ...body, draft: true })).goal?.id;
+        if (id && files.length) await attachFiles({ goalId: id }, files);
+        if (id && !asDraft) {
+          try {
+            await giveDraft(id);
+          } catch (err) {
+            given = false;
+            ui.toast(`Saved as a draft. ${err instanceof ApiError ? err.message : ""}`, "warn");
+          }
+        }
       } else {
         const res = await giveGoal(wsId, { ...body, draft: asDraft });
         if (res.queued) ui.toast(res.reason ?? "You’re at your usage limit. The goal starts when it resets.", "warn");
         id = res.goal?.id;
       }
-      if (id) ui.toast(asDraft ? "Draft saved. Give it to the manager when it’s ready." : `Goal given to ${visibleMember(b, manager)?.name}.`, "ok");
+      if (id && asDraft) ui.toast("Draft saved. Give it to the manager when it’s ready.", "ok");
+      else if (id && given) ui.toast(`Goal given to ${visibleMember(b, manager)?.name}.`, "ok");
       ui.openDialog(null);
       if (id) ui.openSide({ type: "goal", id });
     } catch (err) {
@@ -84,6 +98,7 @@ export function GoalDialog({ managerId, draftId }: { managerId?: string; draftId
       <label className="field"><span>Done when <span style={{ fontWeight: 500 }}>(optional)</span></span>
         <input className="input" value={doneWhen} onChange={(e) => setDoneWhen(e.target.value)} placeholder="A refund shows up in the payment’s history" autoComplete="off" />
       </label>
+      <FilePicker files={files} onChange={setFiles} />
       {repos.length > 0 && (
         <>
           <label className="field"><span>Start from</span>
@@ -116,8 +131,8 @@ export function GoalDialog({ managerId, draftId }: { managerId?: string; draftId
       )}
       <div className="row"><span className="spacer" />
         <button type="button" className="btn" onClick={() => ui.openDialog(null)}>Cancel</button>
-        <button type="button" className="btn" disabled={!!busy || !title.trim() || !manager} onClick={() => send(true)}>{busy === "draft" ? "Saving…" : draft ? "Save draft" : "Save as draft"}</button>
-        <button className="btn btn-primary" disabled={!!busy || !title.trim() || !manager}>{busy === "give" ? "Giving…" : "Give goal"}</button>
+        <button type="button" className="btn" disabled={!!busy || !title.trim() || !manager || tooBig} onClick={() => send(true)}>{busy === "draft" ? "Saving…" : draft ? "Save draft" : "Save as draft"}</button>
+        <button className="btn btn-primary" disabled={!!busy || !title.trim() || !manager || tooBig}>{busy === "give" ? "Giving…" : "Give goal"}</button>
       </div>
     </form>
   );
