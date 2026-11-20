@@ -24,9 +24,15 @@ async function run<T>(p: Promise<T>, done?: string): Promise<T | undefined> {
 export const resolveSignal = (id: string, action: string, extra: Record<string, unknown> = {}) =>
   run(api("POST", `/signals/${id}/resolve`, { action, ...extra }));
 
-export async function giveGoal(wsId: string, body: { manager_id: string; title: string; description?: string; done_when?: string; runner_id?: string; base?: string; snapshot?: boolean }) {
+export type GoalBody = { manager_id: string; title: string; description?: string; done_when?: string; runner_id?: string; base?: string; snapshot?: boolean; draft?: boolean };
+
+export async function giveGoal(wsId: string, body: GoalBody) {
   return api<{ goal?: GoalView; queued?: boolean; reason?: string }>("POST", `/workspaces/${wsId}/goals`, body);
 }
+
+export const saveDraft = (goalId: string, body: GoalBody) => api<{ goal: GoalView }>("PUT", `/goals/${goalId}/draft`, body);
+export const giveDraft = (goalId: string) => api<{ goal: GoalView }>("POST", `/goals/${goalId}/give`);
+export const deleteDraft = (goalId: string) => run(api("DELETE", `/goals/${goalId}`), "Draft deleted.");
 
 export async function createTask(wsId: string, goalId: string | undefined, body: { title: string; description?: string; member_id: string; depends_on?: string[]; steps?: string[] }) {
   return api<{ task: TaskView }>("POST", goalId ? `/goals/${goalId}/tasks` : `/workspaces/${wsId}/tasks`, body);

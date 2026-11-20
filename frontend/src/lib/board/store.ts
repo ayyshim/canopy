@@ -90,6 +90,8 @@ function applyEvent(s: BoardState, type: string, data: unknown): Partial<BoardSt
       return nb({ tasks: b.tasks.filter((t) => t.id !== d.id) });
     case "goal.updated":
       return nb({ goals: upsert(b.goals, d, byId) });
+    case "goal.deleted":
+      return nb({ goals: b.goals.filter((g) => g.id !== d.id), goal_events: b.goal_events.filter((e) => e.goal_id !== d.id) });
     case "goal.event":
       return nb({ goal_events: [...b.goal_events, d] });
     case "goal.repo":
