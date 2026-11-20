@@ -29,7 +29,11 @@ their goals. Anything that needs a person, such as a question, an approval, acce
 a review, waits on the tree until someone answers.
 
 <p align="center">
-  <img src="docs/assets/board.gif" width="840" alt="A workspace board: a goal is planned, staff work on tasks, a question waits for an answer, and the goal finishes">
+  <img src="docs/assets/board.gif" width="840" alt="Canopy board with agents planning and working">
+</p>
+
+<p align="center">
+  <sub>A simulated run using the fake Claude, no model needed.</sub>
 </p>
 
 It comes as two programs:
