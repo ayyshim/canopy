@@ -53,7 +53,7 @@ const createOrganization = `-- name: CreateOrganization :one
 INSERT INTO organizations (id, name, slug, size, about, owner_user_id, default_session_limit, default_weekly_limit)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT (slug) DO NOTHING
-RETURNING id, name, slug, size, about, owner_user_id, default_session_limit, default_weekly_limit, timezone, created_at, updated_at
+RETURNING id, name, slug, size, about, owner_user_id, default_session_limit, default_weekly_limit, timezone, created_at, updated_at, logo_key
 `
 
 type CreateOrganizationParams struct {
@@ -91,6 +91,7 @@ func (q *Queries) CreateOrganization(ctx context.Context, arg CreateOrganization
 		&i.Timezone,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LogoKey,
 	)
 	return i, err
 }
@@ -132,7 +133,7 @@ func (q *Queries) GetActiveMembership(ctx context.Context, arg GetActiveMembersh
 }
 
 const getOrganization = `-- name: GetOrganization :one
-SELECT id, name, slug, size, about, owner_user_id, default_session_limit, default_weekly_limit, timezone, created_at, updated_at FROM organizations WHERE id = $1
+SELECT id, name, slug, size, about, owner_user_id, default_session_limit, default_weekly_limit, timezone, created_at, updated_at, logo_key FROM organizations WHERE id = $1
 `
 
 func (q *Queries) GetOrganization(ctx context.Context, id uuid.UUID) (Organization, error) {
@@ -150,12 +151,13 @@ func (q *Queries) GetOrganization(ctx context.Context, id uuid.UUID) (Organizati
 		&i.Timezone,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LogoKey,
 	)
 	return i, err
 }
 
 const listUserOrganizations = `-- name: ListUserOrganizations :many
-SELECT o.id, o.name, o.slug, m.org_role
+SELECT o.id, o.name, o.slug, o.logo_key, m.org_role
 FROM memberships m
 JOIN organizations o ON o.id = m.org_id
 WHERE m.user_id = $1 AND m.status = 'active'
@@ -166,6 +168,7 @@ type ListUserOrganizationsRow struct {
 	ID      uuid.UUID
 	Name    string
 	Slug    string
+	LogoKey *string
 	OrgRole string
 }
 
@@ -182,6 +185,7 @@ func (q *Queries) ListUserOrganizations(ctx context.Context, userID uuid.UUID) (
 			&i.ID,
 			&i.Name,
 			&i.Slug,
+			&i.LogoKey,
 			&i.OrgRole,
 		); err != nil {
 			return nil, err
@@ -194,6 +198,35 @@ func (q *Queries) ListUserOrganizations(ctx context.Context, userID uuid.UUID) (
 	return items, nil
 }
 
+const setOrganizationLogo = `-- name: SetOrganizationLogo :one
+UPDATE organizations SET logo_key = $1 WHERE id = $2 RETURNING id, name, slug, size, about, owner_user_id, default_session_limit, default_weekly_limit, timezone, created_at, updated_at, logo_key
+`
+
+type SetOrganizationLogoParams struct {
+	LogoKey *string
+	ID      uuid.UUID
+}
+
+func (q *Queries) SetOrganizationLogo(ctx context.Context, arg SetOrganizationLogoParams) (Organization, error) {
+	row := q.db.QueryRow(ctx, setOrganizationLogo, arg.LogoKey, arg.ID)
+	var i Organization
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.Size,
+		&i.About,
+		&i.OwnerUserID,
+		&i.DefaultSessionLimit,
+		&i.DefaultWeeklyLimit,
+		&i.Timezone,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.LogoKey,
+	)
+	return i, err
+}
+
 const updateOrganization = `-- name: UpdateOrganization :one
 UPDATE organizations
 SET name = coalesce($1, name),
@@ -201,7 +234,7 @@ SET name = coalesce($1, name),
     default_weekly_limit = coalesce($3, default_weekly_limit),
     timezone = coalesce($4, timezone)
 WHERE id = $5
-RETURNING id, name, slug, size, about, owner_user_id, default_session_limit, default_weekly_limit, timezone, created_at, updated_at
+RETURNING id, name, slug, size, about, owner_user_id, default_session_limit, default_weekly_limit, timezone, created_at, updated_at, logo_key
 `
 
 type UpdateOrganizationParams struct {
@@ -233,6 +266,7 @@ func (q *Queries) UpdateOrganization(ctx context.Context, arg UpdateOrganization
 		&i.Timezone,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LogoKey,
 	)
 	return i, err
 }

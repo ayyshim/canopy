@@ -26,7 +26,7 @@ func (q *Queries) CountOrgWorkspaces(ctx context.Context, orgID uuid.UUID) (int6
 const createWorkspace = `-- name: CreateWorkspace :one
 INSERT INTO workspaces (id, org_id, name, about, created_by)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, org_id, name, about, created_by, created_at, updated_at, goal_completion
+RETURNING id, org_id, name, about, created_by, created_at, updated_at, goal_completion, logo_key
 `
 
 type CreateWorkspaceParams struct {
@@ -55,6 +55,7 @@ func (q *Queries) CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.GoalCompletion,
+		&i.LogoKey,
 	)
 	return i, err
 }
@@ -83,7 +84,7 @@ func (q *Queries) DeleteWorkspaceAccess(ctx context.Context, arg DeleteWorkspace
 }
 
 const getWorkspace = `-- name: GetWorkspace :one
-SELECT id, org_id, name, about, created_by, created_at, updated_at, goal_completion FROM workspaces WHERE id = $1
+SELECT id, org_id, name, about, created_by, created_at, updated_at, goal_completion, logo_key FROM workspaces WHERE id = $1
 `
 
 func (q *Queries) GetWorkspace(ctx context.Context, id uuid.UUID) (Workspace, error) {
@@ -98,6 +99,7 @@ func (q *Queries) GetWorkspace(ctx context.Context, id uuid.UUID) (Workspace, er
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.GoalCompletion,
+		&i.LogoKey,
 	)
 	return i, err
 }
@@ -128,7 +130,7 @@ func (q *Queries) GetWorkspaceAccess(ctx context.Context, arg GetWorkspaceAccess
 }
 
 const listOrgWorkspaces = `-- name: ListOrgWorkspaces :many
-SELECT id, org_id, name, about, created_by, created_at, updated_at, goal_completion FROM workspaces WHERE org_id = $1 ORDER BY name, id
+SELECT id, org_id, name, about, created_by, created_at, updated_at, goal_completion, logo_key FROM workspaces WHERE org_id = $1 ORDER BY name, id
 `
 
 func (q *Queries) ListOrgWorkspaces(ctx context.Context, orgID uuid.UUID) ([]Workspace, error) {
@@ -149,6 +151,7 @@ func (q *Queries) ListOrgWorkspaces(ctx context.Context, orgID uuid.UUID) ([]Wor
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.GoalCompletion,
+			&i.LogoKey,
 		); err != nil {
 			return nil, err
 		}
@@ -215,7 +218,7 @@ func (q *Queries) ListUserWorkspaceAccessInOrg(ctx context.Context, arg ListUser
 }
 
 const listUserWorkspaces = `-- name: ListUserWorkspaces :many
-SELECT w.id, w.org_id, w.name, w.about, w.created_by, w.created_at, w.updated_at, w.goal_completion FROM workspaces w
+SELECT w.id, w.org_id, w.name, w.about, w.created_by, w.created_at, w.updated_at, w.goal_completion, w.logo_key FROM workspaces w
 JOIN workspace_access a ON a.workspace_id = w.id AND a.user_id = $2
 WHERE w.org_id = $1
 ORDER BY w.name, w.id
@@ -244,6 +247,7 @@ func (q *Queries) ListUserWorkspaces(ctx context.Context, arg ListUserWorkspaces
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.GoalCompletion,
+			&i.LogoKey,
 		); err != nil {
 			return nil, err
 		}
@@ -308,13 +312,39 @@ func (q *Queries) ListWorkspaceAccess(ctx context.Context, workspaceID uuid.UUID
 	return items, nil
 }
 
+const setWorkspaceLogo = `-- name: SetWorkspaceLogo :one
+UPDATE workspaces SET logo_key = $1 WHERE id = $2 RETURNING id, org_id, name, about, created_by, created_at, updated_at, goal_completion, logo_key
+`
+
+type SetWorkspaceLogoParams struct {
+	LogoKey *string
+	ID      uuid.UUID
+}
+
+func (q *Queries) SetWorkspaceLogo(ctx context.Context, arg SetWorkspaceLogoParams) (Workspace, error) {
+	row := q.db.QueryRow(ctx, setWorkspaceLogo, arg.LogoKey, arg.ID)
+	var i Workspace
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.Name,
+		&i.About,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.GoalCompletion,
+		&i.LogoKey,
+	)
+	return i, err
+}
+
 const updateWorkspace = `-- name: UpdateWorkspace :one
 UPDATE workspaces
 SET name = coalesce($1, name),
     about = coalesce($2, about),
     goal_completion = coalesce($3, goal_completion)
 WHERE id = $4
-RETURNING id, org_id, name, about, created_by, created_at, updated_at, goal_completion
+RETURNING id, org_id, name, about, created_by, created_at, updated_at, goal_completion, logo_key
 `
 
 type UpdateWorkspaceParams struct {
@@ -341,6 +371,7 @@ func (q *Queries) UpdateWorkspace(ctx context.Context, arg UpdateWorkspaceParams
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.GoalCompletion,
+		&i.LogoKey,
 	)
 	return i, err
 }

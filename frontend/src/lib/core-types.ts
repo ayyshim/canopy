@@ -10,6 +10,7 @@ export interface WorkspaceView {
   name: string;
   about: string;
   goal_completion: string; // manual or auto
+  logo_url?: string;
   created_at: string /* RFC3339 */;
 }
 export interface MemberView {
@@ -100,6 +101,17 @@ export interface CLIStatus {
   installed: boolean;
   version: string;
   logged_in: boolean;
+}
+/**
+ * SkillView is one skill in a workspace's library.
+ */
+export interface SkillView {
+  id: string /* uuid */;
+  name: string;
+  source_kind: string; // md or github
+  source_url: string;
+  content: string;
+  updated_at: string /* RFC3339 */;
 }
 
 //////////
@@ -258,15 +270,4 @@ export interface AccountView {
   paused: boolean;
   key_fingerprint: string;
   enabled: boolean;
-}
-/**
- * SkillView is one skill in a workspace's library.
- */
-export interface SkillView {
-  id: string /* uuid */;
-  name: string;
-  source_kind: string; // md or github
-  source_url: string;
-  content: string;
-  updated_at: string /* RFC3339 */;
 }
