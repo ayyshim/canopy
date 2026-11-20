@@ -104,6 +104,21 @@ func TestStaffProposalTools(t *testing.T) {
 	if list := owner.do("GET", base, nil).Body["proposals"].([]any); len(list) != 0 {
 		t.Fatalf("staff created drafts: %v", list)
 	}
+	if res := call(t, o, rn, rec, staffSess, protocol.ToolGetStaff, map[string]any{"member": "Dev"}); !res.IsError {
+		t.Errorf("staff get_staff_instructions: %+v", res)
+	}
+
+	// A manager can read their own staff's current instructions, not anyone else's.
+	devInstr := "Fix bugs. Keep changes small."
+	if _, err := e.store.UpdateMember(ctx, db.UpdateMemberParams{ID: dev, Instructions: &devInstr}); err != nil {
+		t.Fatal(err)
+	}
+	if res := call(t, o, rn, rec, mgrSess, protocol.ToolGetStaff, map[string]any{"member": "dev"}); res.IsError || res.Text != devInstr {
+		t.Errorf("get_staff_instructions: %+v", res)
+	}
+	if res := call(t, o, rn, rec, mgrSess, protocol.ToolGetStaff, map[string]any{"member": "Ivy"}); !res.IsError {
+		t.Errorf("read someone else's staff: %+v", res)
+	}
 	staffPrompt, _ := o.MemberPrompt(ctx, dev)
 	mgrPrompt, _ := o.MemberPrompt(ctx, riley)
 	if strings.Contains(staffPrompt, "propose_staff") || strings.Contains(staffPrompt, "update_staff_instructions") {
@@ -159,6 +174,15 @@ func TestStaffProposalTools(t *testing.T) {
 		t.Fatalf("approve: %d %v", r.Status, r.Body)
 	}
 	rec.wait(t, protocol.TSendInput, "approved your draft for Tess")
+
+	// The manager's answer to a decision shows up in their chat.
+	data, _ := json.Marshal(protocol.SessionEvent{SessionID: mgrSess, Status: protocol.SessionWaiting, TurnID: uuid.NewString(),
+		TurnKind: "staff_decision", ResultText: "Tess will review in the next plan."})
+	o.RunnerMessage(ctx, rn, protocol.Envelope{Type: protocol.TSessionEvent, Data: data})
+	chat := owner.do("GET", "/api/v1/workspaces/"+ws+"/members/"+riley.String()+"/chat", nil).Body
+	if raw, _ := json.Marshal(chat); !strings.Contains(string(raw), "Tess will review in the next plan.") {
+		t.Errorf("decision reply not in chat: %s", raw)
+	}
 	var upd map[string]any
 	for _, x := range owner.do("GET", base+"?status=pending", nil).Body["proposals"].([]any) {
 		upd = x.(map[string]any)
