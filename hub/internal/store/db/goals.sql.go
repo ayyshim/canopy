@@ -24,9 +24,9 @@ func (q *Queries) CountGoals(ctx context.Context, workspaceID uuid.UUID) (int64,
 }
 
 const createGoal = `-- name: CreateGoal :one
-INSERT INTO goals (id, workspace_id, manager_id, title, done_when, color, created_by, runner_id, base, branch, snapshot)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at
+INSERT INTO goals (id, workspace_id, manager_id, title, done_when, color, created_by, runner_id, base, branch, snapshot, description)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description
 `
 
 type CreateGoalParams struct {
@@ -41,6 +41,7 @@ type CreateGoalParams struct {
 	Base        string
 	Branch      string
 	Snapshot    bool
+	Description string
 }
 
 func (q *Queries) CreateGoal(ctx context.Context, arg CreateGoalParams) (Goal, error) {
@@ -56,6 +57,7 @@ func (q *Queries) CreateGoal(ctx context.Context, arg CreateGoalParams) (Goal, e
 		arg.Base,
 		arg.Branch,
 		arg.Snapshot,
+		arg.Description,
 	)
 	var i Goal
 	err := row.Scan(
@@ -80,12 +82,13 @@ func (q *Queries) CreateGoal(ctx context.Context, arg CreateGoalParams) (Goal, e
 		&i.ShowTasks,
 		&i.DoneBy,
 		&i.ReadyAt,
+		&i.Description,
 	)
 	return i, err
 }
 
 const getGoal = `-- name: GetGoal :one
-SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at FROM goals WHERE id = $1
+SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description FROM goals WHERE id = $1
 `
 
 func (q *Queries) GetGoal(ctx context.Context, id uuid.UUID) (Goal, error) {
@@ -113,6 +116,7 @@ func (q *Queries) GetGoal(ctx context.Context, id uuid.UUID) (Goal, error) {
 		&i.ShowTasks,
 		&i.DoneBy,
 		&i.ReadyAt,
+		&i.Description,
 	)
 	return i, err
 }
@@ -219,7 +223,7 @@ func (q *Queries) ListGoalRepos(ctx context.Context, goalID uuid.UUID) ([]GoalRe
 }
 
 const listGoals = `-- name: ListGoals :many
-SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at FROM goals WHERE workspace_id = $1 ORDER BY created_at, id
+SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description FROM goals WHERE workspace_id = $1 ORDER BY created_at, id
 `
 
 func (q *Queries) ListGoals(ctx context.Context, workspaceID uuid.UUID) ([]Goal, error) {
@@ -253,6 +257,7 @@ func (q *Queries) ListGoals(ctx context.Context, workspaceID uuid.UUID) ([]Goal,
 			&i.ShowTasks,
 			&i.DoneBy,
 			&i.ReadyAt,
+			&i.Description,
 		); err != nil {
 			return nil, err
 		}
@@ -265,7 +270,7 @@ func (q *Queries) ListGoals(ctx context.Context, workspaceID uuid.UUID) ([]Goal,
 }
 
 const listGoalsMovedSince = `-- name: ListGoalsMovedSince :many
-SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at FROM goals WHERE workspace_id = $1 AND updated_at >= $2 ORDER BY updated_at DESC LIMIT 20
+SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description FROM goals WHERE workspace_id = $1 AND updated_at >= $2 ORDER BY updated_at DESC LIMIT 20
 `
 
 type ListGoalsMovedSinceParams struct {
@@ -304,6 +309,7 @@ func (q *Queries) ListGoalsMovedSince(ctx context.Context, arg ListGoalsMovedSin
 			&i.ShowTasks,
 			&i.DoneBy,
 			&i.ReadyAt,
+			&i.Description,
 		); err != nil {
 			return nil, err
 		}
@@ -395,7 +401,7 @@ SET status = coalesce($1, status),
     done_by = CASE WHEN $11::boolean THEN $12 ELSE done_by END,
     ready_at = CASE WHEN $13::boolean THEN now() ELSE ready_at END
 WHERE id = $14
-RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at
+RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description
 `
 
 type UpdateGoalParams struct {
@@ -455,6 +461,7 @@ func (q *Queries) UpdateGoal(ctx context.Context, arg UpdateGoalParams) (Goal, e
 		&i.ShowTasks,
 		&i.DoneBy,
 		&i.ReadyAt,
+		&i.Description,
 	)
 	return i, err
 }

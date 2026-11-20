@@ -195,6 +195,7 @@ type Goal struct {
 	ShowTasks   bool
 	DoneBy      *uuid.UUID
 	ReadyAt     *time.Time
+	Description string
 }
 
 type GoalEvent struct {
