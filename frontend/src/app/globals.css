@@ -687,8 +687,7 @@ body.on-board.tray-open .toasts{bottom:314px}
   .onb-rail .steps button:not([aria-current="step"]){font-size:0;gap:0;padding:10px 8px}
   .onb-foot{position:sticky;bottom:0;padding-top:12px;padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
   .onb-foot .row{flex-wrap:wrap;justify-content:flex-end}
-  .grid2,.tiles{grid-template-columns:1fr 1fr}
-  .grid2{grid-template-columns:1fr}
+  .tiles{grid-template-columns:1fr 1fr}
   .panel{padding:14px}
   .table th,.table td{padding:8px 6px}
 }
