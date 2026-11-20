@@ -3,7 +3,8 @@
 import { create } from "zustand";
 
 export type Side = { type: "ws" | "goal" | "task" | "people" | "pool" | "dirs" | "notes"; id?: string };
-export type ChatWin = { id: string; full?: boolean; min?: boolean; tab?: "chat" | "activity" | "settings" };
+export type ChatAnchor = { left: number; top: number; right: number; bottom: number };
+export type ChatWin = { id: string; anchor?: ChatAnchor; full?: boolean; min?: boolean; tab?: "chat" | "activity" | "settings" };
 export type Dialog =
   | { kind: "goal"; managerId?: string }
   | { kind: "task"; goalId?: string; memberId?: string }
