@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -244,6 +245,12 @@ func (b *boardConn) seesMemberID(ctx context.Context, id *uuid.UUID) bool {
 	return ok && b.view.v.CanSeeMember(m)
 }
 
+// canChatWith is false for an isolated staff member's chat unless the viewer created it.
+func (b *boardConn) canChatWith(ctx context.Context, id uuid.UUID) bool {
+	m, ok := b.member(ctx, id)
+	return ok && (!m.Isolated || (m.CreatedBy != nil && *m.CreatedBy == b.user.ID))
+}
+
 // filter decides whether this viewer gets an event (SPEC: "Staff viewers receive only permitted
 // nodes and cursors over the socket").
 func (b *boardConn) filter(ctx context.Context, e realtime.Event) (outMsg, bool) {
@@ -300,6 +307,9 @@ func (b *boardConn) filter(ctx context.Context, e realtime.Event) (outMsg, bool)
 	if e.MemberID != nil && !forMe && !b.seesMemberID(ctx, e.MemberID) {
 		return outMsg{}, false
 	}
+	if e.MemberID != nil && strings.HasPrefix(e.Type, "chat.") && !b.canChatWith(ctx, *e.MemberID) {
+		return outMsg{}, false
+	}
 	return outMsg{Type: e.Type, Seq: e.Seq, Data: json.RawMessage(e.Data)}, true
 }
 
@@ -340,7 +350,7 @@ func (b *boardConn) readLoop(ctx context.Context, cancel context.CancelFunc) {
 			var t struct {
 				MemberID uuid.UUID `json:"member_id"`
 			}
-			if json.Unmarshal(in.Data, &t) != nil || !b.seesMemberID(ctx, &t.MemberID) {
+			if json.Unmarshal(in.Data, &t) != nil || !b.seesMemberID(ctx, &t.MemberID) || !b.canChatWith(ctx, t.MemberID) {
 				continue
 			}
 			b.s.Bus.Publish(ctx, realtime.Event{OrgID: b.ws.OrgID, WorkspaceID: &b.ws.ID, Type: "chat.typing", Ephemeral: true, FromUser: &b.user.ID,
