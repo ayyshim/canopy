@@ -633,3 +633,13 @@ body.on-board.tray-open .toasts{bottom:314px}
 .kindcard:focus-visible{outline:2px solid var(--green);outline-offset:2px}
 @media (max-width:520px){.kindcards{grid-template-columns:1fr}}
 .skill-item .linkbtn{font-size:14px;text-decoration:none;padding:2px 0}
+/* Phones: keep the top bar inside the screen */
+@media (max-width:600px){
+  .topbar{gap:6px;padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px))}
+  .topbar>.brand{display:none}
+  .topbar>.mw{min-width:0}
+  .topbar .wsbtn{max-width:100%;min-width:0;gap:6px;padding:0 6px}
+  .topbar .btn{padding-inline:10px}
+  .dialog>.row:last-child{position:sticky;bottom:-20px;margin-bottom:-20px;padding-block:10px 20px;background:var(--card);border-top:1px solid var(--edge)}
+  .cfoot{flex-direction:column;align-items:flex-start;gap:2px}
+}
