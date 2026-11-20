@@ -348,6 +348,7 @@ const (
 	ToolProposeStaff   = "propose_staff"
 	ToolUpdateStaff    = "update_staff_instructions"
 	ToolGetStaff       = "get_staff_instructions"
+	ToolReadBoard      = "read_board"
 )
 
 // ---- Directory mirror (DECISIONS: Directories) ----
