@@ -46,9 +46,9 @@ curl -fsSL https://github.com/ayyshim/canopy/releases/latest/download/install.sh
 curl -fsSL https://github.com/ayyshim/canopy/releases/latest/download/install.sh | sh -s -- hub
 ```
 
-Add `--version v0.1.0` after `--` for a particular release. While the repository is private,
-`curl` can’t download it. Use the GitHub CLI, signed in:
-`gh release download -R ayyshim/canopy -p install.sh -O - | sh`.
+Add `--version v0.1.0` after `--` for a particular release. For a private fork, where `curl`
+can’t download, use the GitHub CLI, signed in:
+`gh release download -R OWNER/canopy -p install.sh -O - | CANOPY_REPO=OWNER/canopy sh`.
 
 If you downloaded or built a binary yourself, let it install itself:
 
@@ -83,11 +83,15 @@ What the computer needs:
    canopy-hub
    ```
 
-   It keeps its data in `~/.local/share/canopy-hub`, starts its own PostgreSQL there, and prints
-   a setup link:
+   It starts in the background, keeps its data in `~/.local/share/canopy-hub` with its own
+   PostgreSQL, and prints where to open it and a setup link:
 
    ```
-   WARN this hub isn't set up yet; open the setup link ... setup_url="http://localhost:8080/hub-setup?token=..."
+   The hub is running (pid 4182).
+     Open:   http://localhost:8080
+     Set up: http://localhost:8080/hub-setup?token=...
+     Data:   /home/you/.local/share/canopy-hub
+     Logs:   /home/you/.local/share/canopy-hub/hub.log
    ```
 
 2. Open the setup link. Name the hub and create the first hub admin (you). You land on the hub
@@ -111,10 +115,13 @@ What the computer needs:
    how Claude Code signs in, review the members, and press **Create workspace**. Give a manager a
    goal and watch the tree.
 
-Stop the hub with Ctrl+C. Start it again with `canopy-hub` from any folder; everything is in
-`~/.local/share/canopy-hub`. Hubs before this change kept their data in `./canopy-data` under the
-folder they started in; the hub warns when it finds one. Keep using it with
-`canopy-hub --data ./canopy-data`.
+`canopy-hub status` shows the same again, including the setup link until setup is done.
+`canopy-hub stop` stops the hub; `canopy-hub` starts it again from any folder. Everything is in
+`~/.local/share/canopy-hub`. To keep the hub in the terminal instead, with its log on screen,
+run `canopy-hub --foreground` (Ctrl+C stops it).
+
+Older hubs kept their data in `./canopy-data` under the folder they started in. The hub warns
+when it finds one; keep using it with `canopy-hub --data ./canopy-data`.
 
 ## Run it for a team
 
@@ -124,12 +131,11 @@ runner port (8443).
 
 ### Option A: the hub handles HTTPS itself
 
-Point a DNS name at the server, install the hub for every user (`sudo` puts it in
-`/usr/local/bin`), then start it:
+Point a DNS name at the server, then install the hub as a boot service (see
+[Start at boot](#start-at-boot-systemd)):
 
 ```sh
-sudo ./canopy-hub-linux-amd64 install
-sudo canopy-hub --domain canopy.example.com --data /var/lib/canopy
+sudo canopy-hub --as-srv --domain canopy.example.com
 ```
 
 It gets certificates from Let’s Encrypt automatically. It listens on 80 and 443 for people and on
@@ -138,10 +144,7 @@ It gets certificates from Let’s Encrypt automatically. It listens on 80 and 44
 ### Option B: behind Caddy or nginx
 
 ```sh
-TRUST_PROXY=true canopy-hub \
-  --addr 127.0.0.1:8080 \
-  --public-url https://canopy.example.com \
-  --data /var/lib/canopy
+sudo TRUST_PROXY=true canopy-hub --as-srv --addr 127.0.0.1:8080 --public-url https://canopy.example.com
 ```
 
 Proxy everything for that name to `127.0.0.1:8080`, including WebSockets on `/ws/`.
@@ -154,39 +157,50 @@ Without SMTP the hub writes emails (invites, password resets, notifications) to 
 them:
 
 ```sh
-SMTP_ADDR=smtp.example.com:587 SMTP_FROM="Canopy <canopy@example.com>" canopy-hub ...
+sudo SMTP_ADDR=smtp.example.com:587 SMTP_FROM="Canopy <canopy@example.com>" canopy-hub --as-srv ...
 ```
+
+Put the settings after `sudo`, as above: `sudo` drops settings set before it. `--as-srv` saves
+them in `DATA/hub.env`. To change them later, edit that file and run
+`sudo systemctl restart canopy-hub`.
 
 People choose their own notifications on **Account and notifications**. Questions, approvals,
 errors and goals that are ready are emailed after they’ve waited two minutes. The daily summary
 goes out at 8:00 in the time zone of the person’s current organization. Desktop notifications show while Canopy is open in
 a background tab.
 
-### Keep it running (systemd)
+### Start at boot (systemd)
 
-`/etc/systemd/system/canopy-hub.service`:
-
-```ini
-[Unit]
-Description=Canopy hub
-After=network-online.target
-
-[Service]
-User=canopy
-ExecStart=/usr/local/bin/canopy-hub --domain canopy.example.com --data /var/lib/canopy
-Environment=SMTP_ADDR=smtp.example.com:587
-Environment="SMTP_FROM=Canopy <canopy@example.com>"
-AmbientCapabilities=CAP_NET_BIND_SERVICE
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
+On Linux with systemd, `--as-srv` installs the hub as a service that starts at every boot:
 
 ```sh
-sudo systemctl enable --now canopy-hub
-journalctl -u canopy-hub -f      # the first start prints the setup link here
+sudo canopy-hub --as-srv [flags]
 ```
+
+It:
+
+- creates the system user `canopy`, because the built-in PostgreSQL refuses to run as root;
+- copies the binary to `/usr/local/bin/canopy-hub`;
+- keeps data in `/var/lib/canopy` (or `--data`), owned by `canopy`. If you ran the hub as yourself
+  before, it copies your `~/.local/share/canopy-hub` there first, so nothing is lost;
+- saves the settings you passed after `sudo` in `/var/lib/canopy/hub.env`;
+- writes `/etc/systemd/system/canopy-hub.service`, enables it, starts it, and prints the address
+  and setup link.
+
+Run it again with new flags to change them. Then:
+
+```sh
+sudo canopy-hub status        # running?, address, setup link
+sudo canopy-hub stop          # stop now; it starts again at the next boot
+sudo canopy-hub               # start it again now
+journalctl -u canopy-hub -f   # its log
+sudo canopy-hub remove-srv    # remove the service; the data stays in /var/lib/canopy
+```
+
+`sudo canopy-hub migrate …` and `sudo canopy-hub backup` run as `canopy` by themselves.
+
+On macOS, or without systemd, start the hub in the background with `canopy-hub`, or run
+`canopy-hub --foreground` from your own service manager.
 
 ### Testing on a home network over plain http
 
@@ -194,7 +208,7 @@ Browsers only keep secure cookies on https and on localhost. For a quick test fr
 machines over http, turn that off:
 
 ```sh
-COOKIE_SECURE=false canopy-hub --public-url http://192.168.1.20:8080 --addr :8080
+COOKIE_SECURE=false canopy-hub --public-url http://192.168.1.20:8080
 ```
 
 ### Upgrades and backups
@@ -202,14 +216,16 @@ COOKIE_SECURE=false canopy-hub --public-url http://192.168.1.20:8080 --addr :808
 - **Upgrade:** stop the hub, install the new binary (see [Install](#install)), start it. It backs up the database into
   `DATA/backups` and then upgrades it. `canopy-hub migrate status` shows what an upgrade would
   change; `--no-auto-migrate` makes the hub refuse to start until you run `canopy-hub migrate up`.
-- **Back up:** stop the hub and run `canopy-hub backup --data /var/lib/canopy`. Also copy
+- **Back up:** stop the hub and run `canopy-hub backup` (`sudo canopy-hub backup` for the boot
+  service). Also copy
   `DATA/blobs` (outputs, folder copies, branch backups) unless you use S3.
 - **Your own PostgreSQL:** set `DATABASE_URL=postgres://user:pass@host/canopy`. Back it up with
   `pg_dump`.
 
 What’s in the data directory: `postgres/` (the database), `blobs/` (files), `certs/` (HTTPS
-certificates with `--domain`), `backups/`, and `hub.lock`, which stops two hubs from sharing one
-directory.
+certificates with `--domain`), `backups/`, `hub.env` (settings), `hub.log` (the log in the
+background), `hub.json` (the running hub’s address, for `status`), and `hub.lock`, which holds the
+running hub’s process id and stops two hubs from sharing one directory.
 
 ## Connect people’s computers
 
@@ -245,7 +261,13 @@ their own computer then run goals there.
 ### canopy-hub
 
 ```
-canopy-hub [serve] [flags]     run the hub (the default)
+canopy-hub [serve] [flags]     start the hub in the background (the default)
+canopy-hub --foreground [flags]
+                               run the hub in this terminal
+canopy-hub --as-srv [flags]    install the hub as a boot service (Linux, with sudo)
+canopy-hub status [--data DIR] whether the hub runs, its address and setup link
+canopy-hub stop [--data DIR]   stop the hub
+canopy-hub remove-srv          remove the boot service; its data stays
 canopy-hub install [--dir DIR] [--no-path]
                                copy this binary into a folder on PATH as canopy-hub
 canopy-hub migrate status      show the data's version and what an upgrade would change
@@ -261,10 +283,15 @@ Flags for `serve` (`migrate` and `backup` take `--data` too):
 |---|---|---|---|
 | `--data DIR` | `CANOPY_DATA_DIR` | `~/.local/share/canopy-hub` (`$XDG_DATA_HOME/canopy-hub` if set), `/var/lib/canopy` as root | Where the hub keeps everything |
 | `--addr ADDR` | `HUB_ADDR` | `:8080` | Web and API listen address |
-| `--public-url URL` | `PUBLIC_URL` | `http://localhost:8080` | The address people open; used in links and emails |
+| `--public-url URL` | `PUBLIC_URL` | `http://localhost:` plus the `--addr` port | The address people open; used in links and emails |
 | `--domain NAME` | | | Serve HTTPS for NAME on 443, with automatic certificates |
 | `--runner-addr ADDR` | `RUNNER_ADDR` | `:8443` | Where computers connect (mutual TLS) |
 | `--no-auto-migrate` | | off | Refuse to start if the data needs an upgrade |
+| `--foreground` | | off | Stay in this terminal and log there, instead of starting in the background |
+| `--as-srv` | | | Install as a systemd service that starts at boot, with the other flags (Linux, needs `sudo`) |
+
+Settings can also go in `DATA/hub.env` as `KEY=value` lines. Settings in the environment win
+over the file.
 
 Other environment variables:
 
