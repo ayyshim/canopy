@@ -163,6 +163,10 @@ func (o *Orch) onRateLimit(ctx context.Context, rn db.Runner, r protocol.RateLim
 		if r.ResetsAt != nil {
 			util["resets_at"] = r.ResetsAt
 		}
+		if len(r.Windows) > 0 {
+			util["windows"] = r.Windows // percent used, reset time and status per window
+		}
+		util["reported_at"] = o.now()
 		params := db.UpdateAccountStateParams{RunnerID: rn.ID, Cli: r.CLI, Utilization: mustJSON(util)}
 		if r.Limited {
 			until := o.now().Add(time.Hour)
