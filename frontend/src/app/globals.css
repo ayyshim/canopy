@@ -423,13 +423,13 @@ body.on-board.tray-open .toasts{bottom:314px}
 .pnav button:hover{background:var(--soft)}
 .pnav button[aria-current="page"]{background:var(--green-soft);font-weight:600}
 .pmain{flex:1;overflow:auto;padding-block:36px 60px;padding-left:max(44px,env(safe-area-inset-left,0px));padding-right:max(44px,env(safe-area-inset-right,0px))}
-.page-in{max-width:1080px;display:flex;flex-direction:column;gap:16px}
+.page-in{min-width:0;max-width:1080px;display:flex;flex-direction:column;gap:16px}
 .page-in .lead{color:var(--muted);margin-top:-8px}
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .tile{background:var(--soft);border:0;border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
 .tile b{font:700 22px var(--font-display);font-variant-numeric:tabular-nums}
 .tile .muted{font-size:12px}
-.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:16px}
 .panel{padding:18px 20px;display:flex;flex-direction:column;gap:12px;min-width:0}
 .panel h2{font-size:16px}
 .heat{display:grid;grid-template-columns:34px repeat(24,1fr);gap:2px;font-size:10.5px;color:var(--muted)}
@@ -587,7 +587,7 @@ body.on-board.tray-open .toasts{bottom:314px}
 /* Prototype controls (not part of the product) */
 
 @media (max-width:900px){
-  .auth-art,.onb-rail,.pnav{display:none}
+  .auth-art{display:none}
   .auth-main{padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
   .onb-body{padding-block:32px 20px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
   .onb-foot{padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
@@ -655,3 +655,40 @@ body.on-board.tray-open .toasts{bottom:314px}
   .wsbtn{max-width:44vw}
 }
 @media (max-width:640px){.topbar .mw,.topbar .menu-wrap{min-width:0}.topbar .wsbtn{max-width:100%}.topbar .menu-wrap .btn{max-width:100%}.menu-wrap .menu{max-width:calc(100vw - 20px)}}
+
+/* Non-board pages on small screens */
+@media (max-width:900px){
+  .pwrap{flex-direction:column}
+  .pnav{display:flex;align-items:center;gap:4px;width:auto;border-right:0;border-bottom:1px solid var(--edge);padding:8px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .pnav>*{flex:none}
+  .pnav h2{margin:0 4px 0 10px;white-space:nowrap}
+  .pnav h2:first-child{margin-left:0}
+  .pnav a{width:auto;white-space:nowrap}
+  .pnav>h2[style]{margin-top:0!important}
+  .onb{flex-direction:column}
+  .onb-rail{width:auto;flex-direction:row;flex-wrap:wrap;align-items:center;border-right:0;border-bottom:1px solid var(--edge);padding-block:12px;padding-right:max(20px,env(safe-area-inset-right,0px));padding-left:max(20px,env(safe-area-inset-left,0px))}
+  .onb-rail>.grow,.onb-rail>.fine{display:none}
+  .onb-rail>.row{order:2;margin:0 0 0 auto!important}
+  .onb-rail .steps{order:3;flex-direction:row;width:100%;margin:10px 0 0;overflow-x:auto}
+  .onb-rail .steps li{flex:none}
+  .onb-rail .steps button{width:auto;white-space:nowrap}
+  .onb-main{flex:none;min-height:0}
+}
+@media (max-width:640px){
+  .pmain{padding-block:20px 40px;padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px))}
+  .ptop{gap:8px}
+  .ptop .brand b{display:none}
+  .ptop .btn{padding:0 12px}
+  h1,.authcard h1{font-size:26px}
+  .onb-body h1{font-size:28px}
+  .onb-body .lead,.authcard .lead{font-size:15px}
+  .auth-main{padding-block:20px}
+  .auth-center{padding:20px 0;align-items:flex-start}
+  .onb-rail .steps button:not([aria-current="step"]){font-size:0;gap:0;padding:10px 8px}
+  .onb-foot{position:sticky;bottom:0;padding-top:12px;padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
+  .onb-foot .row{flex-wrap:wrap;justify-content:flex-end}
+  .grid2,.tiles{grid-template-columns:1fr 1fr}
+  .grid2{grid-template-columns:1fr}
+  .panel{padding:14px}
+  .table th,.table td{padding:8px 6px}
+}
