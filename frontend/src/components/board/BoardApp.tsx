@@ -7,7 +7,10 @@ import { useDesktopNotifications } from "@/lib/board/notify";
 import { useBoardSocket } from "@/lib/board/socket";
 import { useBoard } from "@/lib/board/store";
 import { useUI } from "@/lib/board/ui";
+import { isWorkspaceActive } from "@/lib/liveStatus";
 import { useMe } from "@/lib/me";
+import { useLiveTab } from "@/lib/useLiveTab";
+import { currentOrg } from "@/lib/api";
 import { Canvas } from "./Canvas";
 import { Chats } from "./chat/ChatWindow";
 import { BoardCtx, useB, useBoardCtx } from "./context";
@@ -25,6 +28,7 @@ export function BoardApp({ wsId }: { wsId: string }) {
   const gone = useBoard((s) => s.gone);
   const send = useCallback((type: string, data: unknown) => sendRef.current(type, data), [sendRef]);
   useDesktopNotifications(me);
+  useLiveTab(currentOrg(me)?.name, board?.workspace.name ?? "", !!board && isWorkspaceActive(board));
 
   useEffect(() => {
     try { localStorage.setItem("canopy-last-ws", wsId); } catch { /* storage blocked */ }
