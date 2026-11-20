@@ -10,27 +10,29 @@ import (
 
 // wsState is everything a scheduling pass needs about one workspace.
 type wsState struct {
-	ws        db.Workspace
-	members   []db.Member
-	member    map[uuid.UUID]db.Member
-	tasks     []db.Task
-	task      map[uuid.UUID]db.Task
-	goals     []db.Goal
-	goal      map[uuid.UUID]db.Goal
-	session   map[sessKey]db.Session // newest session per member and goal (or person)
-	grants    map[uuid.UUID][]db.DirectoryGrant
-	dirs      []db.Directory
-	dir       map[uuid.UUID]db.Directory
-	dirAccess map[uuid.UUID]map[uuid.UUID]string
-	clones    []db.DirectoryClone
-	goalRepos map[uuid.UUID][]db.GoalRepo
-	runners   map[uuid.UUID]db.Runner
-	defaults  map[uuid.UUID]uuid.UUID // person → their computer for goals
-	shared    []uuid.UUID             // shared computers, oldest first
-	accounts  map[acctKey]db.Account
-	conns     map[acctKey]db.CliConnection
-	signals   []db.Signal
-	online    func(uuid.UUID) bool
+	ws           db.Workspace
+	members      []db.Member
+	member       map[uuid.UUID]db.Member
+	tasks        []db.Task
+	task         map[uuid.UUID]db.Task
+	goals        []db.Goal
+	goal         map[uuid.UUID]db.Goal
+	session      map[sessKey]db.Session // newest session per member and goal (or person)
+	grants       map[uuid.UUID][]db.DirectoryGrant
+	dirs         []db.Directory
+	dir          map[uuid.UUID]db.Directory
+	dirAccess    map[uuid.UUID]map[uuid.UUID]string
+	clones       []db.DirectoryClone
+	goalRepos    map[uuid.UUID][]db.GoalRepo
+	runners      map[uuid.UUID]db.Runner
+	defaults     map[uuid.UUID]uuid.UUID // person → their computer for goals
+	shared       []uuid.UUID             // shared computers, oldest first
+	accounts     map[acctKey]db.Account
+	conns        map[acctKey]db.CliConnection
+	signals      []db.Signal
+	skills       []db.WorkspaceSkill               // the workspace skill library, by name
+	memberSkills map[uuid.UUID][]db.WorkspaceSkill // skills attached to each member
+	online       func(uuid.UUID) bool
 
 	mirrorCache map[uuid.UUID]map[uuid.UUID]string
 }
@@ -144,6 +146,23 @@ func (o *Orch) load(ctx context.Context, q *db.Queries, wsID uuid.UUID) (*wsStat
 	}
 	if st.signals, err = q.ListOpenSignals(ctx, wsID); err != nil {
 		return nil, err
+	}
+	if st.skills, err = q.ListWorkspaceSkills(ctx, wsID); err != nil {
+		return nil, err
+	}
+	links, err := q.ListWorkspaceMemberSkills(ctx, wsID)
+	if err != nil {
+		return nil, err
+	}
+	bySkill := map[uuid.UUID]db.WorkspaceSkill{}
+	for _, sk := range st.skills {
+		bySkill[sk.ID] = sk
+	}
+	st.memberSkills = map[uuid.UUID][]db.WorkspaceSkill{}
+	for _, l := range links {
+		if sk, ok := bySkill[l.SkillID]; ok {
+			st.memberSkills[l.MemberID] = append(st.memberSkills[l.MemberID], sk)
+		}
 	}
 	return st, nil
 }

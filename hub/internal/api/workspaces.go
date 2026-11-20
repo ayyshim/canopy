@@ -18,6 +18,7 @@ import (
 	"canopy/hub/internal/domain"
 	"canopy/hub/internal/httpx"
 	"canopy/hub/internal/mail"
+	"canopy/hub/internal/skills"
 	"canopy/hub/internal/store/db"
 	"canopy/shared/protocol"
 )
@@ -99,6 +100,17 @@ type setupMember struct {
 	AllDirectories bool         `json:"all_directories"`
 	Grants         []setupGrant `json:"grants"`
 	Instructions   string       `json:"instructions"`
+	SkillKeys      []string     `json:"skill_keys"` // library skills (setupSkill keys) this member starts with
+}
+
+// setupSkill is a library skill added during setup. GitHub skills arrive already fetched
+// (through the preview endpoint) so the review page shows exactly what is stored.
+type setupSkill struct {
+	Key        string `json:"key"`
+	Name       string `json:"name"`
+	SourceKind string `json:"source_kind"`
+	SourceURL  string `json:"source_url"`
+	Content    string `json:"content"`
 }
 
 type setupPerson struct {
@@ -123,6 +135,7 @@ type setupPayload struct {
 		Kind string `json:"kind"`
 	} `json:"directories"`
 	CLIs      []setupCLI    `json:"clis"`
+	Skills    []setupSkill  `json:"skills"`
 	Members   []setupMember `json:"members"`
 	People    []setupPerson `json:"people"`
 	FirstGoal *struct {
@@ -241,6 +254,39 @@ func (s *Server) validateSetup(ctx context.Context, orgID uuid.UUID, p *setupPay
 	if managers == 0 {
 		v.Add("members", "Add at least one manager.")
 	}
+	skillKeys := map[string]bool{}
+	skillNames := map[string]bool{}
+	for i := range p.Skills {
+		sk := &p.Skills[i]
+		f := fmt.Sprintf("skills.%d.", i)
+		sk.Name = strings.TrimSpace(sk.Name)
+		if sk.Key == "" || skillKeys[sk.Key] {
+			v.Add(f+"key", "Each skill needs its own key.")
+		}
+		skillKeys[sk.Key] = true
+		if sk.Name == "" || utf8.RuneCountInString(sk.Name) > maxSkillName {
+			v.Add(f+"name", "Give the skill a name under 80 characters.")
+		} else if skillNames[strings.ToLower(sk.Name)] {
+			v.Add(f+"name", "Two skills can’t share a name.")
+		}
+		skillNames[strings.ToLower(sk.Name)] = true
+		if sk.SourceKind != "md" && sk.SourceKind != "github" {
+			v.Add(f+"source_kind", "Choose a markdown file or a GitHub link.")
+		}
+		if sk.SourceKind == "github" {
+			if _, err := skills.RawURL(sk.SourceURL); err != nil {
+				v.Add(f+"source_url", err.Error())
+			}
+		}
+		if sk.SourceKind == "md" {
+			sk.SourceURL = ""
+		}
+		if c, err := skills.Check(sk.Content); err != nil {
+			v.Add(f+"content", err.Error())
+		} else {
+			sk.Content = c
+		}
+	}
 	grantsOf := map[string][]domain.Grant{} // by member key, directory keys mapped to fake IDs
 	keyID := map[string]uuid.UUID{}
 	for k := range dirKeys {
@@ -273,6 +319,11 @@ func (s *Server) validateSetup(ctx context.Context, orgID uuid.UUID, p *setupPay
 			m.AllDirectories = false
 		default:
 			v.Add(f+"kind", "Choose manager or staff.")
+		}
+		for _, k := range m.SkillKeys {
+			if !skillKeys[k] {
+				v.Add(f+"skill_keys", "Unknown skill.")
+			}
 		}
 		if len(enabledCLIs) > 0 && !enabledCLIs[m.CLI] {
 			v.Add(f+"cli", "Choose a CLI that’s turned on.")
@@ -467,6 +518,15 @@ func (s *Server) handleCreateWorkspace(w http.ResponseWriter, r *http.Request) e
 		// Managers first so staff can point at them.
 		ordered := append([]setupMember{}, p.Members...)
 		pos := 0
+		skillIDs := map[string]uuid.UUID{}
+		for _, sk := range p.Skills {
+			row, err := q.CreateWorkspaceSkill(ctx, db.CreateWorkspaceSkillParams{ID: newID(), WorkspaceID: ws.ID, Name: sk.Name,
+				SourceKind: sk.SourceKind, SourceUrl: strings.TrimSpace(sk.SourceURL), Content: sk.Content})
+			if err != nil {
+				return err
+			}
+			skillIDs[sk.Key] = row.ID
+		}
 		for _, pass := range []string{"manager", "staff"} {
 			for _, m := range ordered {
 				if m.Kind != pass {
@@ -492,6 +552,11 @@ func (s *Server) handleCreateWorkspace(w http.ResponseWriter, r *http.Request) e
 				}
 				pos++
 				memberIDs[m.Key] = mem.ID
+				for _, k := range m.SkillKeys {
+					if err := q.AttachMemberSkill(ctx, db.AttachMemberSkillParams{MemberID: mem.ID, SkillID: skillIDs[k]}); err != nil {
+						return err
+					}
+				}
 				if m.AllDirectories {
 					for _, dirID := range dirIDs {
 						if _, err := q.UpsertGrant(ctx, db.UpsertGrantParams{ID: newID(), MemberID: mem.ID, DirectoryID: dirID,

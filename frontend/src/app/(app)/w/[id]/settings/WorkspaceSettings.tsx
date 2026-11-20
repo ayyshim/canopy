@@ -7,7 +7,9 @@ import { Markdown } from "@/components/board/panels/bits";
 import { FolderPicker } from "@/components/FolderPicker";
 import { Denied, PageShell, Section } from "@/components/PageShell";
 import { api, ApiError, currentOrg, hardNavigate, isOrgAdmin } from "@/lib/api";
+import { SkillAdd, SkillList, SkillPicker, SkillsIntro } from "@/components/skills/Skills";
 import { useMe } from "@/lib/me";
+import type { SkillView } from "@/lib/skills";
 import { isHidden, SKILL_LABEL, type AnyMember, type CloneView, type Computer, type DirectoryDetail, type GrantView, type MemberView, type NoteView, type WorkspaceSummary, type WorkspaceView } from "@/lib/types";
 
 type Detail = { workspace: WorkspaceView; viewer: { role: string }; members: AnyMember[]; directories: DirectoryDetail[]; grants: GrantView[]; clones: CloneView[] };
@@ -53,6 +55,7 @@ function Inner() {
           {tab === "general" && <General d={d} run={run} />}
           {tab === "directories" && <Directories d={d} run={run} />}
           {tab === "members" && <Members d={d} run={run} />}
+          {tab === "skills" && <Skills d={d} />}
           {tab === "access" && <AccessTab d={d} run={run} />}
           {tab === "danger" && (orgAdmin ? <Danger d={d} run={run} /> : <Denied title="Danger zone" />)}
         </>
@@ -149,6 +152,41 @@ function NoteDialog({ wsId, note, close }: { wsId: string; note?: NoteView; clos
         </div>
       </form>
     </div>
+  );
+}
+
+type Library = { skills: SkillView[]; member_skills: Record<string, string[]> };
+
+/** useLibrary loads the workspace skill library and who has which skill. */
+function useLibrary(wsId: string) {
+  const [lib, setLib] = useState<Library>({ skills: [], member_skills: {} });
+  const [ready, setReady] = useState(false);
+  const reload = useCallback(() => api<Library>("GET", `/workspaces/${wsId}/skills`).then((r) => { setLib({ skills: r.skills, member_skills: r.member_skills ?? {} }); setReady(true); }, () => setReady(true)), [wsId]);
+  useEffect(() => { reload(); }, [reload]);
+  return { ...lib, ready, reload };
+}
+
+function Skills({ d }: { d: Detail }) {
+  const { me } = useMe();
+  const org = currentOrg(me);
+  const ws = d.workspace.id;
+  const lib = useLibrary(ws);
+  const used = (s: SkillView) => Object.values(lib.member_skills).filter((ids) => ids.includes(s.id)).length;
+  // Library calls throw so the form or row can show the hub's message beside what was typed.
+  const call = async (fn: () => Promise<unknown>) => { await fn(); await lib.reload(); };
+  return (
+    <>
+      <h1>Skills</h1>
+      <SkillsIntro />
+      <Section title="Skill library" sub={`Shared by everyone in ${d.workspace.name}. Give skills to members from the Members tab, from a member’s settings on the board, or let a manager give them to its own staff.`}>
+        {lib.ready && <SkillList skills={lib.skills} usage={used}
+          onRename={(s, name) => call(() => api("PATCH", `/skills/${s.id}`, { name }))}
+          onDelete={(s) => call(() => api("DELETE", `/skills/${s.id}`))}
+          onRefresh={(s) => call(() => api("PATCH", `/skills/${s.id}`, { refresh: true }))} />}
+        {org && <SkillAdd orgId={org.id} taken={lib.skills.map((s) => s.name)}
+          onAdd={(x) => call(() => api("POST", `/workspaces/${ws}/skills`, { name: x.name, source_kind: x.source_kind, ...(x.source_kind === "github" ? { source_url: x.source_url } : { content: x.content }) }))} />}
+      </Section>
+    </>
   );
 }
 
@@ -254,37 +292,63 @@ function Members({ d, run }: { d: Detail; run: Run }) {
   const ws = d.workspace.id;
   const members = d.members.filter((m) => !isHidden(m)) as MemberView[];
   const managers = members.filter((m) => m.kind === "manager");
-  const [form, setForm] = useState({ name: "", kind: "manager", skill: "developer", reports_to: "", model: "opus" });
-  const add = (e: React.FormEvent) => {
+  const [form, setForm] = useState({ name: "", kind: "staff", skill: "developer", reports_to: "", model: "sonnet" });
+  const [pick, setPick] = useState<string[]>([]);
+  const [addError, setAddError] = useState("");
+  const lib = useLibrary(ws);
+  const add = async (e: React.FormEvent) => {
     e.preventDefault();
-    run(() => api("POST", `/workspaces/${ws}/members`, {
-      name: form.name, kind: form.kind, cli: "claude", model: form.model,
-      ...(form.kind === "staff" ? { skill: form.skill, reports_to: form.reports_to || null, set_reports_to: true } : {}),
-    })).then((ok) => ok && setForm({ ...form, name: "" }));
+    setAddError("");
+    try {
+      const r = await api<{ member: MemberView }>("POST", `/workspaces/${ws}/members`, {
+        name: form.name, kind: form.kind, cli: "claude", model: form.model,
+        ...(form.kind === "staff" ? { skill: form.skill, reports_to: form.reports_to || null, set_reports_to: true } : {}),
+      });
+      for (const id of pick) await api("PUT", `/workspaces/${ws}/members/${r.member.id}/skills/${id}`);
+      setForm({ ...form, name: "" });
+      setPick([]);
+      await lib.reload();
+      await run(async () => {});
+    } catch (err) {
+      setAddError(err instanceof ApiError ? Object.values(err.fields)[0] ?? err.message : "Couldn’t add the member.");
+    }
+  };
+  const toggle = async (m: MemberView, id: string, on: boolean) => {
+    await run(() => api(on ? "PUT" : "DELETE", `/workspaces/${ws}/members/${m.id}/skills/${id}`));
+    lib.reload();
   };
   return (
     <>
       <h1>Members</h1>
-      <p className="lead">The agents in {d.workspace.name}: managers take goals and lead staff; independent staff help any manager. Each runs on the computer of whoever the work is for.</p>
+      <p className="lead">The agents in {d.workspace.name}. Managers plan the work and lead staff; staff do the work. Each runs on the computer of whoever the work is for.</p>
       <section className="card panel">
-        <h2>Add a member</h2>
-        <form className="row wrap" style={{ alignItems: "flex-end" }} onSubmit={add}>
-          <label className="field spacer"><span>Name</span><input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="Morgan" /></label>
-          <label className="field"><span>Kind</span><select className="input" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value, model: e.target.value === "manager" ? "opus" : "sonnet" })}><option value="manager">Manager</option><option value="staff">Staff</option></select></label>
-          {form.kind === "staff" && (
-            <>
-              <label className="field"><span>Skill</span><select className="input" value={form.skill} onChange={(e) => setForm({ ...form, skill: e.target.value })}>{Object.entries(SKILL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
-              <label className="field"><span>Works for</span><select className="input" value={form.reports_to} onChange={(e) => setForm({ ...form, reports_to: e.target.value })}><option value="">Independent</option>{managers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
-            </>
-          )}
-          <label className="field"><span>Model</span><select className="input" value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })}><option value="opus">Opus</option><option value="sonnet">Sonnet</option><option value="haiku">Haiku</option></select></label>
-          <button className="btn btn-primary">Add</button>
+        <h2>Add a teammate</h2>
+        <form className="stack-sm" onSubmit={add}>
+          <div className="kindcards" role="group" aria-label="Kind of teammate">
+            {[["manager", "Manager", "Plans and leads. Takes goals from people and hands out tasks."], ["staff", "Staff", "Does the work. Builds, reviews, researches or writes."]].map(([k, t, line]) => (
+              <button type="button" key={k} className="kindcard" aria-pressed={form.kind === k} onClick={() => setForm({ ...form, kind: k, model: k === "manager" ? "opus" : "sonnet" })}><b>{t}</b><span>{line}</span></button>
+            ))}
+          </div>
+          <div className="row wrap" style={{ alignItems: "flex-end" }}>
+            <label className="field spacer"><span>Name</span><input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder={form.kind === "manager" ? "Atlas" : "Morgan"} /></label>
+            {form.kind === "staff" && (
+              <>
+                <label className="field"><span>Role</span><select className="input" value={form.skill} onChange={(e) => setForm({ ...form, skill: e.target.value })}>{Object.entries(SKILL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+                <label className="field"><span>Works for</span><select className="input" value={form.reports_to} onChange={(e) => setForm({ ...form, reports_to: e.target.value })}><option value="">Any manager</option>{managers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+              </>
+            )}
+          </div>
+          <div className="field"><span>Skills <span style={{ fontWeight: 500 }}>(optional)</span></span>
+            <SkillPicker skills={lib.skills} selected={pick} onToggle={(id, on) => setPick((x) => on ? [...x, id] : x.filter((y) => y !== id))}
+              emptyHint={<>No skills yet. <a href={`/w/${ws}/settings?tab=skills`}>Add some on the Skills tab.</a></>} /></div>
+          {addError && <span className="err" role="alert">{addError}</span>}
+          <div><button className="btn btn-primary">{form.kind === "manager" ? "Add manager" : "Add staff member"}</button></div>
         </form>
       </section>
       <section className="card panel">
         <div className="scroll-x">
           <table className="table">
-            <thead><tr><th>Member</th><th>Role</th><th>Works for</th><th>Model</th><th>Directories</th><th /></tr></thead>
+            <thead><tr><th>Member</th><th>Role</th><th>Works for</th><th>Model</th><th>Skills</th><th>Directories</th><th /></tr></thead>
             <tbody>
               {members.map((m) => (
                 <tr key={m.id}>
@@ -293,6 +357,8 @@ function Members({ d, run }: { d: Detail; run: Run }) {
                   <td>{m.kind === "manager" ? "—" : m.reports_to ? members.find((x) => x.id === m.reports_to)?.name : "Independent"}</td>
                   <td><select className="input" style={{ minHeight: 34, width: "auto" }} value={m.model} onChange={(e) => run(() => api("PATCH", `/workspaces/${ws}/members/${m.id}`, { model: e.target.value }))}>
                     <option value="opus">Opus</option><option value="sonnet">Sonnet</option><option value="haiku">Haiku</option></select></td>
+                  <td style={{ minWidth: 180 }}><SkillPicker skills={lib.skills} selected={lib.member_skills[m.id] ?? []} onToggle={(id, on) => toggle(m, id, on)}
+                    emptyHint={<a href={`/w/${ws}/settings?tab=skills`}>Add skills</a>} /></td>
                   <td><div className="chips">{d.grants.filter((g) => g.member_id === m.id).map((g) => <span key={g.directory_id} className="chip" data-m={g.mode === "read_write" ? "rw" : "read"}>{d.directories.find((x) => x.id === g.directory_id)?.name}</span>)}
                     {m.all_directories && <span className="hint">All directories</span>}</div></td>
                   <td><div className="row" style={{ justifyContent: "flex-end" }}>

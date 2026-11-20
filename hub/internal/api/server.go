@@ -19,6 +19,7 @@ import (
 	"canopy/hub/internal/mail"
 	"canopy/hub/internal/pki"
 	"canopy/hub/internal/realtime"
+	"canopy/hub/internal/skills"
 	"canopy/hub/internal/store"
 	"canopy/hub/internal/store/db"
 )
@@ -46,7 +47,9 @@ type Server struct {
 	Blobs    blob.Store
 	Resolver Resolver
 	Mirror   any
-	Version  string
+	// Skills fetches library skills from GitHub; nil uses the defaults. Tests point it at a stub.
+	Skills  *skills.Fetcher
+	Version string
 
 	// Single-binary mode: the embedded web app, client downloads and install script.
 	WebApp, Download, Install http.Handler

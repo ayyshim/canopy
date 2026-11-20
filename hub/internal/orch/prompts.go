@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"canopy/hub/internal/core"
 	"canopy/hub/internal/store/db"
 	"canopy/shared/protocol"
@@ -40,6 +42,7 @@ func systemPrompt(st *wsState, m db.Member, mounts []protocol.Mount, notes []db.
 	if m.Kind == "manager" {
 		b.WriteString("- submit_plan(tasks): for plan tasks, your structured plan.\n")
 		b.WriteString("- answer_question(signal_id, answer): when people ask you to decide a staff member's question.\n")
+		b.WriteString("- assign_skill(member, skill, remove): give one of your staff a skill from the workspace skill library.\n")
 	}
 	b.WriteString("\nYou can only see these paths:\n")
 	for _, mt := range mounts {
@@ -77,7 +80,23 @@ func systemPrompt(st *wsState, m db.Member, mounts []protocol.Mount, notes []db.
 	if m.Instructions != "" {
 		fmt.Fprintf(&b, "\nInstructions from your admins:\n%s\n", m.Instructions)
 	}
+	for _, sk := range st.memberSkills[m.ID] {
+		fmt.Fprintf(&b, "\nSkill: %s\n%s\n", sk.Name, strings.TrimSpace(sk.Content))
+	}
 	return b.String()
+}
+
+// skillNames is " — skills: A, B" for a member with library skills attached, else "".
+func skillNames(st *wsState, memberID uuid.UUID) string {
+	list := st.memberSkills[memberID]
+	if len(list) == 0 {
+		return ""
+	}
+	names := make([]string, 0, len(list))
+	for _, sk := range list {
+		names = append(names, sk.Name)
+	}
+	return " — skills: " + strings.Join(names, ", ")
 }
 
 func goalOf(st *wsState, t db.Task) *db.Goal {
@@ -108,7 +127,7 @@ func planPrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Note)
 			continue
 		}
 		if s.ReportsTo != nil && *s.ReportsTo == m.ID {
-			fmt.Fprintf(&b, "- %s (%s)\n", s.Name, deref(s.Skill))
+			fmt.Fprintf(&b, "- %s (%s)%s\n", s.Name, deref(s.Skill), skillNames(st, s.ID))
 			staff++
 		}
 	}
@@ -119,12 +138,18 @@ func planPrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Note)
 	ind := 0
 	for _, s := range st.members {
 		if s.Kind == "staff" && s.ReportsTo == nil {
-			fmt.Fprintf(&b, "- %s (%s)\n", s.Name, deref(s.Skill))
+			fmt.Fprintf(&b, "- %s (%s)%s\n", s.Name, deref(s.Skill), skillNames(st, s.ID))
 			ind++
 		}
 	}
 	if ind == 0 {
 		b.WriteString("- none\n")
+	}
+	if len(st.skills) > 0 {
+		b.WriteString("\nSkill library (give a skill to your staff with assign_skill):\n")
+		for _, sk := range st.skills {
+			fmt.Fprintf(&b, "- %s\n", sk.Name)
+		}
 	}
 	b.WriteString("\nWorkspace directories:\n")
 	for _, d := range st.dirs {
