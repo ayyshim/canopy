@@ -19,6 +19,18 @@ dist/canopy-hub-darwin-arm64   dist/canopy-darwin-arm64
 `PLATFORMS="linux/amd64" scripts/release.sh` builds one platform, which is quicker. The hub embeds
 the client builds it was built with, so people can download `canopy` straight from the hub.
 
+### Releases on GitHub
+
+`.github/workflows/release.yml` runs the same script on GitHub. Push a version tag to publish a
+release with all eight binaries and a `SHA256SUMS` file:
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+A tag with a dash, such as `v0.2.0-rc.1`, becomes a pre-release. Running the workflow by hand
+from the Actions tab builds the binaries and attaches them to the run without publishing.
 
 ## Try it on one computer (about 5 minutes)
 

@@ -1,0 +1,93 @@
+# Builds the hub and the client for Linux and macOS (amd64 and arm64) with scripts/release.sh.
+#   Push a tag such as v0.1.0  -> publishes a GitHub release with the binaries and SHA256SUMS.
+#   Run it from the Actions tab -> builds only; the binaries are attached to the run.
+# Tags with a dash (v0.2.0-rc.1) are published as pre-releases.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # tags, so `git describe` can name the version
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.work
+          cache-dependency-path: |
+            go.work.sum
+            hub/go.sum
+            client/go.sum
+            shared/go.sum
+
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: frontend/package.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install web app packages
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache PostgreSQL downloads
+        uses: actions/cache@v6
+        with:
+          path: .cache/postgres
+          key: postgres-${{ hashFiles('scripts/release.sh') }}
+
+      - name: Pick the version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            v="${GITHUB_REF_NAME#v}"
+          else
+            v="$(git describe --tags --always)"
+          fi
+          echo "VERSION=$v" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: scripts/release.sh
+
+      - name: Check the binaries start
+        run: |
+          dist/canopy-hub-linux-amd64 version
+          dist/canopy-linux-amd64 version
+
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum canopy-* > SHA256SUMS
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: canopy-${{ env.VERSION }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish the release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pre=""
+          case "$GITHUB_REF_NAME" in *-*) pre="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "Canopy $GITHUB_REF_NAME" --generate-notes --verify-tag $pre
