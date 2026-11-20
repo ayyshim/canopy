@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 	"path"
 	"time"
@@ -184,4 +185,36 @@ func LogoURL(kind string, id uuid.UUID, key *string) *string {
 	}
 	u := fmt.Sprintf("/api/v1/%s/%s/logo?v=%s", kind, id, path.Base(*key))
 	return &u
+}
+
+// DraftSkill is a skill a manager wrote or found for a draft.
+type DraftSkill struct {
+	Name      string `json:"name"`
+	Content   string `json:"content"`
+	SourceURL string `json:"source_url"`
+}
+
+// StaffProposalView is a manager's draft of a new staff member, or of new instructions for one.
+type StaffProposalView struct {
+	ID           uuid.UUID    `json:"id"`
+	Kind         string       `json:"kind"` // new or update
+	ManagerID    uuid.UUID    `json:"manager_id"`
+	MemberID     *uuid.UUID   `json:"member_id"` // the staff member an update changes
+	Name         string       `json:"name"`
+	Role         *string      `json:"role"`
+	Instructions string       `json:"instructions"`
+	Skills       []DraftSkill `json:"skills"`
+	Status       string       `json:"status"` // pending, approved or rejected
+	Reason       string       `json:"reason"`
+	ResultMember *uuid.UUID   `json:"result_member_id"`
+	DecidedAt    *time.Time   `json:"decided_at"`
+	CreatedAt    time.Time    `json:"created_at"`
+}
+
+func ToStaffProposal(p db.StaffProposal) StaffProposalView {
+	sk := []DraftSkill{}
+	_ = json.Unmarshal(p.Skills, &sk)
+	return StaffProposalView{ID: p.ID, Kind: p.Kind, ManagerID: p.ManagerID, MemberID: p.MemberID, Name: p.Name, Role: p.Role,
+		Instructions: p.Instructions, Skills: sk, Status: p.Status, Reason: p.Reason, ResultMember: p.ResultMemberID,
+		DecidedAt: p.DecidedAt, CreatedAt: p.CreatedAt}
 }
