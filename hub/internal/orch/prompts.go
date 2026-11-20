@@ -17,6 +17,8 @@ func systemPrompt(st *wsState, m db.Member, mounts []protocol.Mount, notes []db.
 	role := "a staff agent"
 	if m.Kind == "manager" {
 		role = "a manager agent"
+	} else if m.Isolated {
+		role = "an isolated staff agent (only your creator talks to you; managers cannot borrow you)"
 	} else if m.ReportsTo == nil {
 		role = "an independent staff agent (any manager can borrow you)"
 	} else if mgr, ok := st.member[*m.ReportsTo]; ok {
@@ -147,7 +149,7 @@ func planPrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Note)
 	b.WriteString("Independent staff you can borrow:\n")
 	ind := 0
 	for _, s := range st.members {
-		if s.Kind == "staff" && s.ReportsTo == nil {
+		if s.Kind == "staff" && s.ReportsTo == nil && !s.Isolated {
 			fmt.Fprintf(&b, "- %s (%s)%s\n", s.Name, deref(s.Skill), skillNames(st, s.ID))
 			ind++
 		}
