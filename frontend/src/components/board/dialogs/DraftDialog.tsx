@@ -57,6 +57,7 @@ function DraftForm({ p, nav }: { p: StaffProposalView; nav: { at: number; total:
         {!open && <> <b>{p.status === "approved" ? "Approved." : "Rejected."}</b>{p.reason && <> {p.reason}</>}</>}
         {!admin && open && <> An admin will decide.</>}
       </p>
+      {p.note && <blockquote className="hint" style={{ margin: "0 0 12px", paddingLeft: 12, borderLeft: "3px solid var(--line)" }}><b>Why:</b> {p.note}</blockquote>}
       {isNew && (
         <div className="pgrid">
           <label className="field"><span>Name</span>
