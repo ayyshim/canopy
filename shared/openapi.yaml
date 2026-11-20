@@ -221,7 +221,7 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
   /workspaces/{wsId}/staff-proposals/{proposalId}/approve:
     post:
-      summary: Approve a draft (workspace admins only). New staff are created under the drafting manager; their new skills join the library. Updates change the member's instructions. Any field sent replaces the draft's.
+      summary: Approve a draft (admins only); fields sent replace the draft's
       parameters: [{ name: wsId, in: path, required: true, schema: { type: string, format: uuid } }, { name: proposalId, in: path, required: true, schema: { type: string, format: uuid } }]
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/StaffProposalEdit" } } } }
       responses:
@@ -240,6 +240,17 @@ paths:
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { description: proposal_decided, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /orgs/{orgId}/setup/chat:
+    post:
+      summary: Ask Claude on the admin's own computer to suggest a team for the setup wizard (admins only). Nothing is stored.
+      parameters: [{ name: orgId, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [runner_id, messages], properties: { runner_id: { type: string, format: uuid }, workspace: { type: object }, directories: { type: array, items: { type: object } }, skills: { type: array, items: { type: object } }, messages: { type: array, items: { type: object, required: [role, text], properties: { role: { type: string, enum: [user, assistant] }, text: { type: string } } } } } } } } }
+      responses:
+        "200": { description: A reply and an optional team draft, content: { application/json: { schema: { type: object, required: [reply], properties: { reply: { type: string }, team: { type: [object, "null"] } } } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { description: runner_offline, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Error" }
   /orgs/{orgId}/skills/preview:
     post:
       summary: Fetch a GitHub markdown link for the setup wizard without saving it (org admins)
