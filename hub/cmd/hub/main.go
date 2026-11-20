@@ -38,6 +38,7 @@ import (
 	"canopy/hub/internal/store"
 	"canopy/hub/internal/store/db"
 	"canopy/hub/internal/web"
+	"canopy/shared/selfinstall"
 )
 
 var version = "0.1.0-dev"
@@ -46,6 +47,9 @@ const usage = `canopy-hub runs a self-hosted Canopy hub.
 
 Usage:
   canopy-hub [serve] [flags]     run the hub (the default)
+  canopy-hub install [--dir DIR] [--no-path]
+                                 copy this binary to ~/.local/bin/canopy-hub (/usr/local/bin as
+                                 root) and add that folder to your PATH
   canopy-hub migrate status      show the data's version and what an upgrade would change
   canopy-hub migrate up          upgrade the data now (the hub also does this on start)
   canopy-hub backup              copy the database (stop the hub first)
@@ -88,6 +92,8 @@ func main() {
 	switch cmd {
 	case "serve":
 		err = serve(args)
+	case "install":
+		err = selfinstall.Run("canopy-hub", args)
 	case "migrate":
 		err = migrateCmd(args)
 	case "backup":

@@ -23,6 +23,7 @@ import (
 	"canopy/client/internal/pairing"
 	"canopy/client/internal/runner"
 	"canopy/client/internal/sandbox"
+	"canopy/shared/selfinstall"
 )
 
 var version = "0.1.0-dev"
@@ -30,6 +31,9 @@ var version = "0.1.0-dev"
 const usage = `canopy connects this machine to a Canopy hub.
 
 Usage:
+  canopy install [--dir DIR] [--no-path]
+      copy this binary to ~/.local/bin/canopy (/usr/local/bin as root) and add that folder
+      to your PATH, so canopy runs from any folder
   canopy pair --hub URL --code CODE [--name NAME] [--address HOST] [--run]
       pair with a hub using a code from Canopy (--address: for servers, the name people
       reach it by; --run: start running right after pairing)
@@ -46,6 +50,7 @@ Environment:
   CANOPY_HOME          pairings and keys (default ~/.config/canopy)
   CANOPY_DATA          work folders, mirrors, sockets and canopy.log (default ~/.local/share/canopy)
   CANOPY_CLAUDE_BIN    the claude binary to run (default: found on PATH)
+  CANOPY_BIN_DIR       where canopy install puts the binary
 `
 
 func main() {
@@ -55,6 +60,8 @@ func main() {
 	}
 	var err error
 	switch os.Args[1] {
+	case "install":
+		err = selfinstall.Run("canopy", os.Args[2:])
 	case "pair":
 		err = cmdPair(os.Args[2:])
 	case "run":
