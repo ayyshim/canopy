@@ -62,7 +62,7 @@ chmod +x canopy-linux-amd64
 another folder with `--dir` or `CANOPY_BIN_DIR`). If that folder isn’t on your `PATH`, it adds it to
 your shell’s startup file (`~/.zshrc`, `~/.bashrc`, `~/.bash_profile` on macOS, fish’s
 `conf.d`, or `~/.profile`). Open a new terminal afterwards. `--no-path` leaves startup files
-alone. To upgrade, install the new version the same way.
+alone. To upgrade later, use [`update`](#upgrades-and-backups).
 
 On macOS, a file downloaded in a browser is blocked until you clear its quarantine flag:
 `xattr -d com.apple.quarantine canopy-darwin-arm64`. The installer above doesn’t need this.
@@ -213,9 +213,18 @@ COOKIE_SECURE=false canopy-hub --public-url http://192.168.1.20:8080
 
 ### Upgrades and backups
 
-- **Upgrade:** stop the hub, install the new binary (see [Install](#install)), start it. It backs up the database into
-  `DATA/backups` and then upgrades it. `canopy-hub migrate status` shows what an upgrade would
-  change; `--no-auto-migrate` makes the hub refuse to start until you run `canopy-hub migrate up`.
+- **Upgrade the hub:** `canopy-hub update` (`sudo canopy-hub update` for the boot service). It
+  downloads the latest GitHub release, checks it against the release’s `SHA256SUMS`, replaces the
+  binary and restarts the hub with the same flags and settings. On start the hub backs up the
+  database into `DATA/backups` and then upgrades it. `canopy-hub update --check` only says
+  whether there is a newer release; `--version v0.2.0` picks one. `canopy-hub migrate status`
+  shows what an upgrade would change; `--no-auto-migrate` makes the hub refuse to start until you
+  run `canopy-hub migrate up`.
+- **Then the computers:** the new hub serves the matching client, so run `canopy update` on each
+  computer. It downloads the hub’s build, replaces `canopy`, and restarts it (the user service
+  or the background process). A computer that isn’t paired updates from the latest GitHub release.
+- Hubs and clients from `v0.1.0` don’t have `update` yet; install those once more with the
+  [installer](#install).
 - **Back up:** stop the hub and run `canopy-hub backup` (`sudo canopy-hub backup` for the boot
   service). Also copy
   `DATA/blobs` (outputs, folder copies, branch backups) unless you use S3.
@@ -268,6 +277,8 @@ canopy-hub --as-srv [flags]    install the hub as a boot service (Linux, with su
 canopy-hub status [--data DIR] whether the hub runs, its address and setup link
 canopy-hub stop [--data DIR]   stop the hub
 canopy-hub remove-srv          remove the boot service; its data stays
+canopy-hub update [--check] [--version vX.Y.Z]
+                               install the latest release and restart the hub
 canopy-hub install [--dir DIR] [--no-path]
                                copy this binary into a folder on PATH as canopy-hub
 canopy-hub migrate status      show the data's version and what an upgrade would change
@@ -319,6 +330,7 @@ canopy install [--dir DIR] [--no-path]
 canopy pair --hub URL --code CODE [--name NAME] [--address HOST] [--run]
 canopy run [--hub URL] [--sandbox auto|bwrap|none] [--unsafe-no-sandbox] [--foreground] [-v]
 canopy stop
+canopy update [--check] [--version vX.Y.Z] [--hub URL]
 canopy status
 canopy version
 canopy help
@@ -341,6 +353,10 @@ canopy help
 | `run --unsafe-no-sandbox` | Allow running without a sandbox. Agents then see everything your user can. Development only. |
 | `run -v` | Verbose logs |
 | `stop` | Stop canopy running in the background (waits up to 15 seconds) |
+| `update` | Replace `canopy` with the build your hub serves, then restart it if it was running. Without a pairing: the latest GitHub release. |
+| `update --check` | Only say whether there is a different build |
+| `update --version vX.Y.Z` | Install that GitHub release instead of the hub’s build |
+| `update --hub URL` | With several pairings: update from this hub |
 | `status` | Whether canopy is running, pairings, installed CLIs and their sign-in, and the sandbox |
 
 `canopy mcp` and `canopy sandbox-init` also exist. The client runs them itself inside agent

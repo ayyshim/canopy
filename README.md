@@ -72,7 +72,7 @@ Open a new terminal afterwards if the installer says it added a folder to your `
   `--dir`. On macOS, clear the browser’s quarantine flag first:
   `xattr -d com.apple.quarantine canopy-darwin-arm64`.
 
-To upgrade, install again the same way.
+To upgrade later: `canopy-hub update` on the hub, then `canopy update` on each computer.
 
 ## Set up
 
@@ -152,11 +152,13 @@ detail, upgrades and backups, and plain http on a home network.
 | `canopy-hub --foreground` | Run it in this terminal instead |
 | `sudo canopy-hub --as-srv` | Install it as a service that starts at boot (Linux) |
 | `sudo canopy-hub remove-srv` | Remove that service; the data stays |
+| `canopy-hub update` | Install the latest release and restart the hub (`sudo` for the service) |
 | `canopy-hub backup` | Copy the database (stop the hub first) |
 | `canopy-hub migrate status` | Show what an upgrade would change |
 | `canopy pair --hub URL --code CODE` | Pair this computer with a hub |
 | `canopy run` | Start running agents in the background (log: `~/.local/share/canopy/canopy.log`) |
 | `canopy stop` | Stop it |
+| `canopy update` | Install the client build your hub serves and restart it |
 | `canopy status` | Show whether it’s running, its pairings, and installed CLIs |
 
 When the installer set up the user service, manage it with `systemctl --user status canopy`
