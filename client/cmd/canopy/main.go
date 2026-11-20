@@ -163,11 +163,11 @@ func cmdRun(args []string) error {
 	if !*foreground {
 		return startBackground(args)
 	}
-	lock, err := holdPIDFile()
+	release, err := holdPIDFile()
 	if err != nil {
 		return err
 	}
-	defer lock.Close()
+	defer release()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	var wg sync.WaitGroup
