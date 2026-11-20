@@ -166,10 +166,13 @@ ARCH=$(uname -m)
 case "$ARCH" in x86_64|amd64) ARCH=amd64 ;; aarch64|arm64) ARCH=arm64 ;; esac
 BIN_DIR="${CANOPY_BIN_DIR:-$HOME/.local/bin}"
 mkdir -p "$BIN_DIR"
+DOWNLOAD="$BIN_DIR/.canopy-download.$$"
+trap 'rm -f "$DOWNLOAD"' EXIT
 echo "Downloading canopy for $OS/$ARCH from $HUB…"
-curl -fsSL "$HUB/download/canopy-$OS-$ARCH" -o "$BIN_DIR/canopy.tmp"
-chmod +x "$BIN_DIR/canopy.tmp"
-mv "$BIN_DIR/canopy.tmp" "$BIN_DIR/canopy"
+curl -fsSL "$HUB/download/canopy-$OS-$ARCH" -o "$DOWNLOAD"
+chmod +x "$DOWNLOAD"
+# Puts it at $BIN_DIR/canopy and adds $BIN_DIR to PATH if it isn't there yet.
+"$DOWNLOAD" install --dir "$BIN_DIR"
 if [ "$OS" = "linux" ] && ! command -v bwrap >/dev/null 2>&1; then
   echo "Note: agents run in a bubblewrap sandbox. Install it first: sudo apt install bubblewrap (or your distribution's package)."
 fi
@@ -199,8 +202,8 @@ elif [ "$OS" = "darwin" ]; then
   # started in the background here.
   echo "Installed. On macOS, agents can't run in a sandbox yet, so Canopy doesn't start them."
   echo "To run agents anyway (they can see everything your user can):"
-  echo "  $BIN_DIR/canopy run --unsafe-no-sandbox"
+  echo "  canopy run --unsafe-no-sandbox"
 else
-  echo "Start it with: $BIN_DIR/canopy run"
+  echo "Start it with: canopy run"
 fi
 `
