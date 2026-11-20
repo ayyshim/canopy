@@ -76,7 +76,9 @@ export function TopBar() {
     if (s.type === "review") return ui.openViewer(payload(s).output_id);
     if (s.type === "goal_ready" && s.goal_id) { ui.openSide({ type: "goal", id: s.goal_id }); return ui.centerOn(s.goal_id); }
     if (s.task_id) ui.openSide({ type: "task", id: s.task_id });
-    ui.centerOn(s.task_id && (s.type === "question" || s.type === "gate" || s.type === "error" || s.type === "dir_access" || s.type === "owner_change") ? s.id : s.task_id ?? "acct_" + s.id);
+    if (s.type === "usage_limit" || s.type === "cap") return ui.centerOn("acct_" + s.id);
+    if (!s.task_id) return ui.centerOn(s.id);
+    ui.centerOn(s.type === "question" || s.type === "gate" || s.type === "error" || s.type === "dir_access" || s.type === "owner_change" ? s.id : s.task_id);
   };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
