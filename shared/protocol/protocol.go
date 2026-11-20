@@ -345,6 +345,8 @@ const (
 	ToolReadNotes      = "read_notes"
 	ToolWriteNote      = "write_note"
 	ToolAssignSkill    = "assign_skill"
+	ToolProposeStaff   = "propose_staff"
+	ToolUpdateStaff    = "update_staff_instructions"
 )
 
 // ---- Directory mirror (DECISIONS: Directories) ----

@@ -135,6 +135,7 @@ export interface StaffProposalView {
   skills: DraftSkill[];
   status: string; // pending, approved or rejected
   reason: string;
+  note: string; // why the manager drafted it
   result_member_id?: string /* uuid */;
   decided_at?: string /* RFC3339 */;
   created_at: string /* RFC3339 */;

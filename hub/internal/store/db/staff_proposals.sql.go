@@ -12,9 +12,9 @@ import (
 )
 
 const createStaffProposal = `-- name: CreateStaffProposal :one
-INSERT INTO staff_proposals (id, workspace_id, manager_id, kind, member_id, name, role, instructions, skills)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, workspace_id, manager_id, kind, member_id, name, role, instructions, skills, status, decided_by, decided_at, reason, result_member_id, created_at, updated_at
+INSERT INTO staff_proposals (id, workspace_id, manager_id, kind, member_id, name, role, instructions, skills, session_id, note)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING id, workspace_id, manager_id, kind, member_id, name, role, instructions, skills, status, decided_by, decided_at, reason, result_member_id, created_at, updated_at, session_id, note
 `
 
 type CreateStaffProposalParams struct {
@@ -27,6 +27,8 @@ type CreateStaffProposalParams struct {
 	Role         *string
 	Instructions string
 	Skills       []byte
+	SessionID    *uuid.UUID
+	Note         string
 }
 
 func (q *Queries) CreateStaffProposal(ctx context.Context, arg CreateStaffProposalParams) (StaffProposal, error) {
@@ -40,6 +42,8 @@ func (q *Queries) CreateStaffProposal(ctx context.Context, arg CreateStaffPropos
 		arg.Role,
 		arg.Instructions,
 		arg.Skills,
+		arg.SessionID,
+		arg.Note,
 	)
 	var i StaffProposal
 	err := row.Scan(
@@ -59,6 +63,8 @@ func (q *Queries) CreateStaffProposal(ctx context.Context, arg CreateStaffPropos
 		&i.ResultMemberID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SessionID,
+		&i.Note,
 	)
 	return i, err
 }
@@ -69,7 +75,7 @@ SET status = $1, decided_by = $2, decided_at = now(), reason = $3,
     name = $4, role = $5, instructions = $6, skills = $7,
     result_member_id = $8
 WHERE id = $9 AND status = 'pending'
-RETURNING id, workspace_id, manager_id, kind, member_id, name, role, instructions, skills, status, decided_by, decided_at, reason, result_member_id, created_at, updated_at
+RETURNING id, workspace_id, manager_id, kind, member_id, name, role, instructions, skills, status, decided_by, decided_at, reason, result_member_id, created_at, updated_at, session_id, note
 `
 
 type DecideStaffProposalParams struct {
@@ -114,12 +120,14 @@ func (q *Queries) DecideStaffProposal(ctx context.Context, arg DecideStaffPropos
 		&i.ResultMemberID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SessionID,
+		&i.Note,
 	)
 	return i, err
 }
 
 const getStaffProposalForUpdate = `-- name: GetStaffProposalForUpdate :one
-SELECT id, workspace_id, manager_id, kind, member_id, name, role, instructions, skills, status, decided_by, decided_at, reason, result_member_id, created_at, updated_at FROM staff_proposals WHERE id = $1 FOR UPDATE
+SELECT id, workspace_id, manager_id, kind, member_id, name, role, instructions, skills, status, decided_by, decided_at, reason, result_member_id, created_at, updated_at, session_id, note FROM staff_proposals WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetStaffProposalForUpdate(ctx context.Context, id uuid.UUID) (StaffProposal, error) {
@@ -142,6 +150,8 @@ func (q *Queries) GetStaffProposalForUpdate(ctx context.Context, id uuid.UUID) (
 		&i.ResultMemberID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SessionID,
+		&i.Note,
 	)
 	return i, err
 }
@@ -172,7 +182,7 @@ func (q *Queries) GetWorkspaceSkillByName(ctx context.Context, arg GetWorkspaceS
 }
 
 const listStaffProposals = `-- name: ListStaffProposals :many
-SELECT id, workspace_id, manager_id, kind, member_id, name, role, instructions, skills, status, decided_by, decided_at, reason, result_member_id, created_at, updated_at FROM staff_proposals
+SELECT id, workspace_id, manager_id, kind, member_id, name, role, instructions, skills, status, decided_by, decided_at, reason, result_member_id, created_at, updated_at, session_id, note FROM staff_proposals
 WHERE workspace_id = $1 AND ($2::text = '' OR status = $2::text)
 ORDER BY created_at DESC, id
 `
@@ -208,6 +218,8 @@ func (q *Queries) ListStaffProposals(ctx context.Context, arg ListStaffProposals
 			&i.ResultMemberID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SessionID,
+			&i.Note,
 		); err != nil {
 			return nil, err
 		}

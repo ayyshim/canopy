@@ -39,6 +39,10 @@ var Defs = []Def{
 		`{"type":"object","properties":{"title":{"type":"string"},"body":{"type":"string"},"kind":{"type":"string","enum":["note","decision"]}},"required":["title","body"]}`},
 	{protocol.ToolAssignSkill, "Managers: give one of your staff a skill from the workspace skill library (or take it away with remove). Skills are listed in your planning prompt.",
 		`{"type":"object","properties":{"member":{"type":"string","description":"name of a staff member who reports to you"},"skill":{"type":"string","description":"name of a library skill"},"remove":{"type":"boolean"}},"required":["member","skill"]}`},
+	{protocol.ToolProposeStaff, "Managers: draft a new staff member and send it to a workspace admin for approval. Only when your team truly lacks someone. Attach skills you found on the web or wrote yourself (markdown). Returns right away; you are told later if it was approved or rejected.",
+		`{"type":"object","properties":{"name":{"type":"string"},"role":{"type":"string","enum":["developer","reviewer","researcher","designer","writer"]},"instructions":{"type":"string","description":"how this person should work"},"reason":{"type":"string","description":"why the team needs them"},"skills":{"type":"array","items":{"type":"object","properties":{"name":{"type":"string"},"content":{"type":"string","description":"the skill as markdown"},"source_url":{"type":"string","description":"where you found it, if you did"}},"required":["name","content"]}}},"required":["name","role","instructions"]}`},
+	{protocol.ToolUpdateStaff, "Managers: draft new instructions for one of your staff and send them to a workspace admin for approval. Send the full new text. Returns right away; you are told later if it was approved or rejected.",
+		`{"type":"object","properties":{"member":{"type":"string","description":"name of a staff member who reports to you"},"instructions":{"type":"string"},"reason":{"type":"string"}},"required":["member","instructions"]}`},
 }
 
 // Call is the bridge asking the runner to run a tool.

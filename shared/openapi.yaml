@@ -499,7 +499,7 @@ components:
         source_url: { type: string, description: "Where the skill was found; empty when written by the manager" }
     StaffProposal:
       type: object
-      required: [id, kind, manager_id, member_id, name, role, instructions, skills, status, reason, result_member_id, decided_at, created_at]
+      required: [id, kind, manager_id, member_id, name, role, instructions, skills, status, reason, note, result_member_id, decided_at, created_at]
       properties:
         id: { type: string, format: uuid }
         kind: { type: string, enum: [new, update] }
@@ -511,6 +511,7 @@ components:
         skills: { type: array, items: { $ref: "#/components/schemas/DraftSkill" } }
         status: { type: string, enum: [pending, approved, rejected] }
         reason: { type: string }
+        note: { type: string }
         result_member_id: { type: [string, "null"], format: uuid }
         decided_at: { type: [string, "null"], format: date-time }
         created_at: { type: string, format: date-time }

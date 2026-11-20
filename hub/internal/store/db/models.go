@@ -528,6 +528,8 @@ type StaffProposal struct {
 	ResultMemberID *uuid.UUID
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	SessionID      *uuid.UUID
+	Note           string
 }
 
 type Task struct {

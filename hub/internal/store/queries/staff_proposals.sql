@@ -1,6 +1,6 @@
 -- name: CreateStaffProposal :one
-INSERT INTO staff_proposals (id, workspace_id, manager_id, kind, member_id, name, role, instructions, skills)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+INSERT INTO staff_proposals (id, workspace_id, manager_id, kind, member_id, name, role, instructions, skills, session_id, note)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING *;
 
 -- name: GetStaffProposalForUpdate :one

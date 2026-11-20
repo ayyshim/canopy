@@ -109,6 +109,9 @@ func (s *Server) handleRejectStaffProposal(w http.ResponseWriter, r *http.Reques
 		if err != nil {
 			return err
 		}
+		if s.Orch != nil {
+			t.AfterCommit(func() { s.Orch.StaffProposalDecided(context.WithoutCancel(ctx), done) })
+		}
 		return t.Emit(ctx, core.WS(ws.OrgID, ws.ID, "staff_proposal.updated"), map[string]any{"proposal": core.ToStaffProposal(done)})
 	})
 	if err != nil {
@@ -193,6 +196,9 @@ func (s *Server) handleApproveStaffProposal(w http.ResponseWriter, r *http.Reque
 		}
 		if s.Orch != nil {
 			t.AfterCommit(func() { s.Orch.MemberChanged(context.WithoutCancel(ctx), member.ID) })
+		}
+		if s.Orch != nil {
+			t.AfterCommit(func() { s.Orch.StaffProposalDecided(context.WithoutCancel(ctx), done) })
 		}
 		return t.Emit(ctx, core.WS(ws.OrgID, ws.ID, "staff_proposal.updated"), map[string]any{"proposal": core.ToStaffProposal(done)})
 	})

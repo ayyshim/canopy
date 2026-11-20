@@ -206,6 +206,7 @@ type StaffProposalView struct {
 	Skills       []DraftSkill `json:"skills"`
 	Status       string       `json:"status"` // pending, approved or rejected
 	Reason       string       `json:"reason"`
+	Note         string       `json:"note"` // why the manager drafted it
 	ResultMember *uuid.UUID   `json:"result_member_id"`
 	DecidedAt    *time.Time   `json:"decided_at"`
 	CreatedAt    time.Time    `json:"created_at"`
@@ -215,6 +216,6 @@ func ToStaffProposal(p db.StaffProposal) StaffProposalView {
 	sk := []DraftSkill{}
 	_ = json.Unmarshal(p.Skills, &sk)
 	return StaffProposalView{ID: p.ID, Kind: p.Kind, ManagerID: p.ManagerID, MemberID: p.MemberID, Name: p.Name, Role: p.Role,
-		Instructions: p.Instructions, Skills: sk, Status: p.Status, Reason: p.Reason, ResultMember: p.ResultMemberID,
+		Instructions: p.Instructions, Skills: sk, Status: p.Status, Reason: p.Reason, Note: p.Note, ResultMember: p.ResultMemberID,
 		DecidedAt: p.DecidedAt, CreatedAt: p.CreatedAt}
 }
