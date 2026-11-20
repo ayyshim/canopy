@@ -1,0 +1,8 @@
+# Production behind Caddy: set CANOPY_DOMAIN and run canopy-hub with
+#   --addr 127.0.0.1:8080 --public-url https://$CANOPY_DOMAIN and TRUST_PROXY=true.
+# The hub serves the web app, the API and the board sockets; Caddy provisions TLS.
+# Machines connect straight to the hub's runner port (default 8443, mutual TLS), not through Caddy.
+{$CANOPY_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8080
+}
