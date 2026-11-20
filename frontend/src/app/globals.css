@@ -211,6 +211,7 @@ code,.mono{font-family:var(--font-mono);font-size:.92em}
 .node.addm:hover,.node.addgoal:hover{border-color:var(--green);color:var(--green);background:var(--green-soft)}
 .node.goal{border-radius:12px;background:var(--card);border:1px solid var(--edge);padding:9px 12px;box-shadow:var(--shadow);display:flex;flex-direction:column;justify-content:space-between}
 .node.goal.done{opacity:.72}
+.node.goal.draft{border-style:dashed;box-shadow:none}
 .goal .gt{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px;min-width:0}
 .goal .gt span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gdot{width:10px;height:10px;border-radius:3px;flex:none}
