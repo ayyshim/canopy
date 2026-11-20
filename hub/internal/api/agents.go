@@ -79,30 +79,27 @@ func (w *wsView) seesSignal(sig db.Signal) bool {
 
 // ---- Goals ----
 
-func (s *Server) handleCreateGoal(w http.ResponseWriter, r *http.Request) error {
-	wsID, err := pathID(r, "wsID")
-	if err != nil {
-		return err
-	}
-	ctx := r.Context()
-	uid := identity(r).UserID
-	view, err := s.loadWSView(ctx, wsID, uid)
-	if err != nil {
-		return err
-	}
-	var in struct {
-		ManagerID uuid.UUID  `json:"manager_id"`
-		Title     string     `json:"title"`
-		DoneWhen  string     `json:"done_when"`
-		RunnerID  *uuid.UUID `json:"runner_id"` // empty: the person's own computer, else a shared one
-		Base      string     `json:"base"`      // empty: each repository's default branch
-		Snapshot  bool       `json:"snapshot"`  // include their uncommitted changes
-	}
-	if err := httpx.Decode(r, &in); err != nil {
-		return err
-	}
+// goalInput is what a person writes when giving a goal or saving a draft.
+type goalInput struct {
+	ManagerID   uuid.UUID  `json:"manager_id"`
+	Title       string     `json:"title"`
+	DoneWhen    string     `json:"done_when"`
+	Description string     `json:"description"`
+	RunnerID    *uuid.UUID `json:"runner_id"` // empty: the person's own computer, else a shared one
+	Base        string     `json:"base"`      // empty: each repository's default branch
+	Snapshot    bool       `json:"snapshot"`  // include their uncommitted changes
+	Draft       bool       `json:"draft"`     // save without starting work
+}
+
+func (in goalInput) newGoal(by uuid.UUID) core.NewGoal {
+	return core.NewGoal{ManagerID: in.ManagerID, Title: in.Title, DoneWhen: in.DoneWhen, Description: in.Description, By: by,
+		RunnerID: in.RunnerID, Base: in.Base, Snapshot: in.Snapshot, Draft: in.Draft}
+}
+
+// checkGoal trims and validates a goal; it returns the manager's name.
+func (s *Server) checkGoal(ctx context.Context, view *wsView, uid uuid.UUID, in *goalInput) (string, error) {
 	val := httpx.Validation{}
-	in.Title, in.DoneWhen = strings.TrimSpace(in.Title), strings.TrimSpace(in.DoneWhen)
+	in.Title, in.DoneWhen, in.Description = strings.TrimSpace(in.Title), strings.TrimSpace(in.DoneWhen), strings.TrimSpace(in.Description)
 	m, ok := view.members[in.ManagerID]
 	// People give goals only to managers they can see.
 	if !ok || m.Kind != "manager" || !view.v.CanSeeMember(m) {
@@ -123,27 +120,50 @@ func (s *Server) handleCreateGoal(w http.ResponseWriter, r *http.Request) error 
 			val.Add("runner_id", "Choose your own computer or a shared one.")
 		}
 	}
-	if err := val.Err(); err != nil {
+	return m.Name, val.Err()
+}
+
+func (s *Server) handleCreateGoal(w http.ResponseWriter, r *http.Request) error {
+	wsID, err := pathID(r, "wsID")
+	if err != nil {
 		return err
 	}
-	if queued, reason, err := s.queueIfOverLimit(ctx, view.ws, uid, "goal", map[string]any{"manager_id": in.ManagerID, "title": in.Title, "done_when": in.DoneWhen}); err != nil {
+	ctx := r.Context()
+	uid := identity(r).UserID
+	view, err := s.loadWSView(ctx, wsID, uid)
+	if err != nil {
 		return err
-	} else if queued {
-		httpx.JSON(w, http.StatusAccepted, map[string]any{"queued": true, "reason": reason})
-		return nil
+	}
+	var in goalInput
+	if err := httpx.Decode(r, &in); err != nil {
+		return err
+	}
+	name, err := s.checkGoal(ctx, view, uid, &in)
+	if err != nil {
+		return err
+	}
+	if !in.Draft {
+		if queued, reason, err := s.queueIfOverLimit(ctx, view.ws, uid, "goal", map[string]any{"manager_id": in.ManagerID, "title": in.Title, "done_when": in.DoneWhen, "description": in.Description}); err != nil {
+			return err
+		} else if queued {
+			httpx.JSON(w, http.StatusAccepted, map[string]any{"queued": true, "reason": reason})
+			return nil
+		}
 	}
 	var goal db.Goal
 	err = s.Core.Tx(ctx, func(t *core.Tx) error {
 		var err error
-		goal, err = core.CreateGoal(ctx, t, view.ws, core.NewGoal{ManagerID: in.ManagerID, Title: in.Title, DoneWhen: in.DoneWhen, By: uid,
-			RunnerID: in.RunnerID, Base: in.Base, Snapshot: in.Snapshot})
+		goal, err = core.CreateGoal(ctx, t, view.ws, in.newGoal(uid))
 		if err != nil {
 			return err
+		}
+		if in.Draft {
+			return s.audit(ctx, t.Q, &view.ws.OrgID, &uid, "goals.drafted", "Saved a draft goal for "+name+": "+in.Title)
 		}
 		if s.Orch != nil {
 			t.AfterCommit(func() { s.Orch.Kick(context.WithoutCancel(ctx), view.ws.ID) })
 		}
-		return s.audit(ctx, t.Q, &view.ws.OrgID, &uid, "goals.given", "Gave "+m.Name+" a goal: "+in.Title)
+		return s.audit(ctx, t.Q, &view.ws.OrgID, &uid, "goals.given", "Gave "+name+" a goal: "+in.Title)
 	})
 	if err != nil {
 		return err

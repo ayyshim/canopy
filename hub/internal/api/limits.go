@@ -70,23 +70,9 @@ func (s *Server) personUsage(ctx context.Context, q *db.Queries, org db.Organiza
 // queueIfOverLimit holds new goals and chats from a person at 100% of a personal limit;
 // running work finishes its current step.
 func (s *Server) queueIfOverLimit(ctx context.Context, ws db.Workspace, userID uuid.UUID, kind string, payload map[string]any) (bool, string, error) {
-	org, err := s.Store.GetOrganization(ctx, ws.OrgID)
-	if err != nil {
+	reason, err := s.limitReason(ctx, ws, userID)
+	if err != nil || reason == "" {
 		return false, "", err
-	}
-	u, err := s.personUsage(ctx, s.Store.Queries, org, userID)
-	if err != nil {
-		return false, "", err
-	}
-	reason := ""
-	switch {
-	case u.SessionUsed >= u.SessionLimit:
-		reason = fmt.Sprintf("You’ve used your 5-hour limit (%s of %s tokens). This starts at %s, when the limit frees up.",
-			compact(u.SessionUsed), compact(u.SessionLimit), u.SessionResetAt.Format("15:04"))
-	case u.WeekUsed >= u.WeekLimit:
-		reason = fmt.Sprintf("You’ve used your weekly limit (%s of %s tokens). This starts after the reset on Monday.", compact(u.WeekUsed), compact(u.WeekLimit))
-	default:
-		return false, "", nil
 	}
 	payload["workspace_id"] = ws.ID
 	b, _ := json.Marshal(payload)
@@ -101,6 +87,26 @@ func (s *Server) queueIfOverLimit(ctx context.Context, ws db.Workspace, userID u
 		return t.Emit(ctx, e, map[string]any{"id": qw.ID, "kind": kind, "reason": reason, "user_id": userID})
 	})
 	return true, reason, err
+}
+
+// limitReason says why a person can't start new work now, or "" when they can.
+func (s *Server) limitReason(ctx context.Context, ws db.Workspace, userID uuid.UUID) (string, error) {
+	org, err := s.Store.GetOrganization(ctx, ws.OrgID)
+	if err != nil {
+		return "", err
+	}
+	u, err := s.personUsage(ctx, s.Store.Queries, org, userID)
+	if err != nil {
+		return "", err
+	}
+	switch {
+	case u.SessionUsed >= u.SessionLimit:
+		return fmt.Sprintf("You’ve used your 5-hour limit (%s of %s tokens). This starts at %s, when the limit frees up.",
+			compact(u.SessionUsed), compact(u.SessionLimit), u.SessionResetAt.Format("15:04")), nil
+	case u.WeekUsed >= u.WeekLimit:
+		return fmt.Sprintf("You’ve used your weekly limit (%s of %s tokens). This starts after the reset on Monday.", compact(u.WeekUsed), compact(u.WeekLimit)), nil
+	}
+	return "", nil
 }
 
 func compact(n int64) string {
@@ -134,11 +140,12 @@ func (s *Server) DrainQueue(ctx context.Context) {
 			continue
 		}
 		var p struct {
-			ManagerID uuid.UUID `json:"manager_id"`
-			MemberID  uuid.UUID `json:"member_id"`
-			Title     string    `json:"title"`
-			DoneWhen  string    `json:"done_when"`
-			Text      string    `json:"text"`
+			ManagerID   uuid.UUID `json:"manager_id"`
+			MemberID    uuid.UUID `json:"member_id"`
+			Title       string    `json:"title"`
+			DoneWhen    string    `json:"done_when"`
+			Description string    `json:"description"`
+			Text        string    `json:"text"`
 		}
 		_ = json.Unmarshal(it.Payload, &p)
 		err = s.Core.Tx(ctx, func(t *core.Tx) error {
@@ -147,7 +154,7 @@ func (s *Server) DrainQueue(ctx context.Context) {
 			}
 			switch it.Kind {
 			case "goal":
-				if _, err := core.CreateGoal(ctx, t, ws, core.NewGoal{ManagerID: p.ManagerID, Title: p.Title, DoneWhen: p.DoneWhen, By: it.UserID}); err != nil {
+				if _, err := core.CreateGoal(ctx, t, ws, core.NewGoal{ManagerID: p.ManagerID, Title: p.Title, DoneWhen: p.DoneWhen, Description: p.Description, By: it.UserID}); err != nil {
 					return err
 				}
 			case "chat":

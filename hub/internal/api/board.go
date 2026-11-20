@@ -15,30 +15,31 @@ import (
 // boardSnapshot is everything the board draws, filtered to what the viewer may see
 // (SPEC "Board WebSocket": a snapshot filtered to the viewer's access, then deltas).
 type boardSnapshot struct {
-	Seq          int64                `json:"seq"`
-	Workspace    core.WorkspaceView   `json:"workspace"`
-	Viewer       viewerView           `json:"viewer"`
-	Members      []any                `json:"members"`
-	Grants       []core.GrantView     `json:"grants"`
-	Directories  []directoryDetail    `json:"directories"`
-	Goals        []core.GoalView      `json:"goals"`
-	GoalEvents   []core.GoalEventView `json:"goal_events"`
-	Tasks        []core.TaskView      `json:"tasks"`
-	Signals      []core.SignalView    `json:"signals"`
-	Sessions     []core.SessionView   `json:"sessions"`
-	Outputs      []core.OutputView    `json:"outputs"`
-	Seen         map[string]int32     `json:"seen"`      // output id → newest version this viewer opened
-	Unread       map[string]int64     `json:"unread"`    // member id → unread chat messages
-	Accounts     []core.AccountView   `json:"accounts"`  // sign-ins of the viewer's computers and shared ones (admins: all)
-	Runners      []core.RunnerView    `json:"runners"`   // the organization's computers
-	Computers    map[string]any       `json:"computers"` // person id → the computer their goals run on
-	Clones       []core.CloneView     `json:"clones"`
-	GoalRepos    []core.GoalRepoView  `json:"goal_repos"`
-	Notes        []core.NoteView      `json:"notes"`
-	Skills       []core.SkillView     `json:"skills"`        // the workspace skill library
-	MemberSkills map[string][]string  `json:"member_skills"` // member id → ids of library skills they have
-	Mirrors      map[string]any       `json:"mirrors"`       // directory id → sync state
-	People       []map[string]any     `json:"people"`        // names for avatars, cursors and "given by"
+	Seq          int64                 `json:"seq"`
+	Workspace    core.WorkspaceView    `json:"workspace"`
+	Viewer       viewerView            `json:"viewer"`
+	Members      []any                 `json:"members"`
+	Grants       []core.GrantView      `json:"grants"`
+	Directories  []directoryDetail     `json:"directories"`
+	Goals        []core.GoalView       `json:"goals"`
+	GoalEvents   []core.GoalEventView  `json:"goal_events"`
+	Tasks        []core.TaskView       `json:"tasks"`
+	Signals      []core.SignalView     `json:"signals"`
+	Sessions     []core.SessionView    `json:"sessions"`
+	Outputs      []core.OutputView     `json:"outputs"`
+	Attachments  []core.AttachmentView `json:"attachments"`
+	Seen         map[string]int32      `json:"seen"`      // output id → newest version this viewer opened
+	Unread       map[string]int64      `json:"unread"`    // member id → unread chat messages
+	Accounts     []core.AccountView    `json:"accounts"`  // sign-ins of the viewer's computers and shared ones (admins: all)
+	Runners      []core.RunnerView     `json:"runners"`   // the organization's computers
+	Computers    map[string]any        `json:"computers"` // person id → the computer their goals run on
+	Clones       []core.CloneView      `json:"clones"`
+	GoalRepos    []core.GoalRepoView   `json:"goal_repos"`
+	Notes        []core.NoteView       `json:"notes"`
+	Skills       []core.SkillView      `json:"skills"`        // the workspace skill library
+	MemberSkills map[string][]string   `json:"member_skills"` // member id → ids of library skills they have
+	Mirrors      map[string]any        `json:"mirrors"`       // directory id → sync state
+	People       []map[string]any      `json:"people"`        // names for avatars, cursors and "given by"
 }
 
 func (s *Server) handleBoard(w http.ResponseWriter, r *http.Request) error {
@@ -71,7 +72,7 @@ func (s *Server) BoardSnapshot(ctx context.Context, wsID, userID uuid.UUID) (*bo
 	}
 	snap := &boardSnapshot{Seq: seq, Workspace: detail.Workspace, Viewer: detail.Viewer, Members: detail.Members, Grants: detail.Grants,
 		Directories: detail.Directories, Clones: detail.Clones, Goals: []core.GoalView{}, GoalEvents: []core.GoalEventView{},
-		Tasks: []core.TaskView{}, Signals: []core.SignalView{}, Sessions: []core.SessionView{}, Outputs: []core.OutputView{},
+		Tasks: []core.TaskView{}, Signals: []core.SignalView{}, Sessions: []core.SessionView{}, Outputs: []core.OutputView{}, Attachments: []core.AttachmentView{},
 		Seen: map[string]int32{}, Unread: map[string]int64{}, Accounts: []core.AccountView{}, Mirrors: map[string]any{}, People: []map[string]any{},
 		Runners: []core.RunnerView{}, Computers: map[string]any{}, GoalRepos: []core.GoalRepoView{}, Notes: []core.NoteView{}}
 	runners, err := q.ListOrgRunners(ctx, view.ws.OrgID)
@@ -147,9 +148,20 @@ func (s *Server) BoardSnapshot(ctx context.Context, wsID, userID uuid.UUID) (*bo
 	if err != nil {
 		return nil, err
 	}
+	visibleTasks := map[uuid.UUID]bool{}
 	for _, t := range tasks {
 		if view.seesMember(t.MemberID) {
+			visibleTasks[t.ID] = true
 			snap.Tasks = append(snap.Tasks, core.ToTask(t))
+		}
+	}
+	attachments, err := q.ListWorkspaceAttachments(ctx, wsID)
+	if err != nil {
+		return nil, err
+	}
+	for _, a := range attachments {
+		if (a.GoalID != nil && visibleGoals[*a.GoalID]) || (a.TaskID != nil && visibleTasks[*a.TaskID]) {
+			snap.Attachments = append(snap.Attachments, core.ToAttachment(a))
 		}
 	}
 	signals, err := q.ListOpenSignals(ctx, wsID)

@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { ApiError } from "@/lib/api";
-import { createTask } from "@/lib/board/actions";
+import { attachFiles, createTask } from "@/lib/board/actions";
 import { goal as findGoal, independentStaff, managers, staffOf, visibleMember } from "@/lib/board/derive";
 import { useUI } from "@/lib/board/ui";
 import { SKILL_LABEL, type MemberView } from "@/lib/types";
 import { useB, useBoardCtx } from "../context";
+import { FilePicker, MAX_FILE_MB } from "../panels/Attachments";
 
 /** TaskDialog adds a task by hand, under a goal or on its own, waiting on other tasks. */
 export function TaskDialog({ goalId, memberId }: { goalId?: string; memberId?: string }) {
@@ -18,6 +19,7 @@ export function TaskDialog({ goalId, memberId }: { goalId?: string; memberId?: s
   const [goal, setGoal] = useState(goalId ?? "");
   const [member, setMember] = useState(memberId ?? g?.manager_id ?? "");
   const [deps, setDeps] = useState<string[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState("");
   const vis = (id: string) => visibleMember(b, id);
   const team = (mgr: MemberView) => [mgr, ...staffOf(b, mgr.id).map((s) => vis(s.id)).filter(Boolean)] as MemberView[];
@@ -26,7 +28,8 @@ export function TaskDialog({ goalId, memberId }: { goalId?: string; memberId?: s
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await createTask(wsId, goal || undefined, { title, member_id: member, depends_on: deps });
+      const { task } = await createTask(wsId, goal || undefined, { title, member_id: member, depends_on: deps });
+      if (files.length) await attachFiles({ taskId: task.id }, files);
       ui.toast("Task created.", "ok");
       ui.openDialog(null);
     } catch (err) {
@@ -70,10 +73,11 @@ export function TaskDialog({ goalId, memberId }: { goalId?: string; memberId?: s
           {!open.length && <span className="hint">No open tasks</span>}
         </div>
       </div>
+      <FilePicker files={files} onChange={setFiles} />
       {error && <span className="err">{error}</span>}
       <div className="row"><span className="spacer" />
         <button type="button" className="btn" onClick={() => ui.openDialog(null)}>Cancel</button>
-        <button className="btn btn-primary" disabled={!title.trim() || !member}>Create task</button>
+        <button className="btn btn-primary" disabled={!title.trim() || !member || files.some((f) => f.size > MAX_FILE_MB << 20)}>Create task</button>
       </div>
     </form>
   );

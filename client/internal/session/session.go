@@ -702,7 +702,7 @@ func (s *Session) forward(c net.Conn, wmu *sync.Mutex, call tools.Call) {
 		}
 		_ = json.Unmarshal(args, &in)
 		p.input = in.Input
-	case protocol.ToolSubmitOutput:
+	case protocol.ToolSubmitOutput, protocol.ToolAttachFile:
 		args = s.prepareOutput(args)
 	case protocol.ToolCompleteTask:
 		args = s.integrate(args)
@@ -738,7 +738,7 @@ func (s *Session) prepareOutput(raw json.RawMessage) json.RawMessage {
 	s.mu.Unlock()
 	_, real, ok := sandbox.Visible(visible, path)
 	if !ok {
-		return fail("That file isn’t in a folder you can see. Save it in your outputs folder.")
+		return fail("That file isn’t in a folder you can see. Save it in your work folder.")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -809,6 +809,13 @@ func (s *Session) toolResult(r protocol.ToolResult) {
 		return
 	}
 	res := tools.Result{CallID: p.callID, Text: r.Text, IsError: r.IsError}
+	if len(r.Files) > 0 {
+		go func() {
+			res.Text = s.fetchFiles(r.Files, r.Text)
+			writeResult(p, res)
+		}()
+		return
+	}
 	if p.tool == protocol.ToolPermission {
 		allow := r.Allow != nil && *r.Allow
 		res = tools.Result{CallID: p.callID, Text: claudecode.PermissionReply(allow, p.input, r.Text)}
@@ -824,6 +831,27 @@ func (s *Session) toolResult(r protocol.ToolResult) {
 		}
 	}
 	writeResult(p, res)
+}
+
+// fetchFiles downloads attachments into ./attachments and lists where they are.
+func (s *Session) fetchFiles(files []protocol.FileRef, text string) string {
+	dir := filepath.Join(s.workDir(), "attachments")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	var b strings.Builder
+	b.WriteString(text)
+	for _, f := range files {
+		name := filepath.Base(filepath.Clean("/" + f.Name))
+		if name == "/" || name == "." || strings.HasPrefix(name, ".") {
+			continue
+		}
+		if err := s.m.Blobs.Download(ctx, f.SHA256, filepath.Join(dir, name), 0o644); err != nil {
+			fmt.Fprintf(&b, "\n- %s: couldn’t download (%v)", name, err)
+			continue
+		}
+		fmt.Fprintf(&b, "\n- ./attachments/%s", name)
+	}
+	return b.String()
 }
 
 // runtimeDir is a short, private directory for sockets.
