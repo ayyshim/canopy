@@ -547,6 +547,7 @@ func (s *Server) handleCreateWorkspace(w http.ResponseWriter, r *http.Request) e
 					ID: newID(), WorkspaceID: ws.ID, Name: m.Name, Kind: m.Kind, Skill: skill, ReportsTo: reports,
 					Cli: m.CLI, Model: m.Model, AvatarColor: domain.AvatarColors[pos%len(domain.AvatarColors)],
 					AllDirectories: m.AllDirectories, Position: int32(pos), Instructions: m.Instructions,
+					CreatedBy: &id.UserID,
 				})
 				if err != nil {
 					return err

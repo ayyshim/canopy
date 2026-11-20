@@ -159,6 +159,7 @@ type memberInput struct {
 	Model        *string    `json:"model"`
 	Instructions *string    `json:"instructions"`
 	Sleeping     *bool      `json:"sleeping"`
+	Isolated     *bool      `json:"isolated"`
 }
 
 func (s *Server) handleCreateMember(w http.ResponseWriter, r *http.Request) error {
@@ -221,6 +222,10 @@ func (s *Server) handleCreateMember(w http.ResponseWriter, r *http.Request) erro
 		}
 		reports = in.ReportsTo
 	}
+	isolated := in.Isolated != nil && *in.Isolated
+	if isolated && (in.Kind != "staff" || reports != nil) {
+		val.Add("isolated", "Only independent staff can be isolated.")
+	}
 	if err := val.Err(); err != nil {
 		return err
 	}
@@ -232,7 +237,8 @@ func (s *Server) handleCreateMember(w http.ResponseWriter, r *http.Request) erro
 		}
 		m, err = t.Q.CreateMember(ctx, db.CreateMemberParams{ID: newID(), WorkspaceID: wsID, Name: name, Kind: in.Kind, Skill: skill,
 			ReportsTo: reports, Cli: cli, Model: model, Instructions: deref(in.Instructions),
-			AvatarColor: domain.AvatarColors[len(existing)%len(domain.AvatarColors)], Position: int32(len(existing))})
+			AvatarColor: domain.AvatarColors[len(existing)%len(domain.AvatarColors)], Position: int32(len(existing)),
+			Isolated: isolated, CreatedBy: &uid})
 		if err != nil {
 			return err
 		}
@@ -289,7 +295,7 @@ func (s *Server) handlePatchMember(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 	// Sleep and wake are allowed wherever the person can see the member; the rest needs admin.
-	onlySleep := in.Sleeping != nil && in.Name == nil && in.Skill == nil && !in.SetReportsTo && in.CLI == nil && in.Model == nil && in.Instructions == nil
+	onlySleep := in.Sleeping != nil && in.Name == nil && in.Skill == nil && !in.SetReportsTo && in.CLI == nil && in.Model == nil && in.Instructions == nil && in.Isolated == nil
 	if !onlySleep {
 		if err := v.RequireAdmin(); err != nil {
 			return err
@@ -341,12 +347,23 @@ func (s *Server) handlePatchMember(w http.ResponseWriter, r *http.Request) error
 			}
 		}
 	}
+	wantIsolated := m.Isolated
+	if in.Isolated != nil {
+		wantIsolated = *in.Isolated
+	}
+	reports := m.ReportsTo
+	if in.SetReportsTo {
+		reports = in.ReportsTo
+	}
+	if wantIsolated && (m.Kind != "staff" || reports != nil) {
+		val.Add("isolated", "Only independent staff can be isolated.")
+	}
 	if err := val.Err(); err != nil {
 		return err
 	}
 	err = s.Core.Tx(ctx, func(t *core.Tx) error {
 		updated, err := t.Q.UpdateMember(ctx, db.UpdateMemberParams{ID: m.ID, Name: in.Name, SetSkill: setSkill, Skill: in.Skill,
-			SetReportsTo: in.SetReportsTo, ReportsTo: in.ReportsTo, Cli: in.CLI, Model: model, Instructions: in.Instructions, Sleeping: in.Sleeping})
+			SetReportsTo: in.SetReportsTo, ReportsTo: in.ReportsTo, Cli: in.CLI, Model: model, Instructions: in.Instructions, Sleeping: in.Sleeping, Isolated: in.Isolated})
 		if err != nil {
 			return err
 		}
