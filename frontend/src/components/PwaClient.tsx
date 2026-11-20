@@ -1,18 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { isOnline, subscribeOnline } from "../lib/online";
+
+const subscribe = (cb: () => void) => subscribeOnline(window, cb);
+const getSnapshot = () => isOnline(navigator);
+const getServerSnapshot = () => true;
 
 /** PwaClient registers the service worker (production only) and shows an offline banner. */
 export default function PwaClient() {
-  const [online, setOnline] = useState(true);
+  const online = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   useEffect(() => {
     if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
-    setOnline(isOnline(navigator));
-    return subscribeOnline(window, setOnline);
   }, []);
 
   if (online) return null;
