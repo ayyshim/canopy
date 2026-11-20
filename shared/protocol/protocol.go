@@ -281,14 +281,22 @@ type Usage struct {
 	TokensOut        int64      `json:"tokens_out"`
 }
 
+// RateWindow is one limit window of the CLI's sign-in. Utilization is 0..1.
+type RateWindow struct {
+	Utilization float64    `json:"utilization"`
+	ResetsAt    *time.Time `json:"resets_at,omitempty"`
+	Status      string     `json:"status,omitempty"`
+}
+
 // RateLimit is the CLI's own report of its sign-in's limits. Limited means work stopped.
 type RateLimit struct {
-	SessionID   uuid.UUID          `json:"session_id"`
-	CLI         string             `json:"cli"`
-	Limited     bool               `json:"limited"`
-	ResetsAt    *time.Time         `json:"resets_at,omitempty"`
-	Utilization map[string]float64 `json:"utilization,omitempty"` // e.g. five_hour: 0.37
-	Message     string             `json:"message,omitempty"`
+	SessionID   uuid.UUID             `json:"session_id"`
+	CLI         string                `json:"cli"`
+	Limited     bool                  `json:"limited"`
+	ResetsAt    *time.Time            `json:"resets_at,omitempty"`
+	Utilization map[string]float64    `json:"utilization,omitempty"` // e.g. five_hour: 0.37
+	Windows     map[string]RateWindow `json:"windows,omitempty"`     // each window with its reset time and status
+	Message     string                `json:"message,omitempty"`
 }
 
 // ToolCall is an agent calling a Canopy tool; the hub answers with a ToolResult.

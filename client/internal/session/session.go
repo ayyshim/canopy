@@ -523,8 +523,15 @@ func (s *Session) onEvent(e claudecode.Event) {
 		s.m.send(protocol.TUsage, protocol.Usage{SessionID: s.id, TurnID: turn.TurnID, AttributedUserID: turn.AttributedUserID,
 			CLI: s.spec.CLI, Model: e.Model, TokensIn: e.TokensIn, TokensOut: e.TokensOut})
 	case "rate_limit":
+		var windows map[string]protocol.RateWindow
+		if len(e.Windows) > 0 {
+			windows = make(map[string]protocol.RateWindow, len(e.Windows))
+			for k, w := range e.Windows {
+				windows[k] = protocol.RateWindow{Utilization: w.Utilization, ResetsAt: w.ResetsAt, Status: w.Status}
+			}
+		}
 		s.m.send(protocol.TRateLimit, protocol.RateLimit{SessionID: s.id, CLI: s.spec.CLI, Limited: e.Limited, ResetsAt: e.ResetsAt,
-			Utilization: e.Utilization, Message: e.Text})
+			Utilization: e.Utilization, Windows: windows, Message: e.Text})
 	case "result":
 		s.mu.Lock()
 		turn := s.current
