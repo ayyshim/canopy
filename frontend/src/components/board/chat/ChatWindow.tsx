@@ -18,7 +18,7 @@ const ExitIcon = () => <svg width="15" height="15" viewBox="0 0 16 16" aria-hidd
 function greeting(b: ReturnType<typeof useB>, m: MemberView): string {
   const t = b.tasks.find((x) => x.member_id === m.id && x.status === "doing");
   if (m.kind === "manager") {
-    const goals = b.goals.filter((g) => g.manager_id === m.id && g.status !== "done");
+    const goals = b.goals.filter((g) => g.manager_id === m.id && g.status !== "done" && g.status !== "draft");
     const staff = b.members.filter((x) => x.reports_to === m.id).map((x) => visibleMember(b, x.id)?.name).filter(Boolean);
     return `Hi, I’m ${m.name}. Give me a goal and I’ll plan it with ${staff.length ? staff.join(" and ") : "independent staff"}. ${goals.length ? `Right now I’m on “${goals[0].title}”.` : "I’m free right now."}`;
   }
