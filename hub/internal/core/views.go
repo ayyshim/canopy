@@ -150,3 +150,25 @@ type CLIStatus struct {
 	Version   string `json:"version"`
 	LoggedIn  bool   `json:"logged_in"`
 }
+
+// SkillView is one skill in a workspace's library.
+type SkillView struct {
+	ID         uuid.UUID `json:"id"`
+	Name       string    `json:"name"`
+	SourceKind string    `json:"source_kind"` // md or github
+	SourceURL  string    `json:"source_url"`
+	Content    string    `json:"content"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+func ToSkill(s db.WorkspaceSkill) SkillView {
+	return SkillView{ID: s.ID, Name: s.Name, SourceKind: s.SourceKind, SourceURL: s.SourceUrl, Content: s.Content, UpdatedAt: s.UpdatedAt}
+}
+
+func ToSkills(list []db.WorkspaceSkill) []SkillView {
+	out := make([]SkillView, 0, len(list))
+	for _, s := range list {
+		out = append(out, ToSkill(s))
+	}
+	return out
+}

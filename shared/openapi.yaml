@@ -188,6 +188,62 @@ paths:
       responses:
         "200": { description: Settings, content: { application/json: { schema: { $ref: "#/components/schemas/HubSettings" } } } }
         "422": { $ref: "#/components/responses/Error" }
+  /workspaces/{wsId}/skills:
+    get:
+      summary: List the workspace skill library, and which skills each member has
+      parameters: [{ name: wsId, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: Skills, content: { application/json: { schema: { $ref: "#/components/schemas/SkillList" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      summary: Add a skill to the library (admins). GitHub links are fetched and stored.
+      parameters: [{ name: wsId, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/SkillInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/SkillResponse" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { description: skill_name_taken, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Error" }
+  /skills/{skillId}:
+    patch:
+      summary: Edit a skill (admins). Send refresh to fetch a GitHub skill again.
+      parameters: [{ name: skillId, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/SkillInput" } } } }
+      responses:
+        "200": { description: Saved, content: { application/json: { schema: { $ref: "#/components/schemas/SkillResponse" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { description: skill_name_taken, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Error" }
+    delete:
+      summary: Delete a skill; members lose it (admins)
+      parameters: [{ name: skillId, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /workspaces/{wsId}/members/{memberId}/skills:
+    get:
+      summary: Skills attached to a member
+      parameters: [{ name: wsId, in: path, required: true, schema: { type: string, format: uuid } }, { name: memberId, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: Skills, content: { application/json: { schema: { type: object, required: [skills], properties: { skills: { type: array, items: { $ref: "#/components/schemas/Skill" } } } } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /workspaces/{wsId}/members/{memberId}/skills/{skillId}:
+    put:
+      summary: Attach a library skill to a member (admins; managers use the assign_skill tool)
+      parameters: [{ name: wsId, in: path, required: true, schema: { type: string, format: uuid } }, { name: memberId, in: path, required: true, schema: { type: string, format: uuid } }, { name: skillId, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: The member's skills, content: { application/json: { schema: { type: object, required: [skills], properties: { skills: { type: array, items: { $ref: "#/components/schemas/Skill" } } } } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      summary: Detach a skill from a member (admins)
+      parameters: [{ name: wsId, in: path, required: true, schema: { type: string, format: uuid } }, { name: memberId, in: path, required: true, schema: { type: string, format: uuid } }, { name: skillId, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: The member's skills, content: { application/json: { schema: { type: object, required: [skills], properties: { skills: { type: array, items: { $ref: "#/components/schemas/Skill" } } } } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
 components:
   responses:
     Error:
@@ -365,6 +421,38 @@ components:
         name: { type: string }
         slug: { type: string }
         role: { $ref: "#/components/schemas/OrgRole" }
+    Skill:
+      type: object
+      required: [id, name, source_kind, source_url, content, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        source_kind: { type: string, enum: [md, github] }
+        source_url: { type: string, description: "The GitHub link; empty for markdown skills" }
+        content: { type: string }
+        updated_at: { type: string, format: date-time }
+    SkillInput:
+      type: object
+      description: "Create needs name and source_kind, plus content (md) or source_url (github). Edits send only what changes."
+      properties:
+        name: { type: string, maxLength: 80 }
+        source_kind: { type: string, enum: [md, github] }
+        source_url: { type: string }
+        content: { type: string }
+        refresh: { type: boolean }
+    SkillResponse:
+      type: object
+      required: [skill]
+      properties: { skill: { $ref: "#/components/schemas/Skill" } }
+    SkillList:
+      type: object
+      required: [skills, member_skills]
+      properties:
+        skills: { type: array, items: { $ref: "#/components/schemas/Skill" } }
+        member_skills:
+          type: object
+          description: Member id to the ids of the library skills attached to them
+          additionalProperties: { type: array, items: { type: string, format: uuid } }
     Me:
       type: object
       required: [user, organizations, current_org_id]
