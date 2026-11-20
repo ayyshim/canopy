@@ -20,6 +20,7 @@ export type SetupMember = {
   grants: SetupGrant[];
   instructions: string;
   grants_by: "suggested" | "you";
+  isolated?: boolean; // independent staff only their creator can chat with
   skill_keys: string[]; // library skills (SetupSkill keys) this member starts with
 };
 

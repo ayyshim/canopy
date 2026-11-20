@@ -161,10 +161,14 @@ function Row({ m, p, update, remove, canRemove, error }: RowProps) {
               {Object.entries(SKILL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select></label>
           <label className="field"><span className="lbl">Reports to</span>
-            <select className="input" value={m.reports_to_key} onChange={(e) => update(m.key, { reports_to_key: e.target.value })}>
+            <select className="input" value={m.reports_to_key} onChange={(e) => update(m.key, { reports_to_key: e.target.value, ...(e.target.value ? { isolated: false } : {}) })}>
               <option value="">Anyone</option>
               {managers.map((x) => <option key={x.key} value={x.key}>{x.name || "Manager"}</option>)}
             </select></label>
+          {!m.reports_to_key && (
+            <label className="field"><span className="lbl"><input type="checkbox" checked={!!m.isolated} onChange={(e) => update(m.key, { isolated: e.target.checked })} /> Isolated</span>
+              <span className="hint">Only you can chat with them. Managers can’t borrow them.</span></label>
+          )}
         </>
       )}
       <button type="button" className="icon-btn" onClick={() => remove(m.key)} aria-label={`Remove ${m.name || "this person"}`} disabled={!canRemove}>✕</button>
