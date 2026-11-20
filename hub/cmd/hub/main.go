@@ -56,7 +56,8 @@ Usage:
   canopy-hub version
 
 Serve flags (each also readable from the environment, shown in brackets):
-  --data DIR           where the hub keeps everything [CANOPY_DATA_DIR] (default ./canopy-data)
+  --data DIR           where the hub keeps everything [CANOPY_DATA_DIR] (default
+                       ~/.local/share/canopy-hub, or /var/lib/canopy as root)
   --addr ADDR          web and API listen address [HUB_ADDR] (default :8080)
   --public-url URL     the address people open [PUBLIC_URL] (default http://localhost:8080)
   --domain NAME        serve HTTPS for NAME on :443 with automatic certificates
@@ -119,7 +120,7 @@ type options struct {
 func parseFlags(name string, args []string) (options, error) {
 	var o options
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
-	fs.StringVar(&o.data, "data", envOr("CANOPY_DATA_DIR", "canopy-data"), "data directory")
+	fs.StringVar(&o.data, "data", envOr("CANOPY_DATA_DIR", defaultDataDir()), "data directory")
 	fs.StringVar(&o.addr, "addr", "", "listen address")
 	fs.StringVar(&o.publicURL, "public-url", "", "public URL")
 	fs.StringVar(&o.domain, "domain", "", "domain for automatic HTTPS")
@@ -161,6 +162,29 @@ func envOr(k, def string) string {
 		return v
 	}
 	return def
+}
+
+// defaultDataDir is the same folder whichever folder the hub starts in.
+func defaultDataDir() string {
+	if os.Geteuid() == 0 {
+		return "/var/lib/canopy"
+	}
+	if d := os.Getenv("XDG_DATA_HOME"); d != "" {
+		return filepath.Join(d, "canopy-hub")
+	}
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".local", "share", "canopy-hub")
+}
+
+// warnOldDataDir points at ./canopy-data, where earlier hubs kept their data.
+func warnOldDataDir(using string) {
+	old, err := filepath.Abs("canopy-data")
+	if err != nil || old == using {
+		return
+	}
+	if _, err := os.Stat(filepath.Join(old, "postgres")); err == nil {
+		slog.Warn("found a hub’s data in ./canopy-data, but this hub uses another folder. To keep using that data, start the hub with: --data "+old, "using", using)
+	}
 }
 
 // lockData keeps two hubs from using one data directory.
@@ -316,6 +340,7 @@ func serve(args []string) error {
 	if err != nil {
 		return err
 	}
+	warnOldDataDir(o.data)
 	unlock, err := lockData(o.data)
 	if err != nil {
 		return err
