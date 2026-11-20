@@ -8,6 +8,7 @@ import { useUI } from "@/lib/board/ui";
 import type { GoalView } from "@/lib/types";
 import { useB, useBoardCtx } from "../context";
 import { Avatar } from "../icons";
+import { Attachments } from "./Attachments";
 import { PanelBody, PanelFoot, PanelHead } from "./Panel";
 
 /** DraftPanel shows a saved draft goal: nobody works on it until it is given. */
@@ -61,6 +62,7 @@ export function DraftPanel({ g }: { g: GoalView }) {
         )}
         {g.description && <div className="sb-sec"><span className="lbl">Description</span><span style={{ fontSize: 13.5, whiteSpace: "pre-wrap" }}>{g.description}</span></div>}
         {g.done_when && <div className="sb-sec"><span className="lbl">Done when</span><span style={{ fontSize: 13.5 }}>{g.done_when}</span></div>}
+        <Attachments goalId={g.id} canAdd={mine} />
         {g.runner_id && <div className="sb-sec"><span className="lbl">Runs on</span><span style={{ fontSize: 13.5 }}>{computer(b, g.runner_id)?.name ?? "A computer"}</span></div>}
       </PanelBody>
       {mine && (

@@ -12,6 +12,7 @@ import { SKILL_LABEL } from "@/lib/types";
 import { useB, useBoardCtx } from "../context";
 import { Avatar, Thumb } from "../icons";
 import { RunsOn, SignalBox, StatusPill, TaskRow, shortTitle } from "./bits";
+import { Attachments } from "./Attachments";
 import { PanelBody, PanelFoot, PanelHead } from "./Panel";
 
 export function TaskPanel({ id }: { id: string }) {
@@ -113,6 +114,7 @@ export function TaskPanel({ id }: { id: string }) {
           {t.depends_on.length ? t.depends_on.map((d) => findTask(b, d)).filter(Boolean).map((x) => <TaskRow key={x!.id} t={x!} />) : <span className="hint">Nothing</span>}
         </div>
         {unlocks.length > 0 && <div className="sb-sec"><span className="lbl">Unlocks</span>{unlocks.map((x) => <TaskRow key={x.id} t={x} />)}</div>}
+        <Attachments taskId={t.id} />
         <div className="sb-sec">
           <span className="lbl">Outputs</span>
           {outs.length ? (

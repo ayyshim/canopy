@@ -12,6 +12,7 @@ import { useNow } from "@/lib/useNow";
 import { useB, useBoardCtx } from "../context";
 import { Avatar, RepoIcon, Thumb } from "../icons";
 import { RunsOn, SignalBox, TaskRow, goalLabel } from "./bits";
+import { Attachments } from "./Attachments";
 import { DraftPanel } from "./DraftPanel";
 import { PanelBody, PanelFoot, PanelHead } from "./Panel";
 
@@ -156,6 +157,7 @@ function GivenGoalPanel({ g }: { g: GoalView }) {
         )}
         {g.description && <div className="sb-sec"><span className="lbl">Description</span><span style={{ fontSize: 13.5, whiteSpace: "pre-wrap" }}>{g.description}</span></div>}
         {g.done_when && <div className="sb-sec"><span className="lbl">Done when</span><span style={{ fontSize: 13.5 }}>{g.done_when}</span></div>}
+        <Attachments goalId={g.id} />
         {sigs.length > 0 && <div className="sb-sec"><span className="lbl">Waiting on you ({sigs.length})</span>{sigs.map((s) => <SignalBox key={s.id} s={s} />)}</div>}
         <div className="sb-sec">
           <span className="lbl">Tasks by member</span>
