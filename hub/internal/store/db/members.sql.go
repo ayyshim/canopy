@@ -23,9 +23,9 @@ func (q *Queries) CountManagers(ctx context.Context, workspaceID uuid.UUID) (int
 }
 
 const createMember = `-- name: CreateMember :one
-INSERT INTO members (id, workspace_id, name, kind, skill, reports_to, cli, model, instructions, avatar_color, all_directories, position)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-RETURNING id, workspace_id, name, kind, skill, reports_to, cli, model, instructions, avatar_color, all_directories, sleeping, position, created_at, updated_at
+INSERT INTO members (id, workspace_id, name, kind, skill, reports_to, cli, model, instructions, avatar_color, all_directories, position, isolated, created_by)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+RETURNING id, workspace_id, name, kind, skill, reports_to, cli, model, instructions, avatar_color, all_directories, sleeping, position, created_at, updated_at, isolated, created_by
 `
 
 type CreateMemberParams struct {
@@ -41,6 +41,8 @@ type CreateMemberParams struct {
 	AvatarColor    string
 	AllDirectories bool
 	Position       int32
+	Isolated       bool
+	CreatedBy      *uuid.UUID
 }
 
 func (q *Queries) CreateMember(ctx context.Context, arg CreateMemberParams) (Member, error) {
@@ -57,6 +59,8 @@ func (q *Queries) CreateMember(ctx context.Context, arg CreateMemberParams) (Mem
 		arg.AvatarColor,
 		arg.AllDirectories,
 		arg.Position,
+		arg.Isolated,
+		arg.CreatedBy,
 	)
 	var i Member
 	err := row.Scan(
@@ -75,6 +79,8 @@ func (q *Queries) CreateMember(ctx context.Context, arg CreateMemberParams) (Mem
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Isolated,
+		&i.CreatedBy,
 	)
 	return i, err
 }
@@ -112,7 +118,7 @@ func (q *Queries) DeleteMemberGrants(ctx context.Context, memberID uuid.UUID) er
 }
 
 const getMember = `-- name: GetMember :one
-SELECT id, workspace_id, name, kind, skill, reports_to, cli, model, instructions, avatar_color, all_directories, sleeping, position, created_at, updated_at FROM members WHERE id = $1
+SELECT id, workspace_id, name, kind, skill, reports_to, cli, model, instructions, avatar_color, all_directories, sleeping, position, created_at, updated_at, isolated, created_by FROM members WHERE id = $1
 `
 
 func (q *Queries) GetMember(ctx context.Context, id uuid.UUID) (Member, error) {
@@ -134,6 +140,8 @@ func (q *Queries) GetMember(ctx context.Context, id uuid.UUID) (Member, error) {
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Isolated,
+		&i.CreatedBy,
 	)
 	return i, err
 }
@@ -209,7 +217,7 @@ func (q *Queries) ListMemberGrants(ctx context.Context, memberID uuid.UUID) ([]D
 }
 
 const listMembers = `-- name: ListMembers :many
-SELECT id, workspace_id, name, kind, skill, reports_to, cli, model, instructions, avatar_color, all_directories, sleeping, position, created_at, updated_at FROM members WHERE workspace_id = $1 ORDER BY position, created_at, id
+SELECT id, workspace_id, name, kind, skill, reports_to, cli, model, instructions, avatar_color, all_directories, sleeping, position, created_at, updated_at, isolated, created_by FROM members WHERE workspace_id = $1 ORDER BY position, created_at, id
 `
 
 func (q *Queries) ListMembers(ctx context.Context, workspaceID uuid.UUID) ([]Member, error) {
@@ -237,6 +245,8 @@ func (q *Queries) ListMembers(ctx context.Context, workspaceID uuid.UUID) ([]Mem
 			&i.Position,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Isolated,
+			&i.CreatedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -271,9 +281,10 @@ SET name = coalesce($1, name),
     model = coalesce($7, model),
     instructions = coalesce($8, instructions),
     all_directories = coalesce($9, all_directories),
-    sleeping = coalesce($10, sleeping)
-WHERE id = $11
-RETURNING id, workspace_id, name, kind, skill, reports_to, cli, model, instructions, avatar_color, all_directories, sleeping, position, created_at, updated_at
+    sleeping = coalesce($10, sleeping),
+    isolated = coalesce($11, isolated)
+WHERE id = $12
+RETURNING id, workspace_id, name, kind, skill, reports_to, cli, model, instructions, avatar_color, all_directories, sleeping, position, created_at, updated_at, isolated, created_by
 `
 
 type UpdateMemberParams struct {
@@ -287,6 +298,7 @@ type UpdateMemberParams struct {
 	Instructions   *string
 	AllDirectories *bool
 	Sleeping       *bool
+	Isolated       *bool
 	ID             uuid.UUID
 }
 
@@ -302,6 +314,7 @@ func (q *Queries) UpdateMember(ctx context.Context, arg UpdateMemberParams) (Mem
 		arg.Instructions,
 		arg.AllDirectories,
 		arg.Sleeping,
+		arg.Isolated,
 		arg.ID,
 	)
 	var i Member
@@ -321,6 +334,8 @@ func (q *Queries) UpdateMember(ctx context.Context, arg UpdateMemberParams) (Mem
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Isolated,
+		&i.CreatedBy,
 	)
 	return i, err
 }

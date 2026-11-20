@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"canopy/hub/internal/authz"
 	"canopy/hub/internal/core"
 	"canopy/hub/internal/httpx"
 	"canopy/hub/internal/store/db"
@@ -21,8 +22,20 @@ type Chatter interface {
 	SendComment(ctx context.Context, wsID, memberID, taskID, userID uuid.UUID, who, title, text string)
 }
 
+// loadChatMember loads a member and refuses isolated staff to anyone but their creator.
+func (s *Server) loadChatMember(r *http.Request) (db.Workspace, authz.Viewer, db.Member, error) {
+	ws, v, m, err := s.loadMember(r)
+	if err != nil {
+		return ws, v, m, err
+	}
+	if m.Isolated && (m.CreatedBy == nil || *m.CreatedBy != identity(r).UserID) {
+		return ws, v, m, httpx.ErrForbidden
+	}
+	return ws, v, m, nil
+}
+
 func (s *Server) handleGetChat(w http.ResponseWriter, r *http.Request) error {
-	_, _, m, err := s.loadMember(r)
+	_, _, m, err := s.loadChatMember(r)
 	if err != nil {
 		return err
 	}
@@ -47,7 +60,7 @@ func (s *Server) handleGetChat(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) handleMarkChatRead(w http.ResponseWriter, r *http.Request) error {
-	_, _, m, err := s.loadMember(r)
+	_, _, m, err := s.loadChatMember(r)
 	if err != nil {
 		return err
 	}
@@ -60,7 +73,7 @@ func (s *Server) handleMarkChatRead(w http.ResponseWriter, r *http.Request) erro
 
 // handlePostChat sends a message to a member, or with as_goal gives its manager a goal.
 func (s *Server) handlePostChat(w http.ResponseWriter, r *http.Request) error {
-	ws, _, m, err := s.loadMember(r)
+	ws, _, m, err := s.loadChatMember(r)
 	if err != nil {
 		return err
 	}

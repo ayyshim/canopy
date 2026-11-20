@@ -115,7 +115,7 @@ func assign(st *wsState, manager db.Member, skill string, load map[uuid.UUID]int
 		var best *db.Member
 		for i := range st.members {
 			m := &st.members[i]
-			if m.Kind != "staff" || !match(*m) {
+			if m.Kind != "staff" || m.Isolated || !match(*m) {
 				continue
 			}
 			if best == nil || load[m.ID] < load[best.ID] {

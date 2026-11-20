@@ -47,6 +47,9 @@ func boardText(st *wsState, now time.Time, withDone bool) string {
 
 	b.WriteString("\nTeam:\n")
 	for _, m := range st.members {
+		if m.Isolated {
+			continue
+		}
 		role := "manager"
 		if m.Kind == "staff" {
 			role = deref(m.Skill)

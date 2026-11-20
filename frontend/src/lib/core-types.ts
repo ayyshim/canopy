@@ -43,6 +43,8 @@ export interface MemberView {
   skill?: string;
   reports_to?: string /* uuid */;
   independent: boolean;
+  isolated: boolean;
+  created_by: string | null;
   cli: string;
   model: string;
   instructions: string;

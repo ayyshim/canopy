@@ -647,7 +647,7 @@ func (o *Orch) createOwnerChange(ctx context.Context, t *core.Tx, st *wsState, d
 func pickWriter(st *wsState, dirID uuid.UUID, requester *uuid.UUID) *uuid.UUID {
 	var best *uuid.UUID
 	for _, m := range st.members {
-		if st.grantMode(m.ID, dirID) != "read_write" {
+		if m.Isolated || st.grantMode(m.ID, dirID) != "read_write" {
 			continue
 		}
 		id := m.ID

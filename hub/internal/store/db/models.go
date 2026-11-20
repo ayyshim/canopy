@@ -306,6 +306,8 @@ type Member struct {
 	Position       int32
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	Isolated       bool
+	CreatedBy      *uuid.UUID
 }
 
 type MemberSkill struct {

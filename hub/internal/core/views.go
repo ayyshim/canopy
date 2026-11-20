@@ -35,6 +35,8 @@ type MemberView struct {
 	Skill          *string    `json:"skill"`
 	ReportsTo      *uuid.UUID `json:"reports_to"`
 	Independent    bool       `json:"independent"`
+	Isolated       bool       `json:"isolated"`
+	CreatedBy      *uuid.UUID `json:"created_by"`
 	CLI            string     `json:"cli"`
 	Model          string     `json:"model"`
 	Instructions   string     `json:"instructions"`
@@ -48,7 +50,7 @@ type MemberView struct {
 
 func ToMember(m db.Member) MemberView {
 	return MemberView{ID: m.ID, WorkspaceID: m.WorkspaceID, Name: m.Name, Kind: m.Kind, Skill: m.Skill, ReportsTo: m.ReportsTo,
-		Independent: m.Kind == "staff" && m.ReportsTo == nil, CLI: m.Cli, Model: m.Model, Instructions: m.Instructions,
+		Independent: m.Kind == "staff" && m.ReportsTo == nil, Isolated: m.Isolated, CreatedBy: m.CreatedBy, CLI: m.Cli, Model: m.Model, Instructions: m.Instructions,
 		AvatarColor: m.AvatarColor, AllDirectories: m.AllDirectories, Sleeping: m.Sleeping, Position: m.Position, Status: "not_started"}
 }
 

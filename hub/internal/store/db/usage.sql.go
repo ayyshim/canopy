@@ -605,7 +605,7 @@ func (q *Queries) OldestUserUsageSince(ctx context.Context, arg OldestUserUsageS
 }
 
 const orgMembersAll = `-- name: OrgMembersAll :many
-SELECT m.id, m.workspace_id, m.name, m.kind, m.skill, m.reports_to, m.cli, m.model, m.instructions, m.avatar_color, m.all_directories, m.sleeping, m.position, m.created_at, m.updated_at, w.name AS workspace_name FROM members m JOIN workspaces w ON w.id = m.workspace_id WHERE w.org_id = $1
+SELECT m.id, m.workspace_id, m.name, m.kind, m.skill, m.reports_to, m.cli, m.model, m.instructions, m.avatar_color, m.all_directories, m.sleeping, m.position, m.created_at, m.updated_at, m.isolated, m.created_by, w.name AS workspace_name FROM members m JOIN workspaces w ON w.id = m.workspace_id WHERE w.org_id = $1
 `
 
 type OrgMembersAllRow struct {
@@ -624,6 +624,8 @@ type OrgMembersAllRow struct {
 	Position       int32
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	Isolated       bool
+	CreatedBy      *uuid.UUID
 	WorkspaceName  string
 }
 
@@ -652,6 +654,8 @@ func (q *Queries) OrgMembersAll(ctx context.Context, orgID uuid.UUID) ([]OrgMemb
 			&i.Position,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Isolated,
+			&i.CreatedBy,
 			&i.WorkspaceName,
 		); err != nil {
 			return nil, err
