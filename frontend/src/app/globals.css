@@ -1,4 +1,7 @@
 
+/* Breakpoints (media queries cannot read custom properties, so use these literals):
+   sm = max-width:640px (phones), md = max-width:900px (tablets and below).
+   Helpers: .hide-sm/.show-sm (<=900), .hide-xs/.show-xs (<=640), .tap (touch-sized target). */
 /* Canopy design system: tokens and components follow the Canopy design prototype
    (claude.ai/artifact/Qv5vgXvQUP9xVWDGkhQ813). */
 :root{
@@ -406,7 +409,7 @@ code,.mono{font-family:var(--font-mono);font-size:.92em}
 .toast button{border:0;background:rgba(255,255,255,.14);color:#fff;min-height:32px;padding:0 11px;border-radius:8px;font-weight:600;font-size:12.5px}
 @keyframes tin{from{opacity:0;transform:translateY(8px)}}
 body:not(.on-board) .toasts{top:max(14px,env(safe-area-inset-top,0px));bottom:auto}
-@media (min-width:861px){body.on-board.side-open .toasts{right:374px}}
+@media (min-width:901px){body.on-board.side-open .toasts{right:374px}}
 body.on-board.tray-open .toasts{bottom:314px}
 
 /* Pages: settings-style pages, sign-in, setup */
@@ -420,13 +423,13 @@ body.on-board.tray-open .toasts{bottom:314px}
 .pnav button:hover{background:var(--soft)}
 .pnav button[aria-current="page"]{background:var(--green-soft);font-weight:600}
 .pmain{flex:1;overflow:auto;padding-block:36px 60px;padding-left:max(44px,env(safe-area-inset-left,0px));padding-right:max(44px,env(safe-area-inset-right,0px))}
-.page-in{max-width:1080px;display:flex;flex-direction:column;gap:16px}
+.page-in{min-width:0;max-width:1080px;display:flex;flex-direction:column;gap:16px}
 .page-in .lead{color:var(--muted);margin-top:-8px}
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .tile{background:var(--soft);border:0;border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
 .tile b{font:700 22px var(--font-display);font-variant-numeric:tabular-nums}
 .tile .muted{font-size:12px}
-.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:16px}
 .panel{padding:18px 20px;display:flex;flex-direction:column;gap:12px;min-width:0}
 .panel h2{font-size:16px}
 .heat{display:grid;grid-template-columns:34px repeat(24,1fr);gap:2px;font-size:10.5px;color:var(--muted)}
@@ -580,11 +583,11 @@ body.on-board.tray-open .toasts{bottom:314px}
 .term .you{color:#9FE0BE}.term .ask{color:#FFD58A}.term .err{color:#FF9C8F}
 .pw{position:relative}.pw .input{padding-right:64px}.pw button{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;font-weight:600;font-size:12.5px;color:var(--muted);padding:6px 8px;border-radius:8px}
 .sso{display:flex;flex-direction:column;gap:10px}.sso .btn{width:100%;min-height:46px}
-@media (max-width:860px){.chat.full{grid-template-columns:1fr}.chat.full>.cside{display:none}.wrow,.wrow.mgr{grid-template-columns:32px minmax(0,1fr) 36px}.wrow>*:nth-child(n+3):not(:last-child){grid-column:2/3}.pgrid{grid-template-columns:1fr}}
+@media (max-width:900px){.chat.full{grid-template-columns:1fr}.chat.full>.cside{display:none}.wrow,.wrow.mgr{grid-template-columns:32px minmax(0,1fr) 36px}.wrow>*:nth-child(n+3):not(:last-child){grid-column:2/3}.pgrid{grid-template-columns:1fr}}
 /* Prototype controls (not part of the product) */
 
-@media (max-width:860px){
-  .auth-art,.onb-rail,.pnav{display:none}
+@media (max-width:900px){
+  .auth-art{display:none}
   .auth-main{padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
   .onb-body{padding-block:32px 20px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
   .onb-foot{padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
@@ -633,13 +636,77 @@ body.on-board.tray-open .toasts{bottom:314px}
 .kindcard:focus-visible{outline:2px solid var(--green);outline-offset:2px}
 @media (max-width:520px){.kindcards{grid-template-columns:1fr}}
 .skill-item .linkbtn{font-size:14px;text-decoration:none;padding:2px 0}
-/* Phones: keep the top bar inside the screen */
-@media (max-width:600px){
+
+/* Responsive helpers */
+.show-sm,.show-xs{display:none!important}
+@media (max-width:900px){.show-sm{display:revert!important}}
+@media (max-width:640px){.hide-xs{display:none!important}.show-xs{display:revert!important}}
+@media (pointer:coarse){.menu .mi,.tap{min-height:44px}.icon-btn{width:44px;height:44px}}
+
+/* Menus: the Menu component wrapper, and menus that must fit a narrow screen */
+.menu-wrap{position:relative}
+.menu-right{right:0}
+.menu{max-width:calc(100vw - 16px);max-height:calc(100dvh - 80px);overflow-y:auto}
+.wsbtn{max-width:min(240px,40vw)}
+@media (max-width:640px){
   .topbar{gap:6px;padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px))}
-  .topbar>.brand{display:none}
-  .topbar>.mw{min-width:0}
-  .topbar .wsbtn{max-width:100%;min-width:0;gap:6px;padding:0 6px}
-  .topbar .btn{padding-inline:10px}
-  .dialog>.row:last-child{position:sticky;bottom:-20px;margin-bottom:-20px;padding-block:10px 20px;background:var(--card);border-top:1px solid var(--edge)}
-  .cfoot{flex-direction:column;align-items:flex-start;gap:2px}
+  .topbar .btn{padding:0 12px}
+  .needpill .count{padding:0 4px}
+  .wsbtn{max-width:44vw}
 }
+@media (max-width:640px){.topbar .mw,.topbar .menu-wrap{min-width:0}.topbar .wsbtn{max-width:100%}.topbar .menu-wrap .btn{max-width:100%}.menu-wrap .menu{max-width:calc(100vw - 20px)}}
+
+/* Non-board pages on small screens */
+@media (max-width:900px){
+  .pwrap{flex-direction:column}
+  .pnav{display:flex;align-items:center;gap:4px;width:auto;border-right:0;border-bottom:1px solid var(--edge);padding:8px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .pnav>*{flex:none}
+  .pnav h2{margin:0 4px 0 10px;white-space:nowrap}
+  .pnav h2:first-child{margin-left:0}
+  .pnav a{width:auto;white-space:nowrap}
+  .pnav>h2[style]{margin-top:0!important}
+  .onb{flex-direction:column}
+  .onb-rail{width:auto;flex-direction:row;flex-wrap:wrap;align-items:center;border-right:0;border-bottom:1px solid var(--edge);padding-block:12px;padding-right:max(20px,env(safe-area-inset-right,0px));padding-left:max(20px,env(safe-area-inset-left,0px))}
+  .onb-rail>.grow,.onb-rail>.fine{display:none}
+  .onb-rail>.row{order:2;margin:0 0 0 auto!important}
+  .onb-rail .steps{order:3;flex-direction:row;width:100%;margin:10px 0 0;overflow-x:auto}
+  .onb-rail .steps li{flex:none}
+  .onb-rail .steps button{width:auto;white-space:nowrap}
+  .onb-main{flex:none;min-height:0}
+}
+@media (max-width:640px){
+  .pmain{padding-block:20px 40px;padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px))}
+  .ptop{gap:8px}
+  .ptop .brand b{display:none}
+  .ptop .btn{padding:0 12px}
+  h1,.authcard h1{font-size:26px}
+  .onb-body h1{font-size:28px}
+  .onb-body .lead,.authcard .lead{font-size:15px}
+  .auth-main{padding-block:20px}
+  .auth-center{padding:20px 0;align-items:flex-start}
+  .onb-rail .steps button:not([aria-current="step"]){font-size:0;gap:0;padding:10px 8px}
+  .onb-foot{position:sticky;bottom:0;padding-top:12px;padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
+  .onb-foot .row{flex-wrap:wrap;justify-content:flex-end}
+  .tiles{grid-template-columns:1fr 1fr}
+  .panel{padding:14px}
+  .table th,.table td{padding:8px 6px}
+}
+
+/* Phones: panels, dialogs, chat, outputs and the viewer use the whole screen */
+@media (max-width:640px){
+  .sidebar{left:0;right:0;top:0;bottom:0;max-height:none;border:0;border-radius:0;padding-bottom:env(safe-area-inset-bottom,0px)}
+  .overlay{padding:0;align-items:end}
+  .dialog{width:100%;max-height:92dvh;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));overscroll-behavior:contain}
+  .dialog h2{font-size:21px}
+  .dialog input,.dialog textarea,.dialog select{font-size:16px}
+  .chat{left:0!important;right:0;bottom:0;height:88dvh;max-height:none;border-radius:18px 18px 0 0}
+  .tray{height:70dvh}
+  .tray-h{padding:10px 12px 6px}.tray-body{padding:4px 12px 12px}
+  .overlay:has(.viewer){padding:0}
+  .viewer{width:100%;height:100dvh;border-radius:0}
+  .vpanel{max-height:40%}
+  .zoomctl{bottom:max(14px,env(safe-area-inset-bottom,0px))}
+  .hintcard{bottom:70px;left:10px}
+}
+.dialog,.sidebar,.tray-body,.vpanel{-webkit-overflow-scrolling:touch}
+@media (pointer:coarse){.input,.textarea,select.input,.composer textarea{font-size:16px}}

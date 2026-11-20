@@ -97,6 +97,7 @@ export function PageShell({ title, children, workspace }: { title: string; child
           )}
           <h2 style={{ marginTop: 18 }}>You</h2>
           {link("/account", "Account and notifications")}
+          <button className="btn btn-ghost btn-sm show-sm" onClick={logout}>Log out</button>
         </nav>
         <main className="pmain"><div className="page-in">{children}</div></main>
       </div>

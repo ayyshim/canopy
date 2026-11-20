@@ -26,10 +26,10 @@ function useMenu() {
   useEffect(() => {
     if (!open) return;
     const key = (e: KeyboardEvent) => e.key === "Escape" && setOpen(null);
-    const click = (e: MouseEvent) => !(e.target as HTMLElement).closest(".mw") && setOpen(null);
+    const click = (e: PointerEvent) => !(e.target as HTMLElement).closest(".mw") && setOpen(null);
     document.addEventListener("keydown", key);
-    document.addEventListener("mousedown", click);
-    return () => { document.removeEventListener("keydown", key); document.removeEventListener("mousedown", click); };
+    document.addEventListener("pointerdown", click);
+    return () => { document.removeEventListener("keydown", key); document.removeEventListener("pointerdown", click); };
   }, [open]);
   return { open, toggle: (id: string) => setOpen((o) => (o === id ? null : id)), close: () => setOpen(null), ref };
 }
@@ -129,8 +129,8 @@ export function TopBar() {
 
   return (
     <header className="topbar">
-      <Link className="brand" href="/board" aria-label="Canopy board"><Brand /><b className="hide-s">Canopy</b></Link>
-      <div className="mw">
+      <Link className="brand hide-xs" href="/board" aria-label="Canopy board"><Brand /><b className="hide-s">Canopy</b></Link>
+      <div className="mw hide-xs">
         <button className="wsbtn" onClick={() => menu.toggle("org")} aria-haspopup="menu" aria-expanded={menu.open === "org"}>
           <LogoMark name={org?.name ?? ""} url={org?.logo_url} style={{ background: "var(--ink)", color: "var(--paper)" }} />
           <span className="wsn hide-s">{org?.name}</span><Chevron />
@@ -180,7 +180,7 @@ export function TopBar() {
       <span className="grow" />
       <div className={"needpill" + (need.length ? "" : " none")} role="group" aria-label="Items that need you">
         <button className="a" onClick={() => go(-1)} aria-label="Previous item">‹</button>
-        <button className="count" onClick={() => go(0)}>{need.length} need{need.length === 1 ? "s" : ""} you</button>
+        <button className="count" onClick={() => go(0)} aria-label={`${need.length} need${need.length === 1 ? "s" : ""} you`}>{need.length}<span className="hide-xs"> need{need.length === 1 ? "s" : ""} you</span></button>
         <button className="a" onClick={() => go(1)} aria-label="Next item">›</button>
       </div>
       {drafts.length > 0 && (
@@ -225,7 +225,7 @@ export function TopBar() {
       </button>
       <button className="btn out-btn" onClick={() => ui.setTray(!ui.tray)} aria-expanded={ui.tray}><GridIcon /><span className="hide-s">Outputs</span>{newOutputs > 0 && <span className="bdg">{newOutputs}</span>}</button>
       <button className="btn btn-primary" onClick={() => ui.openDialog({ kind: "goal" })}><span aria-hidden="true">+</span><span className="hide-s">Give a goal</span></button>
-      <div className="mw">
+      <div className="mw hide-xs">
         <button className="me-btn" onClick={() => menu.toggle("me")} aria-label="Your account" aria-expanded={menu.open === "me"}><Avatar name={meState.user.name} color={meState.user.avatar_color} size={28} /></button>
         {menu.open === "me" && (
           <div className="menu" style={{ right: 0 }} role="menu">
@@ -248,6 +248,23 @@ export function TopBar() {
         <button className="icon-btn" onClick={() => menu.toggle("more")} aria-label="Menu" aria-expanded={menu.open === "more"}><DotsIcon /></button>
         {menu.open === "more" && (
           <div className="menu" style={{ right: 0 }} role="menu">
+            <div className="show-xs">
+              <div className="ml">{meState.user.name}</div>
+              <Link className="mi" role="menuitem" href="/account">Account and notifications</Link>
+              <Link className="mi" role="menuitem" href="/org/computers">Your computers</Link>
+              <Link className="mi" role="menuitem" href={orgAdmin ? "/org/usage" : `/org/usage/${me}`}>{orgAdmin ? "Usage and analytics" : "Your usage"}</Link>
+              {orgAdmin && <Link className="mi" role="menuitem" href="/org/general">Organization settings</Link>}
+              {meState.user.is_hub_admin && <Link className="mi" role="menuitem" href="/admin">Hub admin</Link>}
+              <div className="ml">Switch organization</div>
+              {meState.organizations.map((o) => (
+                <button key={o.id} className="mi" role="menuitemradio" aria-checked={o.id === org?.id}
+                  onClick={async () => { if (o.id !== org?.id) { await api("PATCH", "/me", { last_org_id: o.id }); hardNavigate("/board"); } menu.close(); }}>
+                  <span className="spacer">{o.name}</span>{o.id === org?.id && <span aria-hidden="true">✓</span>}
+                </button>
+              ))}
+              <button className="mi" role="menuitem" onClick={logout}>Sign out</button>
+              <hr />
+            </div>
             {isAdmin(b) && <Link className="mi" role="menuitem" href={`/w/${wsId}/settings`}>Workspace settings</Link>}
             <button className="mi" role="menuitem" onClick={() => { menu.close(); ui.openDialog({ kind: "task" }); }}>New task</button>
             <button className="mi" role="menuitem" onClick={() => { menu.close(); ui.openSide({ type: "people" }); }}>People and access</button>

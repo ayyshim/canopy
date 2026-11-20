@@ -24,7 +24,7 @@ export function OrgSwitcher() {
       label={
         <>
           {org && <LogoMark name={org.name} url={org.logo_url} size={20} />}
-          <span>{org?.name ?? "No organization"}</span>
+          <span className="wsn">{org?.name ?? "No organization"}</span>
           <span aria-hidden="true">▾</span>
         </>
       }
