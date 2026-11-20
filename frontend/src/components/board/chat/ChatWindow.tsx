@@ -61,6 +61,22 @@ export function ChatWindow({ win, index }: { win: ChatWin; index: number }) {
     return () => document.body.classList.remove("chat-full");
   }, [win.full]);
 
+  // Open beside the clicked node, inside the board.
+  const anchor = win.anchor;
+  useLayoutEffect(() => {
+    const el = boxRef.current, host = el?.offsetParent;
+    if (!anchor || !el || !host || win.full || innerWidth <= 860) return;
+    const h = host.getBoundingClientRect(), gap = 14, off = index * 30;
+    const w = el.offsetWidth, ht = el.offsetHeight;
+    let x = anchor.right - h.left + gap;
+    if (x + w > h.width - 12) x = anchor.left - h.left - gap - w;
+    const y = anchor.top - h.top + off;
+    setPos({
+      x: Math.max(12, Math.min(x + off, h.width - w - 12)),
+      y: Math.max(12, Math.min(y, h.height - ht - 12)),
+    });
+  }, [anchor, index, win.full]);
+
   if (!m) return null;
   const st = memberStatus(b, m);
   const boss = m.reports_to ? visibleMember(b, m.reports_to) : undefined;
