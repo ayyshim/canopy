@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { LogoUpload } from "@/components/LogoUpload";
 import { Denied, Section } from "@/components/PageShell";
 import { api, ApiError, currentOrg, isOrgAdmin, ROLE_LABEL, type OrgResponse } from "@/lib/api";
 import { useMe } from "@/lib/me";
@@ -48,6 +49,7 @@ export default function OrgGeneralPage() {
           <label className="field spacer"><span>Name</span><input className="input" value={name} onChange={(e) => setName(e.target.value)} required /></label>
           <button className="btn">Save</button>
         </form>
+        <LogoUpload base={"/orgs/" + summary.id} name={org?.name ?? summary.name} url={org?.logo_url} onChange={async () => { setOrg((await api<OrgResponse>("GET", "/orgs/" + summary.id)).organization); await refresh(); }} />
         {msg.name && <span className={msg.name === "Saved" ? "hint" : "err"} role="status">{msg.name}</span>}
         <dl className="kv">
           <dt>Address</dt><dd><code>{org?.slug}</code></dd>
