@@ -10,12 +10,12 @@ export function TopBar({ children }: { children?: React.ReactNode }) {
   return (
     <header className="topbar">
       <Logo href="/board" />
-      <span className="sep" aria-hidden="true" />
+      <span className="sep hide-xs" aria-hidden="true" />
       <OrgSwitcher />
       {children}
       <span className="spacer" />
       <AvatarMenu />
-      <LogoutButton />
+      <LogoutButton className="btn btn-ghost hide-xs" />
     </header>
   );
 }
