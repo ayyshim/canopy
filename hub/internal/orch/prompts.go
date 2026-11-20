@@ -35,6 +35,8 @@ func systemPrompt(st *wsState, m db.Member, mounts []protocol.Mount, notes []db.
 	b.WriteString("- ask_question(question, options, suggested): when a person must decide. It waits for the answer.\n")
 	b.WriteString("- request_directory(path, mode, reason): when you need a directory you can't see.\n")
 	b.WriteString("- submit_output(path, title, kind, needs_review): for files people should see (screenshots, documents, diffs, reports).\n")
+	b.WriteString("- get_attachments(name): download files people or agents attached to your goal into ./attachments.\n")
+	b.WriteString("- attach_file(path, to): share a file with the goal (or your task) so others can use it.\n")
 	b.WriteString("- complete_task(summary): when the task is done. Always call it; a task isn't finished until you do.\n")
 	b.WriteString("- request_owner_change(directory, description): when a change is needed in a folder you can only read; its owner decides.\n")
 	b.WriteString("- read_notes(query): the workspace's plans, decisions and notes. Read them before you start.\n")
@@ -121,6 +123,7 @@ func planPrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Note)
 	if g.DoneWhen != "" {
 		fmt.Fprintf(&b, "Done when: %s\n", g.DoneWhen)
 	}
+	b.WriteString(attachmentsLine(taskAttachments(st, t)))
 	b.WriteString("\nPlan this goal. Call read_notes first if earlier plans or decisions could help.\n")
 	b.WriteString("Then call submit_plan with tasks. Each task: key (short id), title, skill (developer, reviewer, researcher, designer or writer), steps (3–6 short steps), depends_on (keys), directories it needs ({path, mode: read or read_write}).\n")
 	b.WriteString("\nYour staff:\n")
@@ -225,6 +228,7 @@ func taskPrompt(st *wsState, m db.Member, t db.Task, comments []db.Comment, moun
 			fmt.Fprintf(&b, "- %s\n", c.Text)
 		}
 	}
+	b.WriteString(attachmentsLine(taskAttachments(st, t)))
 	fmt.Fprintf(&b, "\nSave outputs people should see in ./%s and call submit_output for each. Call report_progress as you finish steps, and complete_task(summary) when done.\n",
 		OutputsDir(t.ID))
 	return b.String()
