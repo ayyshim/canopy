@@ -389,6 +389,10 @@ make build     # development binaries in hub/bin and client/bin (no embedded web
 make release   # the two release binaries for every platform, in dist/
 ```
 
+To re-record the board GIF in the README, run `scripts/record-board.sh`. It starts its own Postgres,
+hub, web app and client (with `CANOPY_CLAUDE_BIN` set to fakeclaude), plays a goal with
+`[tasks:3] [ask] [slow:2]`, and writes `docs/assets/board.gif`. It needs docker, go, node, pnpm and ffmpeg.
+
 ## Known gaps
 
 - **macOS computers have no sandbox yet.** The client refuses to run agents without one. On a

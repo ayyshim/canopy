@@ -28,6 +28,14 @@ workspace as a live tree: people, their workspaces, and the manager and staff ag
 their goals. Anything that needs a person, such as a question, an approval, access to a folder or
 a review, waits on the tree until someone answers.
 
+<p align="center">
+  <img src="docs/assets/board.gif" width="840" alt="Canopy board with agents planning and working">
+</p>
+
+<p align="center">
+  <sub>A simulated run using the fake Claude, no model needed.</sub>
+</p>
+
 It comes as two programs:
 
 | Program | Runs on | What it does |
