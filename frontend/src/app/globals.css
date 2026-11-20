@@ -673,3 +673,4 @@ body.on-board.tray-open .toasts{bottom:314px}
   .hintcard{bottom:70px;left:10px}
 }
 .dialog,.sidebar,.tray-body,.vpanel{-webkit-overflow-scrolling:touch}
+@media (pointer:coarse){.input,.textarea,select.input,.composer textarea{font-size:16px}}
