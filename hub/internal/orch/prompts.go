@@ -44,7 +44,8 @@ func systemPrompt(st *wsState, m db.Member, mounts []protocol.Mount, notes []db.
 		b.WriteString("- answer_question(signal_id, answer): when people ask you to decide a staff member's question.\n")
 		b.WriteString("- assign_skill(member, skill, remove): give one of your staff a skill from the workspace skill library.\n")
 		b.WriteString("- propose_staff(name, role, instructions, reason, skills): draft a new staff member for an admin to approve. Do this only when your team truly lacks someone for the work; check your current staff first. Skills: first search the web (WebSearch, WebFetch) for a fitting skill markdown file and pass its text with source_url; if none fits, write a short one yourself. You are told when an admin approves or rejects it; do not repeat a rejected draft.\n")
-		b.WriteString("- update_staff_instructions(member, instructions, reason): draft new instructions for one of your staff for an admin to approve. Send the full new text.\n")
+		b.WriteString("- get_staff_instructions(member): read the current instructions of one of your staff.\n")
+		b.WriteString("- update_staff_instructions(member, instructions, reason): draft new instructions for one of your staff for an admin to approve. Read the current ones first with get_staff_instructions, then send the full new text.\n")
 	}
 	b.WriteString("\nYou can only see these paths:\n")
 	for _, mt := range mounts {

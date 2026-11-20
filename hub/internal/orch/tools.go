@@ -83,6 +83,8 @@ func (o *Orch) onToolCall(ctx context.Context, rn db.Runner, c protocol.ToolCall
 		handle = o.toolProposeStaff
 	case protocol.ToolUpdateStaff:
 		handle = o.toolUpdateStaffInstructions
+	case protocol.ToolGetStaff:
+		handle = o.toolGetStaffInstructions
 	default:
 		o.reply(tc, "Unknown tool "+c.Tool, true)
 		return

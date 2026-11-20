@@ -347,6 +347,7 @@ const (
 	ToolAssignSkill    = "assign_skill"
 	ToolProposeStaff   = "propose_staff"
 	ToolUpdateStaff    = "update_staff_instructions"
+	ToolGetStaff       = "get_staff_instructions"
 )
 
 // ---- Directory mirror (DECISIONS: Directories) ----
