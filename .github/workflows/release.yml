@@ -1,5 +1,6 @@
 # Builds the hub and the client for Linux and macOS (amd64 and arm64) with scripts/release.sh.
-#   Push a tag such as v0.1.0  -> publishes a GitHub release with the binaries and SHA256SUMS.
+#   Push a tag such as v0.1.0  -> publishes a GitHub release with the binaries, SHA256SUMS
+#                                 and install.sh (curl …/releases/latest/download/install.sh | sh).
 #   Run it from the Actions tab -> builds only; the binaries are attached to the run.
 # Tags with a dash (v0.2.0-rc.1) are published as pre-releases.
 name: Release
@@ -71,9 +72,10 @@ jobs:
           dist/canopy-hub-linux-amd64 version
           dist/canopy-linux-amd64 version
 
-      - name: Checksums
-        working-directory: dist
-        run: sha256sum canopy-* > SHA256SUMS
+      - name: Checksums and installer
+        run: |
+          (cd dist && sha256sum canopy-* > SHA256SUMS)
+          cp scripts/install.sh dist/
 
       - uses: actions/upload-artifact@v7
         with:
