@@ -114,6 +114,7 @@ code,.mono{font-family:var(--font-mono);font-size:.92em}
 .mw{position:relative}
 .wsbtn{display:flex;align-items:center;gap:9px;border:1px solid var(--edge);background:var(--card);min-height:40px;padding:0 10px 0 6px;border-radius:11px;font-weight:600;font-size:14px;max-width:240px}
 .wsbtn:hover{border-color:var(--line)}
+.wsi-img{object-fit:cover;background:var(--paper)}
 .wsi{width:28px;height:28px;border-radius:8px;background:var(--team);color:var(--team-ink);display:grid;place-items:center;font-size:11px;font-weight:700;flex:none}
 .wsn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .needpill{display:flex;align-items:center;gap:2px;background:var(--amber-soft);border:1px solid var(--amber-edge);border-radius:12px;padding:3px}

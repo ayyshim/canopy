@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { Avatar } from "@/components/board/icons";
 import { Markdown } from "@/components/board/panels/bits";
 import { FolderPicker } from "@/components/FolderPicker";
+import { LogoUpload } from "@/components/LogoUpload";
 import { Denied, PageShell, Section } from "@/components/PageShell";
 import { api, ApiError, currentOrg, hardNavigate, isOrgAdmin } from "@/lib/api";
 import { SkillAdd, SkillList, SkillPicker, SkillsIntro } from "@/components/skills/Skills";
@@ -84,6 +85,7 @@ function General({ d, run }: { d: Detail; run: Run }) {
           <label className="field"><span>What it works on</span><textarea className="textarea" value={about} onChange={(e) => setAbout(e.target.value)} /></label>
           <div><button className="btn btn-primary">Save</button></div>
         </form>
+        <LogoUpload base={`/workspaces/${ws.id}`} name={ws.name} url={ws.logo_url} onChange={() => run(async () => {})} />
         <div className="field">
           <span>When every task of a goal is done</span>
           <div className="seg" role="group" aria-label="Finishing goals">

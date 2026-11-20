@@ -25,7 +25,7 @@ RETURNING *;
 SELECT * FROM memberships WHERE org_id = $1 AND user_id = $2 AND status = 'active';
 
 -- name: ListUserOrganizations :many
-SELECT o.id, o.name, o.slug, m.org_role
+SELECT o.id, o.name, o.slug, o.logo_key, m.org_role
 FROM memberships m
 JOIN organizations o ON o.id = m.org_id
 WHERE m.user_id = $1 AND m.status = 'active'
@@ -33,3 +33,6 @@ ORDER BY o.name, o.id;
 
 -- name: DeleteOrganization :exec
 DELETE FROM organizations WHERE id = $1;
+
+-- name: SetOrganizationLogo :one
+UPDATE organizations SET logo_key = sqlc.narg(logo_key) WHERE id = sqlc.arg(id) RETURNING *;

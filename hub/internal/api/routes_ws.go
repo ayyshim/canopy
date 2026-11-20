@@ -10,6 +10,13 @@ import (
 func (s *Server) workspaceRoutes(r chi.Router) {
 	r.Get("/clis", httpx.Handler(s.handleListCLIs))
 
+	r.Put("/orgs/{orgID}/logo", httpx.Handler(s.handlePutOrgLogo))
+	r.Get("/orgs/{orgID}/logo", httpx.Handler(s.handleGetOrgLogo))
+	r.Delete("/orgs/{orgID}/logo", httpx.Handler(s.handleDeleteOrgLogo))
+	r.Put("/workspaces/{wsID}/logo", httpx.Handler(s.handlePutWorkspaceLogo))
+	r.Get("/workspaces/{wsID}/logo", httpx.Handler(s.handleGetWorkspaceLogo))
+	r.Delete("/workspaces/{wsID}/logo", httpx.Handler(s.handleDeleteWorkspaceLogo))
+
 	r.Get("/orgs/{orgID}/people", httpx.Handler(s.handleListPeople))
 	r.Patch("/orgs/{orgID}/memberships/{userID}", httpx.Handler(s.handlePatchMembership))
 	r.Delete("/orgs/{orgID}/memberships/{userID}", httpx.Handler(s.handleDeleteMembership))

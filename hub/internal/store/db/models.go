@@ -357,6 +357,7 @@ type Organization struct {
 	Timezone            string
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
+	LogoKey             *string
 }
 
 type Output struct {
@@ -598,6 +599,7 @@ type Workspace struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	GoalCompletion string
+	LogoKey        *string
 }
 
 type WorkspaceAccess struct {

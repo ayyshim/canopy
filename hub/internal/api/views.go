@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"canopy/hub/internal/core"
 	"canopy/hub/internal/notify"
 	"canopy/hub/internal/store/db"
 )
@@ -31,14 +32,16 @@ type orgView struct {
 	DefaultSessionLimit int64     `json:"default_session_limit"`
 	DefaultWeeklyLimit  int64     `json:"default_weekly_limit"`
 	Timezone            string    `json:"timezone"`
+	LogoURL             *string   `json:"logo_url"`
 	CreatedAt           time.Time `json:"created_at"`
 }
 
 type orgSummary struct {
-	ID   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
-	Slug string    `json:"slug"`
-	Role string    `json:"role"`
+	ID      uuid.UUID `json:"id"`
+	Name    string    `json:"name"`
+	Slug    string    `json:"slug"`
+	Role    string    `json:"role"`
+	LogoURL *string   `json:"logo_url"`
 }
 
 // meView is the body of GET/PATCH /me and of successful sign-in responses.
@@ -53,7 +56,7 @@ type meView struct {
 func toOrgView(o db.Organization) orgView {
 	return orgView{ID: o.ID, Name: o.Name, Slug: o.Slug, Size: o.Size, About: o.About,
 		DefaultSessionLimit: o.DefaultSessionLimit, DefaultWeeklyLimit: o.DefaultWeeklyLimit,
-		Timezone: o.Timezone, CreatedAt: o.CreatedAt}
+		Timezone: o.Timezone, LogoURL: core.LogoURL("orgs", o.ID, o.LogoKey), CreatedAt: o.CreatedAt}
 }
 
 func (s *Server) buildMe(ctx context.Context, q *db.Queries, userID uuid.UUID) (meView, error) {
@@ -76,7 +79,7 @@ func (s *Server) buildMe(ctx context.Context, q *db.Queries, userID uuid.UUID) (
 		Organizations: make([]orgSummary, 0, len(rows)),
 	}
 	for _, r := range rows {
-		me.Organizations = append(me.Organizations, orgSummary{ID: r.ID, Name: r.Name, Slug: r.Slug, Role: r.OrgRole})
+		me.Organizations = append(me.Organizations, orgSummary{ID: r.ID, Name: r.Name, Slug: r.Slug, Role: r.OrgRole, LogoURL: core.LogoURL("orgs", r.ID, r.LogoKey)})
 		if u.LastOrgID != nil && *u.LastOrgID == r.ID {
 			id := r.ID
 			me.CurrentOrgID = &id
