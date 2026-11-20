@@ -1,0 +1,80 @@
+"use client";
+
+import { useState } from "react";
+import { ApiError } from "@/lib/api";
+import { createTask } from "@/lib/board/actions";
+import { goal as findGoal, independentStaff, managers, staffOf, visibleMember } from "@/lib/board/derive";
+import { useUI } from "@/lib/board/ui";
+import { SKILL_LABEL, type MemberView } from "@/lib/types";
+import { useB, useBoardCtx } from "../context";
+
+/** TaskDialog adds a task by hand, under a goal or on its own, waiting on other tasks. */
+export function TaskDialog({ goalId, memberId }: { goalId?: string; memberId?: string }) {
+  const b = useB();
+  const { wsId } = useBoardCtx();
+  const ui = useUI();
+  const g = findGoal(b, goalId);
+  const [title, setTitle] = useState("");
+  const [goal, setGoal] = useState(goalId ?? "");
+  const [member, setMember] = useState(memberId ?? g?.manager_id ?? "");
+  const [deps, setDeps] = useState<string[]>([]);
+  const [error, setError] = useState("");
+  const vis = (id: string) => visibleMember(b, id);
+  const team = (mgr: MemberView) => [mgr, ...staffOf(b, mgr.id).map((s) => vis(s.id)).filter(Boolean)] as MemberView[];
+  const open = b.tasks.filter((t) => t.kind !== "plan" && t.status !== "done" && (!goal || t.goal_id === goal));
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await createTask(wsId, goal || undefined, { title, member_id: member, depends_on: deps });
+      ui.toast("Task created.", "ok");
+      ui.openDialog(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? Object.values(err.fields)[0] ?? err.message : "Couldn’t create the task.");
+    }
+  };
+
+  return (
+    <form className="dialog" onSubmit={submit}>
+      <h2>{g?.status === "ready" || g?.status === "done" ? "Add a follow-up task" : "New task"}</h2>
+      <p>{g?.status === "ready" || g?.status === "done" ? `This puts “${g.title}” back to work.` : "Most work comes from managers splitting goals. Add a task yourself when you want something specific done."}</p>
+      <label className="field"><span>Title</span>
+        <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Add a saved-cards picker" autoComplete="off" autoFocus /></label>
+      <label className="field"><span>Goal</span>
+        <select className="input" value={goal} onChange={(e) => setGoal(e.target.value)}>
+          <option value="">No goal</option>
+          {b.goals.filter((x) => x.status !== "done" || x.id === goalId).map((x) => <option key={x.id} value={x.id}>{x.title}</option>)}
+        </select></label>
+      <label className="field"><span>Assign to</span>
+        <select className="input" value={member} onChange={(e) => setMember(e.target.value)} required>
+          <option value="" disabled>Choose a member</option>
+          {managers(b).map((mg) => {
+            const m = vis(mg.id);
+            return m ? (
+              <optgroup key={m.id} label={`${m.name}’s team`}>
+                {team(m).map((x) => <option key={x.id} value={x.id}>{x.name}{x.kind === "staff" ? ", " + SKILL_LABEL[x.skill ?? ""] : ""}</option>)}
+              </optgroup>
+            ) : null;
+          })}
+          {independentStaff(b).some((s) => vis(s.id)) && (
+            <optgroup label="Independent staff">
+              {independentStaff(b).map((s) => vis(s.id)).filter(Boolean).map((x) => <option key={x!.id} value={x!.id}>{x!.name}, {SKILL_LABEL[x!.skill ?? ""]}</option>)}
+            </optgroup>
+          )}
+        </select></label>
+      <div className="field"><span>Waits on</span>
+        <div className="chks">
+          {open.map((t) => (
+            <label key={t.id}><input type="checkbox" checked={deps.includes(t.id)} onChange={(e) => setDeps(e.target.checked ? [...deps, t.id] : deps.filter((d) => d !== t.id))} />{t.title}</label>
+          ))}
+          {!open.length && <span className="hint">No open tasks</span>}
+        </div>
+      </div>
+      {error && <span className="err">{error}</span>}
+      <div className="row"><span className="spacer" />
+        <button type="button" className="btn" onClick={() => ui.openDialog(null)}>Cancel</button>
+        <button className="btn btn-primary" disabled={!title.trim() || !member}>Create task</button>
+      </div>
+    </form>
+  );
+}
