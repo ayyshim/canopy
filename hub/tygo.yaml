@@ -1,0 +1,12 @@
+packages:
+  - path: "canopy/hub/internal/core"
+    output_path: "../frontend/src/lib/core-types.ts"
+    exclude_files:
+      - "core.go"
+      - "goals.go"
+    type_mappings:
+      time.Time: "string /* RFC3339 */"
+      uuid.UUID: "string /* uuid */"
+      json.RawMessage: "any"
+    frontmatter: |
+      // Generated from hub/internal/core by tygo (make gen). Do not edit.
