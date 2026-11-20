@@ -42,8 +42,12 @@ export function Canvas() {
     const el = boardRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect(), bx = layoutRef.current.box, over = tray ? 300 : 0;
-    const k = Math.max(0.3, Math.min(1.05, (r.width - 48) / (bx.x1 - bx.x0), (r.height - 90 - over) / (bx.y1 - bx.y0)));
-    Object.assign(cam.current, { z: k, x: (r.width - (bx.x1 - bx.x0) * k) / 2 - bx.x0 * k, y: 40 - bx.y0 * k });
+    // Phones: stay readable and start at the left edge; people pan to see the rest.
+    const phone = r.width < 600;
+    const k = Math.max(phone ? 0.6 : 0.3, Math.min(1.05, (r.width - 48) / (bx.x1 - bx.x0), (r.height - 90 - over) / (bx.y1 - bx.y0)));
+    const w = (bx.x1 - bx.x0) * k;
+    const x = phone && w > r.width ? 16 - bx.x0 * k : (r.width - w) / 2 - bx.x0 * k;
+    Object.assign(cam.current, { z: k, x, y: 40 - bx.y0 * k });
     if (!soft) cam.current.auto = true;
     apply();
   }, [apply, tray]);
