@@ -1,0 +1,36 @@
+# Go
+/hub/bin/
+/client/bin/
+*.test
+coverage.out
+
+# Node
+node_modules/
+.next/
+out/
+/e2e/test-results/
+/e2e/playwright-report/
+
+# Env and local
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+
+# Release builds
+/dist/
+/.cache/
+/frontend/out/
+/hub/internal/web/dist/*
+!/hub/internal/web/dist/README.txt
+/hub/internal/web/clients/*
+!/hub/internal/web/clients/README.txt
+/hub/internal/pgserver/pgbin/*
+!/hub/internal/pgserver/pgbin/README.txt
+/hub/bin/
+/client/bin/
+/.dev-data/
+
+# Hub data when the hub runs from inside the repo
+canopy-data/
