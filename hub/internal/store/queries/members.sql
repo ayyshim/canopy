@@ -1,6 +1,6 @@
 -- name: CreateMember :one
-INSERT INTO members (id, workspace_id, name, kind, skill, reports_to, cli, model, instructions, avatar_color, all_directories, position)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+INSERT INTO members (id, workspace_id, name, kind, skill, reports_to, cli, model, instructions, avatar_color, all_directories, position, isolated, created_by)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 RETURNING *;
 
 -- name: GetMember :one
@@ -18,7 +18,8 @@ SET name = coalesce(sqlc.narg(name), name),
     model = coalesce(sqlc.narg(model), model),
     instructions = coalesce(sqlc.narg(instructions), instructions),
     all_directories = coalesce(sqlc.narg(all_directories), all_directories),
-    sleeping = coalesce(sqlc.narg(sleeping), sleeping)
+    sleeping = coalesce(sqlc.narg(sleeping), sleeping),
+    isolated = coalesce(sqlc.narg(isolated), isolated)
 WHERE id = sqlc.arg(id)
 RETURNING *;
 
