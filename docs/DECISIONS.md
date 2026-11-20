@@ -336,3 +336,10 @@ dashed card, but no one plans or works on it. Its person (or an admin) can edit,
 it: `PUT /goals/:id/draft`, `POST /goals/:id/give`, `DELETE /goals/:id` (drafts only). Giving a
 draft over a usage limit is refused instead of queued, so the draft stays put. Deleting sends a
 `goal.deleted` board event.
+
+**Attachments.** People attach files (up to 25 MB each) to goals, drafts and tasks; they are
+stored by SHA-256 like outputs. Anyone who sees the goal or task can add and download them; the
+person who added one, or an admin, removes it. Agents get two tools: `get_attachments` downloads
+the files on their goal and on every task of that goal into `./attachments`, and `attach_file`
+shares a file to the goal (default) or their task, so agents on a goal share files with each
+other. Prompts list the attached file names. Board events: `attachment.created`, `attachment.deleted`.
