@@ -1,0 +1,409 @@
+openapi: 3.1.0
+info:
+  title: Canopy API
+  version: 0.1.0
+  description: >
+    REST API served by the hub under /api/v1. Unsafe requests need the X-CSRF-Token header to
+    echo the canopy_csrf cookie (GET /auth/csrf issues one). Objects outside the caller's
+    organizations are reported as 404.
+servers:
+  - url: /api/v1
+paths:
+  /auth/csrf:
+    get:
+      summary: Issue or return the CSRF token
+      responses:
+        "200": { description: Token, content: { application/json: { schema: { type: object, required: [token], properties: { token: { type: string } } } } } }
+  /auth/signup:
+    post:
+      summary: Create an organization, then its owner, and sign in
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/SignupRequest" } } } }
+      responses:
+        "201": { description: Signed in, content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        "403": { description: signups_closed, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "409": { description: "email_taken, or setup_required before hub setup", content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/login:
+    post:
+      summary: Sign in with email and password
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LoginRequest" } } } }
+      responses:
+        "200": { description: Signed in, content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        "401": { description: "unknown_email, wrong_password or no_password", content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/logout:
+    post:
+      summary: End the current session, or every session of the person with everywhere
+      requestBody: { required: false, content: { application/json: { schema: { type: object, properties: { everywhere: { type: boolean } } } } } }
+      responses:
+        "204": { description: Signed out }
+  /auth/forgot:
+    post:
+      summary: Email a password reset link (always 202)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [email], properties: { email: { type: string } } } } } }
+      responses:
+        "202": { description: Accepted }
+        "422": { $ref: "#/components/responses/Error" }
+  /auth/reset/{token}:
+    get:
+      summary: Check a reset link
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Valid, content: { application/json: { schema: { type: object, properties: { valid: { type: boolean } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /auth/reset:
+    post:
+      summary: Set a new password from a reset link; revokes all sessions and signs in
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [token, password], properties: { token: { type: string }, password: { type: string } } } } } }
+      responses:
+        "200": { description: Signed in, content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /auth/oauth/{provider}/start:
+    get:
+      summary: Redirect to the provider
+      parameters: [{ name: provider, in: path, required: true, schema: { type: string, enum: [github, google] } }]
+      responses:
+        "302": { description: Redirect }
+  /me:
+    get:
+      summary: The signed-in user and their organizations
+      responses:
+        "200": { description: Me, content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+    patch:
+      summary: Update profile, switch organization, change password
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/PatchMeRequest" } } } }
+      responses:
+        "200": { description: Me, content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /orgs:
+    post:
+      summary: Create another organization owned by the caller
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/OrgInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/OrgResponse" } } } }
+        "422": { $ref: "#/components/responses/Error" }
+  /orgs/{orgId}:
+    parameters: [{ name: orgId, in: path, required: true, schema: { type: string, format: uuid } }]
+    get:
+      summary: An organization the caller belongs to
+      responses:
+        "200": { description: Organization, content: { application/json: { schema: { $ref: "#/components/schemas/OrgResponse" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+    patch:
+      summary: Rename or change limits (owners and admins)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/PatchOrgRequest" } } } }
+      responses:
+        "200": { description: Organization, content: { application/json: { schema: { $ref: "#/components/schemas/OrgResponse" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+    delete:
+      summary: Delete the organization and everything in it (owner; confirm is its name)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [confirm], properties: { confirm: { type: string } } } } } }
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /orgs/{orgId}/transfer:
+    parameters: [{ name: orgId, in: path, required: true, schema: { type: string, format: uuid } }]
+    post:
+      summary: Make another member the owner; the caller becomes an admin (owner)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [user_id], properties: { user_id: { type: string, format: uuid } } } } } }
+      responses:
+        "204": { description: Transferred }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /hub:
+    get:
+      summary: Public hub info; setup_required until first-run setup
+      responses:
+        "200": { description: Hub, content: { application/json: { schema: { $ref: "#/components/schemas/Hub" } } } }
+  /hub/setup:
+    post:
+      summary: First-run setup — name the hub, store sign-in providers, create the first hub admin
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/HubSetupRequest" } } } }
+      responses:
+        "201": { description: Signed in as hub admin, content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /admin/overview:
+    get:
+      summary: Hub totals and recent hub events (hub admins)
+      responses:
+        "200": { description: Overview, content: { application/json: { schema: { $ref: "#/components/schemas/AdminOverview" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+  /admin/organizations:
+    get:
+      summary: Every organization on the hub (hub admins)
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: offset, in: query, schema: { type: integer } }
+      responses:
+        "200": { description: Page, content: { application/json: { schema: { type: object, required: [items, total], properties: { items: { type: array, items: { $ref: "#/components/schemas/AdminOrg" } }, total: { type: integer } } } } } }
+  /admin/organizations/{orgId}:
+    get:
+      summary: One organization with its members (hub admins)
+      parameters: [{ name: orgId, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: Organization, content: { application/json: { schema: { $ref: "#/components/schemas/AdminOrgDetail" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /admin/users:
+    get:
+      summary: Every user on the hub (hub admins)
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: offset, in: query, schema: { type: integer } }
+      responses:
+        "200": { description: Page, content: { application/json: { schema: { type: object, required: [items, total], properties: { items: { type: array, items: { $ref: "#/components/schemas/AdminUser" } }, total: { type: integer } } } } } }
+  /admin/users/{userId}:
+    parameters: [{ name: userId, in: path, required: true, schema: { type: string, format: uuid } }]
+    get:
+      summary: One user with their organizations (hub admins)
+      responses:
+        "200": { description: User, content: { application/json: { schema: { $ref: "#/components/schemas/AdminUserDetail" } } } }
+    patch:
+      summary: Grant or remove hub admin; the last hub admin can't be removed
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [is_hub_admin], properties: { is_hub_admin: { type: boolean } } } } } }
+      responses:
+        "200": { description: User, content: { application/json: { schema: { $ref: "#/components/schemas/AdminUserDetail" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+  /admin/settings:
+    get:
+      summary: Hub settings; client secrets are never returned
+      responses:
+        "200": { description: Settings, content: { application/json: { schema: { $ref: "#/components/schemas/HubSettings" } } } }
+    patch:
+      summary: Rename the hub, open or close sign-ups, configure sign-in providers
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/PatchHubSettings" } } } }
+      responses:
+        "200": { description: Settings, content: { application/json: { schema: { $ref: "#/components/schemas/HubSettings" } } } }
+        "422": { $ref: "#/components/responses/Error" }
+components:
+  responses:
+    Error:
+      description: Error
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } }
+  schemas:
+    ErrorBody:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, description: "e.g. validation, email_taken, unknown_email, wrong_password, invalid_token, rate_limited, csrf, not_found" }
+            message: { type: string }
+            fields: { type: object, additionalProperties: { type: string }, description: "Inline message per field path, e.g. user.email" }
+    Providers:
+      type: object
+      required: [github, google]
+      properties: { github: { type: boolean }, google: { type: boolean } }
+    Hub:
+      type: object
+      required: [name, setup_required, signup_open, providers]
+      properties:
+        name: { type: string }
+        setup_required: { type: boolean }
+        signup_open: { type: boolean, description: Anyone may register an organization }
+        providers: { $ref: "#/components/schemas/Providers" }
+    ProviderInput:
+      type: object
+      required: [enabled]
+      properties:
+        enabled: { type: boolean }
+        client_id: { type: string }
+        client_secret: { type: string, description: Empty keeps the stored secret }
+    HubSetupRequest:
+      type: object
+      required: [token, hub, admin]
+      properties:
+        token: { type: string, description: Setup code printed in the hub's log on first start }
+        hub: { type: object, required: [name], properties: { name: { type: string }, signup_open: { type: boolean } } }
+        admin: { type: object, required: [name, email, password], properties: { name: { type: string }, email: { type: string }, password: { type: string } } }
+        providers: { type: object, properties: { github: { $ref: "#/components/schemas/ProviderInput" }, google: { $ref: "#/components/schemas/ProviderInput" } } }
+    ProviderSettings:
+      type: object
+      required: [enabled, client_id, has_secret, callback_url]
+      properties:
+        enabled: { type: boolean }
+        client_id: { type: string }
+        has_secret: { type: boolean }
+        callback_url: { type: string }
+    HubSettings:
+      type: object
+      required: [name, signup_open, providers]
+      properties:
+        name: { type: string }
+        signup_open: { type: boolean }
+        providers: { type: object, required: [github, google], properties: { github: { $ref: "#/components/schemas/ProviderSettings" }, google: { $ref: "#/components/schemas/ProviderSettings" } } }
+    PatchHubSettings:
+      type: object
+      properties:
+        name: { type: string }
+        signup_open: { type: boolean }
+        providers: { type: object, properties: { github: { $ref: "#/components/schemas/ProviderInput" }, google: { $ref: "#/components/schemas/ProviderInput" } } }
+    PersonRef:
+      type: object
+      required: [id, name, email]
+      properties: { id: { type: string, format: uuid }, name: { type: string }, email: { type: string } }
+    AdminOverview:
+      type: object
+      required: [hub, totals, recent_events]
+      properties:
+        hub: { type: object, required: [name, signup_open, set_up_at], properties: { name: { type: string }, signup_open: { type: boolean }, set_up_at: { type: string, format: date-time } } }
+        totals:
+          type: object
+          required: [organizations, users, hub_admins, active_users_24h, users_7d, organizations_7d]
+          properties:
+            organizations: { type: integer }
+            users: { type: integer }
+            hub_admins: { type: integer }
+            active_users_24h: { type: integer }
+            users_7d: { type: integer }
+            organizations_7d: { type: integer }
+        recent_events: { type: array, items: { type: object, required: [type, summary, at], properties: { type: { type: string }, summary: { type: string }, at: { type: string, format: date-time } } } }
+    AdminOrg:
+      type: object
+      required: [id, name, slug, size, members, created_at, owner]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        size: { $ref: "#/components/schemas/OrgSize" }
+        members: { type: integer }
+        created_at: { type: string, format: date-time }
+        owner: { $ref: "#/components/schemas/PersonRef" }
+    AdminOrgDetail:
+      type: object
+      required: [organization, members]
+      properties:
+        organization: { $ref: "#/components/schemas/Organization" }
+        members: { type: array, items: { type: object, required: [id, name, email, role, status, joined_at], properties: { id: { type: string, format: uuid }, name: { type: string }, email: { type: string }, role: { $ref: "#/components/schemas/OrgRole" }, status: { type: string }, joined_at: { type: string, format: date-time } } } }
+    AdminUser:
+      type: object
+      required: [id, name, email, is_hub_admin, organizations, created_at, last_active_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string }
+        is_hub_admin: { type: boolean }
+        organizations: { type: integer }
+        created_at: { type: string, format: date-time }
+        last_active_at: { type: [string, "null"], format: date-time }
+    AdminUserDetail:
+      type: object
+      required: [user, organizations]
+      properties:
+        user: { type: object, required: [id, name, email, is_hub_admin, created_at], properties: { id: { type: string, format: uuid }, name: { type: string }, email: { type: string }, is_hub_admin: { type: boolean }, created_at: { type: string, format: date-time } } }
+        organizations: { type: array, items: { type: object, required: [id, name, role], properties: { id: { type: string, format: uuid }, name: { type: string }, role: { $ref: "#/components/schemas/OrgRole" } } } }
+    OrgSize:
+      type: string
+      enum: [just_me, "2_10", "11_50", "51_plus"]
+    OrgRole:
+      type: string
+      enum: [owner, admin, member]
+    OrgInput:
+      type: object
+      required: [name, size]
+      properties:
+        name: { type: string }
+        size: { $ref: "#/components/schemas/OrgSize" }
+        about: { type: string, description: What agents will work on }
+    SignupRequest:
+      type: object
+      required: [org, user]
+      properties:
+        org: { $ref: "#/components/schemas/OrgInput" }
+        user:
+          type: object
+          required: [name, email, password, accept_terms]
+          properties:
+            name: { type: string }
+            email: { type: string }
+            password: { type: string, minLength: 8 }
+            accept_terms: { type: boolean }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties: { email: { type: string }, password: { type: string } }
+    User:
+      type: object
+      required: [id, email, name, avatar_color, has_password, is_hub_admin, providers, notifications]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string }
+        name: { type: string }
+        avatar_color: { type: string }
+        has_password: { type: boolean }
+        is_hub_admin: { type: boolean }
+        providers: { type: array, items: { type: string } }
+        notifications: { $ref: "#/components/schemas/NotificationPrefs" }
+    NotificationPref:
+      type: object
+      required: [desktop, email]
+      properties: { desktop: { type: boolean }, email: { type: boolean } }
+    NotificationPrefs:
+      type: object
+      description: Keys are questions, errors, goal_ready and daily.
+      additionalProperties: { $ref: "#/components/schemas/NotificationPref" }
+    OrgSummary:
+      type: object
+      required: [id, name, slug, role]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        role: { $ref: "#/components/schemas/OrgRole" }
+    Me:
+      type: object
+      required: [user, organizations, current_org_id]
+      properties:
+        user: { $ref: "#/components/schemas/User" }
+        organizations: { type: array, items: { $ref: "#/components/schemas/OrgSummary" } }
+        current_org_id: { type: [string, "null"], format: uuid, description: "Null: the user has no organization and should create one" }
+    PatchMeRequest:
+      type: object
+      properties:
+        name: { type: string }
+        avatar_color: { type: string }
+        last_org_id: { type: string, format: uuid }
+        current_password: { type: string }
+        new_password: { type: string }
+        notifications: { $ref: "#/components/schemas/NotificationPrefs" }
+    Organization:
+      type: object
+      required: [id, name, slug, size, about, default_session_limit, default_weekly_limit, timezone, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        size: { $ref: "#/components/schemas/OrgSize" }
+        about: { type: string }
+        default_session_limit: { type: integer, format: int64 }
+        default_weekly_limit: { type: integer, format: int64 }
+        timezone: { type: string }
+        created_at: { type: string, format: date-time }
+    OrgResponse:
+      type: object
+      required: [organization, role]
+      properties:
+        organization: { $ref: "#/components/schemas/Organization" }
+        role: { $ref: "#/components/schemas/OrgRole" }
+    PatchOrgRequest:
+      type: object
+      properties:
+        name: { type: string }
+        default_session_limit: { type: integer, format: int64 }
+        default_weekly_limit: { type: integer, format: int64 }
+        timezone: { type: string }
