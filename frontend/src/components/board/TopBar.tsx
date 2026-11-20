@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { LogoMark } from "@/components/LogoMark";
 import { api, currentOrg, hardNavigate, initials, isOrgAdmin } from "@/lib/api";
 import { isAdmin, needsMe, payload, plural, unseen } from "@/lib/board/derive";
 import { useBoard } from "@/lib/board/store";
@@ -128,7 +129,7 @@ export function TopBar() {
       <Link className="brand" href="/board" aria-label="Canopy board"><Brand /><b className="hide-s">Canopy</b></Link>
       <div className="mw">
         <button className="wsbtn" onClick={() => menu.toggle("org")} aria-haspopup="menu" aria-expanded={menu.open === "org"}>
-          <span className="wsi" style={{ background: "var(--ink)", color: "var(--paper)" }}>{initials(org?.name ?? "")}</span>
+          <LogoMark name={org?.name ?? ""} url={org?.logo_url} style={{ background: "var(--ink)", color: "var(--paper)" }} />
           <span className="wsn hide-s">{org?.name}</span><Chevron />
         </button>
         {menu.open === "org" && (
@@ -137,7 +138,7 @@ export function TopBar() {
             {meState.organizations.map((o) => (
               <button key={o.id} className="mi" role="menuitemradio" aria-checked={o.id === org?.id}
                 onClick={async () => { if (o.id !== org?.id) { await api("PATCH", "/me", { last_org_id: o.id }); hardNavigate("/board"); } menu.close(); }}>
-                <span className="wsi" style={{ background: o.id === org?.id ? "var(--ink)" : "#8E5BD9", color: o.id === org?.id ? "var(--paper)" : "#fff" }}>{initials(o.name)}</span>
+                <LogoMark name={o.name} url={o.logo_url} style={{ background: o.id === org?.id ? "var(--ink)" : "#8E5BD9", color: o.id === org?.id ? "var(--paper)" : "#fff" }} />
                 <span className="spacer"><b>{o.name}</b><br /><small className="hint">{o.role === "owner" ? "Owner" : o.role === "admin" ? "Admin" : "Member"}</small></span>
                 {o.id === org?.id && <span aria-hidden="true">✓</span>}
               </button>
@@ -150,7 +151,7 @@ export function TopBar() {
       </div>
       <div className="mw">
         <button className="wsbtn" onClick={() => menu.toggle("ws")} aria-haspopup="menu" aria-expanded={menu.open === "ws"}>
-          <span className="wsi">{initials(b.workspace.name)}</span><span className="wsn">{b.workspace.name}</span><Chevron />
+          <LogoMark name={b.workspace.name} url={b.workspace.logo_url} /><span className="wsn">{b.workspace.name}</span><Chevron />
         </button>
         {menu.open === "ws" && (
           <div className="menu" style={{ left: 0, width: 290 }} role="menu">
@@ -162,7 +163,7 @@ export function TopBar() {
             <div className="ml">Workspaces</div>
             {workspaces.map((w) => (
               <Link key={w.id} className="mi" role="menuitemradio" aria-checked={w.id === wsId} href={`/w/${w.id}`} onClick={menu.close}>
-                <span className="wsi">{initials(w.name)}</span>
+                <LogoMark name={w.name} url={w.logo_url} />
                 <span className="spacer"><b>{w.name}</b><br /><small className="hint">{plural(w.members, "member")}, {plural(w.people, "person", "people")}</small></span>
                 {w.id === wsId && <span aria-hidden="true">✓</span>}
               </Link>

@@ -319,7 +319,7 @@ func (q *Queries) InsertUsageEvent(ctx context.Context, arg InsertUsageEventPara
 }
 
 const listOrgWorkspacesUsingCLI = `-- name: ListOrgWorkspacesUsingCLI :many
-SELECT DISTINCT w.id, w.org_id, w.name, w.about, w.created_by, w.created_at, w.updated_at, w.goal_completion FROM workspaces w JOIN members m ON m.workspace_id = w.id
+SELECT DISTINCT w.id, w.org_id, w.name, w.about, w.created_by, w.created_at, w.updated_at, w.goal_completion, w.logo_key FROM workspaces w JOIN members m ON m.workspace_id = w.id
 WHERE w.org_id = $1 AND m.cli = $2
 `
 
@@ -346,6 +346,7 @@ func (q *Queries) ListOrgWorkspacesUsingCLI(ctx context.Context, arg ListOrgWork
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.GoalCompletion,
+			&i.LogoKey,
 		); err != nil {
 			return nil, err
 		}

@@ -1560,6 +1560,7 @@ export interface components {
             name: string;
             slug: string;
             role: components["schemas"]["OrgRole"];
+            logo_url?: string | null;
         };
         Skill: {
             /** Format: uuid */
@@ -1622,6 +1623,7 @@ export interface components {
             /** Format: int64 */
             default_weekly_limit: number;
             timezone: string;
+            logo_url?: string | null;
             /** Format: date-time */
             created_at: string;
         };

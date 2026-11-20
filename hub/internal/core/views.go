@@ -1,6 +1,8 @@
 package core
 
 import (
+	"fmt"
+	"path"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,11 +18,12 @@ type WorkspaceView struct {
 	Name           string    `json:"name"`
 	About          string    `json:"about"`
 	GoalCompletion string    `json:"goal_completion"` // manual or auto
+	LogoURL        *string   `json:"logo_url"`
 	CreatedAt      time.Time `json:"created_at"`
 }
 
 func ToWorkspace(w db.Workspace) WorkspaceView {
-	return WorkspaceView{ID: w.ID, OrgID: w.OrgID, Name: w.Name, About: w.About, GoalCompletion: w.GoalCompletion, CreatedAt: w.CreatedAt}
+	return WorkspaceView{ID: w.ID, OrgID: w.OrgID, Name: w.Name, About: w.About, GoalCompletion: w.GoalCompletion, LogoURL: LogoURL("workspaces", w.ID, w.LogoKey), CreatedAt: w.CreatedAt}
 }
 
 type MemberView struct {
@@ -171,4 +174,14 @@ func ToSkills(list []db.WorkspaceSkill) []SkillView {
 		out = append(out, ToSkill(s))
 	}
 	return out
+}
+
+// LogoURL is where a logo is served, or nil when none is set. The key's file name changes on every
+// upload, so it doubles as a cache-busting version.
+func LogoURL(kind string, id uuid.UUID, key *string) *string {
+	if key == nil {
+		return nil
+	}
+	u := fmt.Sprintf("/api/v1/%s/%s/logo?v=%s", kind, id, path.Base(*key))
+	return &u
 }

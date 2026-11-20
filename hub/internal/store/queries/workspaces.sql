@@ -59,3 +59,6 @@ SELECT a.*, w.name AS workspace_name
 FROM workspace_access a JOIN workspaces w ON w.id = a.workspace_id
 WHERE w.org_id = $1 AND a.user_id = $2
 ORDER BY w.name;
+
+-- name: SetWorkspaceLogo :one
+UPDATE workspaces SET logo_key = sqlc.narg(logo_key) WHERE id = sqlc.arg(id) RETURNING *;

@@ -70,6 +70,23 @@ export async function api<T>(method: Method, path: string, body?: unknown, retri
   return data as T;
 }
 
+/** Sends a file as the raw request body (used for logo uploads). */
+export async function uploadFile<T>(path: string, file: File, retried = false): Promise<T> {
+  const res = await fetch("/api/v1" + path, {
+    method: "PUT",
+    headers: { Accept: "application/json", "Content-Type": file.type, "X-CSRF-Token": await csrfToken(retried) },
+    body: file,
+    credentials: "same-origin",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = data?.error ?? {};
+    if (err.code === "csrf" && !retried) return uploadFile<T>(path, file, true);
+    throw new ApiError(res.status, err.code ?? "internal", err.message ?? "Something went wrong. Try again.", err.fields ?? {});
+  }
+  return data as T;
+}
+
 export const ORG_SIZES: { value: OrgSize; label: string }[] = [
   { value: "just_me", label: "Just me" },
   { value: "2_10", label: "2 to 10" },

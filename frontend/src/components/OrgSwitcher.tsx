@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, currentOrg, ROLE_LABEL, type Me } from "@/lib/api";
 import { useMe } from "@/lib/me";
+import { LogoMark } from "./LogoMark";
 import { Menu } from "./Menu";
 
 /** Organization switcher: each organization with your role, plus Create organization. */
@@ -22,6 +23,7 @@ export function OrgSwitcher() {
       ariaLabel="Switch organization"
       label={
         <>
+          {org && <LogoMark name={org.name} url={org.logo_url} size={20} />}
           <span>{org?.name ?? "No organization"}</span>
           <span aria-hidden="true">▾</span>
         </>
@@ -41,6 +43,7 @@ export function OrgSwitcher() {
                 if (o.id !== me.current_org_id) void switchTo(o.id);
               }}
             >
+              <LogoMark name={o.name} url={o.logo_url} size={20} />
               <span className="spacer">{o.name}</span>
               <span className="pill">{ROLE_LABEL[o.role]}</span>
             </button>
