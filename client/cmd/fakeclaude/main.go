@@ -14,12 +14,16 @@ package main
 import (
 	"bufio"
 	"context"
+	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -267,6 +271,9 @@ func work(text string, resumed bool) {
 		}
 		call("report_progress", map[string]any{"step": step, "note": fmt.Sprintf("Finished step %d", step)})
 	}
+	if outDir != "" && marker(text, "prototype") {
+		notes = append(notes, "prototype: "+writePrototype(call, outDir))
+	}
 	if outDir != "" && (marker(text, "output") || marker(text, "review")) {
 		_ = os.MkdirAll(outDir, 0o755)
 		name := filepath.Join(outDir, "report.md")
@@ -395,4 +402,37 @@ func main() {
 		}
 		handle(in.Message.Content)
 	}
+}
+
+//go:embed testdata/prototype
+var prototype embed.FS
+
+// writePrototype saves the sample site in outDir, submits its files and then index.html for review.
+func writePrototype(call func(string, map[string]any) (string, bool), outDir string) string {
+	var files []string
+	_ = fs.WalkDir(prototype, "testdata/prototype", func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		rel := strings.TrimPrefix(p, "testdata/prototype/")
+		b, _ := prototype.ReadFile(p)
+		dst := filepath.Join(outDir, filepath.FromSlash(rel))
+		_ = os.MkdirAll(filepath.Dir(dst), 0o755)
+		_ = os.WriteFile(dst, b, 0o644)
+		files = append(files, rel)
+		return nil
+	})
+	sort.Strings(files)
+	if i := slices.Index(files, "index.html"); i >= 0 {
+		files = append(slices.Delete(files, i, i+1), "index.html")
+	}
+	res := ""
+	for _, rel := range files {
+		in := map[string]any{"path": filepath.Join(outDir, filepath.FromSlash(rel)), "title": rel, "kind": "document"}
+		if rel == "index.html" {
+			in["title"], in["needs_review"] = "Sample prototype", true
+		}
+		res, _ = call("submit_output", in)
+	}
+	return firstLine(res)
 }
