@@ -411,7 +411,7 @@ func (q *Queries) ListModelPrices(ctx context.Context) ([]ModelPrice, error) {
 }
 
 const listOrgWorkspacesUsingCLI = `-- name: ListOrgWorkspacesUsingCLI :many
-SELECT DISTINCT w.id, w.org_id, w.name, w.about, w.created_by, w.created_at, w.updated_at, w.goal_completion, w.logo_key FROM workspaces w JOIN members m ON m.workspace_id = w.id
+SELECT DISTINCT w.id, w.org_id, w.name, w.about, w.created_by, w.created_at, w.updated_at, w.goal_completion, w.logo_key, w.discord_webhook, w.discord_kinds, w.discord_role_id, w.discord_forum, w.discord_last_ok_at, w.discord_last_error FROM workspaces w JOIN members m ON m.workspace_id = w.id
 WHERE w.org_id = $1 AND m.cli = $2
 `
 
@@ -439,6 +439,12 @@ func (q *Queries) ListOrgWorkspacesUsingCLI(ctx context.Context, arg ListOrgWork
 			&i.UpdatedAt,
 			&i.GoalCompletion,
 			&i.LogoKey,
+			&i.DiscordWebhook,
+			&i.DiscordKinds,
+			&i.DiscordRoleID,
+			&i.DiscordForum,
+			&i.DiscordLastOkAt,
+			&i.DiscordLastError,
 		); err != nil {
 			return nil, err
 		}

@@ -370,6 +370,32 @@ type Note struct {
 	UpdatedAt      time.Time
 }
 
+type NotificationOutbox struct {
+	ID               uuid.UUID
+	OrgID            uuid.UUID
+	WorkspaceID      uuid.UUID
+	MemberID         *uuid.UUID
+	Kind             string
+	Title            string
+	Body             string
+	Link             string
+	SignalID         *uuid.UUID
+	TaskID           *uuid.UUID
+	GoalID           *uuid.UUID
+	ForUserID        *uuid.UUID
+	Recipients       []uuid.UUID
+	Media            []byte
+	DiscordSentAt    *time.Time
+	DiscordAttempts  int32
+	DiscordLastError string
+	DiscordNextAt    time.Time
+	PushSentAt       *time.Time
+	PushAttempts     int32
+	PushLastError    string
+	PushNextAt       time.Time
+	CreatedAt        time.Time
+}
+
 type Organization struct {
 	ID                  uuid.UUID
 	Name                string
@@ -657,15 +683,21 @@ type UserIdentity struct {
 }
 
 type Workspace struct {
-	ID             uuid.UUID
-	OrgID          uuid.UUID
-	Name           string
-	About          string
-	CreatedBy      *uuid.UUID
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	GoalCompletion string
-	LogoKey        *string
+	ID               uuid.UUID
+	OrgID            uuid.UUID
+	Name             string
+	About            string
+	CreatedBy        *uuid.UUID
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	GoalCompletion   string
+	LogoKey          *string
+	DiscordWebhook   string
+	DiscordKinds     []byte
+	DiscordRoleID    string
+	DiscordForum     bool
+	DiscordLastOkAt  *time.Time
+	DiscordLastError string
 }
 
 type WorkspaceAccess struct {
