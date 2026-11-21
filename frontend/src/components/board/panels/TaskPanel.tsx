@@ -68,6 +68,7 @@ export function TaskPanel({ id }: { id: string }) {
           )}
           <button className="linkbtn" onClick={() => { ui.centerOn(t.id); ui.setGlow(t.id); }}>Show on the tree</button>
         </div>
+        {t.kind === "triage" && <div className="box"><b>Request → manager splits it up</b><br /><span className="hint">{m?.name ?? "The manager"} doesn’t do this themselves. They hand it to the right staff as new tasks.</span></div>}
         <div className="box">
           <div className="row" style={{ fontSize: 12, color: "var(--muted)" }}>
             <span className="spacer">{t.status === "done" ? "Finished " + ago(t.finished_at) : t.status === "doing" ? "Started " + ago(t.started_at) : waits ? `Waiting on ${waits} task${waits > 1 ? "s" : ""}` : "Ready to start"}</span>
@@ -89,6 +90,13 @@ export function TaskPanel({ id }: { id: string }) {
               </span>
               <span className="pill">Chat</span>
             </button>
+          </div>
+        )}
+        {t.kind === "triage" && (
+          <div className="sb-sec">
+            <span className="lbl">Tasks it created</span>
+            {b.tasks.filter((x) => x.parent_task_id === t.id).map((x) => <TaskRow key={x.id} t={x} nested />)}
+            {!b.tasks.some((x) => x.parent_task_id === t.id) && <p className="hint">None yet.</p>}
           </div>
         )}
         {steps.length > 0 && (
