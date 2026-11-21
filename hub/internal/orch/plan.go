@@ -329,7 +329,7 @@ func (o *Orch) toolAssignTasks(ctx context.Context, tc *toolCtx) error {
 		if g, err = q.GetGoal(ctx, *tc.task.GoalID); err != nil {
 			return err
 		}
-		if g.Status == "planning" || g.Draft {
+		if g.Status == "planning" || g.Status == "draft" {
 			return toolError("This goal has no plan yet.")
 		}
 		if problems := validatePlan(in.Tasks, st.dirs); len(problems) > 0 {
