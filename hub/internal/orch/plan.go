@@ -14,6 +14,7 @@ import (
 	"canopy/hub/internal/blob"
 	"canopy/hub/internal/core"
 	"canopy/hub/internal/domain"
+	"canopy/hub/internal/notify"
 	"canopy/hub/internal/store"
 	"canopy/hub/internal/store/db"
 )
@@ -205,7 +206,8 @@ func (o *Orch) toolSubmitPlan(ctx context.Context, tc *toolCtx) error {
 		if err := o.saveNote(ctx, t, tc.ws, &g.ID, "plan", "Plan: "+g.Title, planDoc, nil, &tc.member.ID); err != nil {
 			return err
 		}
-		return nil
+		return notify.Enqueue(ctx, t, tc.ws, notify.Note{Kind: "progress", MemberID: &tc.member.ID, GoalID: &g.ID, TaskID: &tc.task.ID,
+			Body: fmt.Sprintf("Plan ready for “%s”: %d tasks.", g.Title, accepted)})
 	})
 	if err != nil {
 		return err
@@ -284,6 +286,9 @@ func (o *Orch) createPlanTasks(ctx context.Context, t *core.Tx, tc *toolCtx, st 
 			e := core.WS(tc.ws.OrgID, tc.ws.ID, "signal.opened")
 			e.MemberID, e.ForUserID = sig.MemberID, &crossOwner.OwnerUserID
 			if err := t.Emit(ctx, e, core.ToSignal(sig)); err != nil {
+				return "", err
+			}
+			if err := notify.EnqueueSignal(ctx, t, tc.ws, sig); err != nil {
 				return "", err
 			}
 		}

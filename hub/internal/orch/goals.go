@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"canopy/hub/internal/core"
+	"canopy/hub/internal/notify"
 	"canopy/hub/internal/store"
 	"canopy/hub/internal/store/db"
 	"canopy/shared/protocol"
@@ -138,6 +139,16 @@ func (o *Orch) closeGoal(ctx context.Context, t *core.Tx, ws db.Workspace, g db.
 		return err
 	}
 	if err := core.GoalEvent(ctx, t, ws, ng, "complete", "Goal done. "+shippedText(shipped), shipped); err != nil {
+		return err
+	}
+	n := notify.Note{Kind: "goal_ready", MemberID: g.ManagerID, GoalID: &g.ID, Body: "Goal done: " + g.Title + ". " + shippedText(shipped)}
+	if prs, ok := shipped["prs"].([]string); ok {
+		for _, u := range prs {
+			n.Media.Links = append(n.Media.Links, notify.Link{Label: "Open PR", URL: u})
+		}
+	}
+	n.Media.Links = append(n.Media.Links, notify.ArtifactLinks(summary)...)
+	if err := notify.Enqueue(ctx, t, ws, n); err != nil {
 		return err
 	}
 	if g.ManagerID != nil {

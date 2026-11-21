@@ -13,6 +13,7 @@ import (
 
 	"canopy/hub/internal/authz"
 	"canopy/hub/internal/core"
+	"canopy/hub/internal/notify"
 	"canopy/hub/internal/store"
 	"canopy/hub/internal/store/db"
 	"canopy/shared/protocol"
@@ -522,6 +523,11 @@ func (o *Orch) toolCompleteTask(ctx context.Context, tc *toolCtx) error {
 				}
 			}
 		}
+		if nt.Kind != "plan" {
+			if err := o.notifyTaskDone(ctx, t, tc, nt, in.Summary); err != nil {
+				return err
+			}
+		}
 		t.AfterCommit(func() {
 			o.reply(tc, "Task marked done.", false)
 			o.Kick(ctx, tc.ws.ID)
@@ -637,7 +643,10 @@ func (o *Orch) createOwnerChange(ctx context.Context, t *core.Tx, st *wsState, d
 	}
 	e := core.WS(st.ws.OrgID, st.ws.ID, "signal.opened")
 	e.MemberID, e.ForUserID = sig.MemberID, &dir.OwnerUserID
-	return task, t.Emit(ctx, e, core.ToSignal(sig))
+	if err := t.Emit(ctx, e, core.ToSignal(sig)); err != nil {
+		return task, err
+	}
+	return task, notify.EnqueueSignal(ctx, t, st.ws, sig)
 }
 
 // pickWriter chooses who carries out an owner-approved change: someone already able to write
@@ -666,4 +675,20 @@ func pickWriter(st *wsState, dirID uuid.UUID, requester *uuid.UUID) *uuid.UUID {
 		return requester
 	}
 	return nil
+}
+
+// notifyTaskDone queues the "task finished" note with the summary and the task's outputs.
+func (o *Orch) notifyTaskDone(ctx context.Context, t *core.Tx, tc *toolCtx, task db.Task, summary string) error {
+	n := notify.Note{Kind: "progress", MemberID: &tc.member.ID, GoalID: task.GoalID, TaskID: &task.ID,
+		Body: "Finished “" + task.Title + "”.\n\n" + summary, Media: notify.Media{Links: notify.ArtifactLinks(summary)}}
+	outs, err := t.Q.ListOutputs(ctx, tc.ws.ID)
+	if err != nil {
+		return err
+	}
+	for _, x := range outs {
+		if x.TaskID != nil && *x.TaskID == task.ID {
+			n.Media.OutputIDs = append(n.Media.OutputIDs, x.ID)
+		}
+	}
+	return notify.Enqueue(ctx, t, tc.ws, n)
 }

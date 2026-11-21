@@ -17,6 +17,7 @@ import (
 
 	"canopy/hub/internal/blob"
 	"canopy/hub/internal/core"
+	"canopy/hub/internal/notify"
 	"canopy/hub/internal/store"
 	"canopy/hub/internal/store/db"
 	"canopy/shared/protocol"
@@ -354,6 +355,9 @@ func (s *Service) applied(ctx context.Context, r db.Runner, res protocol.MirrorR
 			e := core.WS(ws.OrgID, ws.ID, "signal.opened")
 			e.ForUserID = &d.OwnerUserID
 			if err := t.Emit(ctx, e, core.ToSignal(sig)); err != nil {
+				return err
+			}
+			if err := notify.EnqueueSignal(ctx, t, ws, sig); err != nil {
 				return err
 			}
 		}
