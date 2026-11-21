@@ -255,6 +255,7 @@ export interface GoalView {
   handover_approved_at?: string /* RFC3339 */;
   created_at: string /* RFC3339 */;
   usage?: UsageTotals; // tokens and cost so far; nil when not loaded
+  job_run_id?: string /* uuid */; // set when the goal is a job run
 }
 /**
  * GoalRepoView is a goal's branch in one repository.
