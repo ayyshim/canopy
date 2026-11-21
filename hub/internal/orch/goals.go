@@ -164,8 +164,11 @@ func (o *Orch) finishJobGoal(ctx context.Context, t *core.Tx, st *wsState, g db.
 	if err := o.closeGoal(ctx, t, st.ws, g, nil, map[string]any{}, goalSummary(st, g, tasks, o.now())); err != nil {
 		return err
 	}
-	_, err := jobs.RunFinished(ctx, t, g, o.now())
-	return err
+	out, err := jobs.RunFinished(ctx, t, g, o.now())
+	if err != nil || out.Run.ID == uuid.Nil {
+		return err
+	}
+	return jobs.Notify(ctx, t, out.Job, out.Run, out.Paused)
 }
 
 func goalHasCode(repos []db.GoalRepo) bool {

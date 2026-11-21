@@ -154,18 +154,22 @@ func (e *Engine) stop(ctx context.Context, r db.JobRun, j db.Job, status, skip, 
 		if status != "skipped" {
 			p.Error = &why
 		}
-		if _, err := updateRun(ctx, t, j, p); err != nil {
+		run, err := updateRun(ctx, t, j, p)
+		if err != nil {
 			return err
 		}
-		if status != "failed" || r.Trigger == "test" {
-			return nil
+		paused := false
+		if status == "failed" && r.Trigger != "test" {
+			fails := j.ConsecutiveFailures + 1
+			up := db.UpdateJobParams{ID: j.ID, ConsecutiveFailures: &fails}
+			if fails >= failuresToPause {
+				up.Status, up.PauseReason = ptr("paused"), ptr("failures")
+				paused = true
+			}
+			if j, err = updateJob(ctx, t, up); err != nil {
+				return err
+			}
 		}
-		fails := j.ConsecutiveFailures + 1
-		up := db.UpdateJobParams{ID: j.ID, ConsecutiveFailures: &fails}
-		if fails >= failuresToPause {
-			up.Status, up.PauseReason = ptr("paused"), ptr("failures")
-		}
-		_, err = updateJob(ctx, t, up)
-		return err
+		return Notify(ctx, t, j, run, paused)
 	})
 }
