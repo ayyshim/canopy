@@ -214,6 +214,7 @@ type Goal struct {
 	Description        string
 	HandoverApprovedBy *uuid.UUID
 	HandoverApprovedAt *time.Time
+	Number             int32
 }
 
 type GoalEvent struct {
@@ -281,6 +282,12 @@ type Invite struct {
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 	DeclinedNotified bool
+}
+
+type ItemCounter struct {
+	WorkspaceID uuid.UUID
+	Kind        string
+	Last        int32
 }
 
 type LogLine struct {
@@ -362,16 +369,35 @@ type ModelPrice struct {
 }
 
 type Note struct {
-	ID             uuid.UUID
-	WorkspaceID    uuid.UUID
-	GoalID         *uuid.UUID
-	Kind           string
-	Title          string
-	Body           string
-	AuthorUserID   *uuid.UUID
-	AuthorMemberID *uuid.UUID
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID               uuid.UUID
+	WorkspaceID      uuid.UUID
+	GoalID           *uuid.UUID
+	Kind             string
+	Title            string
+	Body             string
+	AuthorUserID     *uuid.UUID
+	AuthorMemberID   *uuid.UUID
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	Number           int32
+	Visibility       string
+	Color            string
+	BoardX           *float64
+	BoardY           *float64
+	EditedByUserID   *uuid.UUID
+	EditedByMemberID *uuid.UUID
+}
+
+type NoteRevision struct {
+	ID               uuid.UUID
+	NoteID           uuid.UUID
+	Rev              int32
+	Title            string
+	Body             string
+	Kind             string
+	EditedByUserID   *uuid.UUID
+	EditedByMemberID *uuid.UUID
+	CreatedAt        time.Time
 }
 
 type Organization struct {
@@ -588,6 +614,7 @@ type Task struct {
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 	Nudges           int32
+	Number           int32
 }
 
 type UsageEvent struct {

@@ -1,5 +1,6 @@
 "use client";
 
+import { RefText } from "./IdTag";
 import { resolveSignal } from "@/lib/board/actions";
 import { directory, firstName, goal as findGoal, payload, task as findTask, personName, visibleMember } from "@/lib/board/derive";
 import { useUI } from "@/lib/board/ui";
@@ -36,7 +37,7 @@ export function SignalCard({ s, style, dim }: { s: SignalView; style: React.CSSP
       const one = options.length > 2 || options.some((o) => o.length > 16);
       return (
         <div className={cls("fork")} style={style} data-sig={s.id}>
-          <div className="fq">{p.question}</div>
+          <div className="fq"><RefText text={String(p.question ?? "")} /></div>
           <svg className="flines" viewBox="0 0 220 20" aria-hidden="true">
             <path d={one ? "M110 0 V20" : "M110 0 V8 M52 8 H168 M52 8 V20 M168 8 V20"} stroke="#D08A0E" strokeWidth="1.8" strokeDasharray="4 3" fill="none" />
           </svg>
@@ -151,7 +152,7 @@ export function SignalCard({ s, style, dim }: { s: SignalView; style: React.CSSP
         <div className={cls("gate")} style={style} data-sig={s.id}>
           <span className="lock" aria-hidden="true"><LockIcon /></span>
           <span className="h">{mine ? "Your approval" : `${firstName(b, p.owner_user_id)}’s approval`} for {d?.name ?? p.path}</span>
-          <p>{p.description}</p>
+          <p><RefText text={String(p.description ?? "")} /></p>
           {mine ? (
             <span className="bs">
               <button className="mini dark" onClick={act("approve")}>Approve</button>

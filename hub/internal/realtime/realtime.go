@@ -21,6 +21,7 @@ type Event struct {
 	MemberID    *uuid.UUID      `json:"member_id,omitempty"`   // for staff visibility filtering
 	ForUserID   *uuid.UUID      `json:"for_user_id,omitempty"` // also visible to this person (owner approvals)
 	AdminOnly   bool            `json:"admin_only,omitempty"`
+	ToUserID    *uuid.UUID      `json:"to_user_id,omitempty"` // only this person's sockets, nobody else (admins included)
 	Data        json.RawMessage `json:"data"`
 	At          time.Time       `json:"at"`
 	// Ephemeral events (presence, typing) aren't stored and have no Seq.

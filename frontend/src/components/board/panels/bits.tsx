@@ -1,6 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { useBoard } from "@/lib/board/store";
+import { itemOf, refOfHref, remarkRefs } from "@/lib/refs";
 import { moveGoal, resolveSignal } from "@/lib/board/actions";
 import {
   briefInReview, computer, directory, firstName, goalRepos, isAdmin, payload, personName, signalsForTask, goal as findGoal, task as findTask, visibleMember, whyWaiting,
@@ -9,6 +13,7 @@ import { useUI } from "@/lib/board/ui";
 import type { Board, GoalView, SignalView, TaskView } from "@/lib/types";
 import { useB, useBoardCtx } from "../context";
 import { Avatar } from "../icons";
+import { RefLink, RefText } from "../IdTag";
 import { UsageBadge } from "../../ui";
 
 export const shortTitle = (s: string) => (s.length > 34 ? s.slice(0, 32) + "…" : s);
@@ -82,7 +87,7 @@ export function SignalBox({ s }: { s: SignalView }) {
     case "question":
       body = (
         <>
-          <b>{m?.name} asks:</b> {p.question}
+          <b>{m?.name} asks:</b> <RefText text={String(p.question ?? "")} />
           <div className="leaves">
             {(p.options ?? []).map((o: string, i: number) => (
               <button key={o} className={"leaf" + (i === p.suggested ? " sugg" : "")} onClick={act("answer", { text: o })}>{o}</button>
@@ -152,7 +157,7 @@ export function SignalBox({ s }: { s: SignalView }) {
     case "owner_change":
       body = (
         <>
-          <b>Needs {personName(b, p.owner_user_id)}’s approval</b><span>{p.description}</span>
+          <b>Needs {personName(b, p.owner_user_id)}’s approval</b><span><RefText text={String(p.description ?? "")} /></span>
           {p.owner_user_id === me ? (
             <div className="row">
               <button className="btn btn-sm btn-primary" onClick={act("approve")}>Approve</button>
@@ -219,35 +224,52 @@ export function MemberRow({ id, sub }: { id: string; sub?: string }) {
   );
 }
 
-const escHTML = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+/** Where a Markdown output's relative paths point. Images and links can name sibling outputs. */
+export type MdLinks = {
+  /** The file URL for a relative image path, or null when no output has that name. */
+  image: (src: string) => string | null;
+  /** Opens a relative link in the viewer. Returns false when no output has that name. */
+  open: (href: string) => boolean;
+  /** True for a relative path (not a web link or an anchor), so a miss can say so. */
+  relative: (href: string) => boolean;
+};
 
-/** markdownHTML renders the small Markdown subset used in notes and instructions. Text is escaped first. */
-export function markdownHTML(src: string): string {
-  const lines = String(src || "").replace(/\r/g, "").split("\n");
-  let out = "", list: "ul" | "ol" | null = null, code = false;
-  let buf: string[] = [];
-  const inl = (t: string) => escHTML(t).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/(^|\W)\*([^*]+)\*/g, "$1<i>$2</i>");
-  const flush = () => { if (buf.length) { out += "<p>" + buf.map(inl).join(" ") + "</p>"; buf = []; } };
-  const endList = () => { if (list) { out += `</${list}>`; list = null; } };
-  for (const l of lines) {
-    let mm: RegExpMatchArray | null;
-    if (/^```/.test(l)) { flush(); endList(); out += code ? "</code></pre>" : "<pre><code>"; code = !code; continue; }
-    if (code) { out += escHTML(l) + "\n"; continue; }
-    if ((mm = l.match(/^(#{1,3})\s+(.*)/))) { flush(); endList(); out += `<h${mm[1].length}>${inl(mm[2])}</h${mm[1].length}>`; continue; }
-    if ((mm = l.match(/^\s*[-*]\s+(.*)/))) { flush(); if (list !== "ul") { endList(); out += "<ul>"; list = "ul"; } out += "<li>" + inl(mm[1]) + "</li>"; continue; }
-    if ((mm = l.match(/^\s*\d+[.)]\s+(.*)/))) { flush(); if (list !== "ol") { endList(); out += "<ol>"; list = "ol"; } out += "<li>" + inl(mm[1]) + "</li>"; continue; }
-    if (!l.trim()) { flush(); endList(); continue; }
-    endList();
-    buf.push(l.trim());
-  }
-  flush();
-  endList();
-  if (code) out += "</code></pre>";
-  return out || '<p class="hint">Nothing written yet.</p>';
-}
-
-export function Markdown({ text, className = "mdprev" }: { text: string; className?: string }) {
-  return <div className={className} dangerouslySetInnerHTML={{ __html: markdownHTML(text) }} />;
+/** Markdown renders GitHub-style Markdown. Raw HTML is not rendered and only safe URLs are linked. */
+export function Markdown({ text, className = "mdprev", links }: { text: string; className?: string; links?: MdLinks }) {
+  const board = useBoard((s) => s.board);
+  const refPlugin = useMemo(() => remarkRefs((r) => !!itemOf(board, r)), [board]);
+  const src = String(text || "").replace(/\r/g, "");
+  if (!src.trim()) return <div className={className}><p className="hint">Nothing written yet.</p></div>;
+  return (
+    <div className={className}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, refPlugin]}
+        components={{
+          a: ({ href, children }) => {
+            if (!href) return <>{children}</>;
+            const ref = refOfHref(href);
+            if (ref) return <RefLink refr={ref} text={typeof children === "string" ? children : ref.label} />;
+            if (links?.relative(href)) {
+              return (
+                <a href={href} onClick={(e) => { e.preventDefault(); links.open(href); }} title={`Open ${href}`}>{children}</a>
+              );
+            }
+            if (href.startsWith("#")) return <>{children}</>;
+            return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>;
+          },
+          img: ({ src: s, alt }) => {
+            const url = typeof s === "string" ? (links?.relative(s) ? links.image(s) : s) : null;
+            // eslint-disable-next-line @next/next/no-img-element
+            if (url) return <img src={url} alt={alt ?? ""} loading="lazy" />;
+            return <span className="md-missing">{alt || "Image"} (not found{typeof s === "string" && s ? `: ${s}` : ""})</span>;
+          },
+          table: ({ children }) => <div className="md-table"><table>{children}</table></div>,
+        }}
+      >
+        {src}
+      </ReactMarkdown>
+    </div>
+  );
 }
 
 export const nameOf = (b: Board, id?: string | null) => firstName(b, id);

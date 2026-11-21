@@ -24,6 +24,19 @@ export interface AttachmentView {
 }
 
 //////////
+// source: notes.go
+
+export interface NoteRevisionView {
+  rev: number /* int32 */;
+  title: string;
+  body: string;
+  kind: string;
+  edited_by_user_id?: string /* uuid */;
+  edited_by_member_id?: string /* uuid */;
+  created_at: string /* RFC3339 */;
+}
+
+//////////
 // source: usage.go
 
 /**
@@ -132,12 +145,19 @@ export interface CloneView {
 }
 export interface NoteView {
   id: string /* uuid */;
+  number: number /* int32 */;
   goal_id?: string /* uuid */;
   kind: string;
   title: string;
   body: string;
   author_user_id?: string /* uuid */;
   author_member_id?: string /* uuid */;
+  visibility: string;
+  color: string;
+  board_x?: number /* float64 */;
+  board_y?: number /* float64 */;
+  edited_by_user_id?: string /* uuid */;
+  edited_by_member_id?: string /* uuid */;
   updated_at: string /* RFC3339 */;
 }
 export interface GrantView {
@@ -212,6 +232,7 @@ export interface StaffProposalView {
 
 export interface GoalView {
   id: string /* uuid */;
+  number: number /* int32 */;
   manager_id?: string /* uuid */;
   title: string;
   done_when: string;
@@ -258,6 +279,7 @@ export interface DirNeed {
 }
 export interface TaskView {
   id: string /* uuid */;
+  number: number /* int32 */;
   goal_id?: string /* uuid */;
   member_id?: string /* uuid */;
   kind: string;

@@ -118,7 +118,7 @@ func (s *Server) BoardSnapshot(ctx context.Context, wsID, userID uuid.UUID) (*bo
 			snap.GoalRepos = append(snap.GoalRepos, core.ToGoalRepo(r))
 		}
 	}
-	notes, err := q.ListNotes(ctx, wsID)
+	notes, err := q.ListNotes(ctx, db.ListNotesParams{WorkspaceID: wsID, ViewerID: &userID})
 	if err != nil {
 		return nil, err
 	}

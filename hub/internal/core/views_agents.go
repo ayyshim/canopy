@@ -11,6 +11,7 @@ import (
 
 type GoalView struct {
 	ID                 uuid.UUID       `json:"id"`
+	Number             int32           `json:"number"`
 	ManagerID          *uuid.UUID      `json:"manager_id"`
 	Title              string          `json:"title"`
 	DoneWhen           string          `json:"done_when"`
@@ -36,7 +37,7 @@ type GoalView struct {
 }
 
 func ToGoal(g db.Goal) GoalView {
-	v := GoalView{ID: g.ID, ManagerID: g.ManagerID, Title: g.Title, DoneWhen: g.DoneWhen, Description: g.Description, Color: g.Color, Status: g.Status,
+	v := GoalView{ID: g.ID, Number: g.Number, ManagerID: g.ManagerID, Title: g.Title, DoneWhen: g.DoneWhen, Description: g.Description, Color: g.Color, Status: g.Status,
 		Summary: g.Summary, CreatedBy: g.CreatedBy, PlannedAt: g.PlannedAt, FinishedAt: g.FinishedAt, CreatedAt: g.CreatedAt,
 		ReadyAt: g.ReadyAt, RunnerID: g.RunnerID, Base: g.Base, Branch: g.Branch, Snapshot: g.Snapshot, Shipped: g.Shipped,
 		ShowTasks: g.ShowTasks, DoneBy: g.DoneBy,
@@ -76,6 +77,7 @@ type DirNeed struct {
 
 type TaskView struct {
 	ID               uuid.UUID    `json:"id"`
+	Number           int32        `json:"number"`
 	GoalID           *uuid.UUID   `json:"goal_id"`
 	MemberID         *uuid.UUID   `json:"member_id"`
 	Kind             string       `json:"kind"`
@@ -100,7 +102,7 @@ type TaskView struct {
 }
 
 func ToTask(t db.Task) TaskView {
-	v := TaskView{ID: t.ID, GoalID: t.GoalID, MemberID: t.MemberID, Kind: t.Kind, Title: t.Title, Description: t.Description,
+	v := TaskView{ID: t.ID, Number: t.Number, GoalID: t.GoalID, MemberID: t.MemberID, Kind: t.Kind, Title: t.Title, Description: t.Description,
 		Skill: t.Skill, Status: t.Status, Progress: t.Progress, DependsOn: t.DependsOn, CurrentStep: t.CurrentStep,
 		Borrowed: t.Borrowed, AttributedUserID: t.AttributedUserID, CreatedBy: t.CreatedBy, ParentTaskID: t.ParentTaskID,
 		Summary: t.Summary, StartedAt: t.StartedAt, FinishedAt: t.FinishedAt, CreatedAt: t.CreatedAt}

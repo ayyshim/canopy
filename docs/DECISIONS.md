@@ -401,12 +401,59 @@ lasts across the pages of one preview and is lost when the viewer reloads the fr
 **Trade-off.** Preview pages can call any https site (`connect-src https:`), so they can send what they know
 elsewhere. They know nothing of the hub, but people should still only preview work from their own team.
 
+## Item numbers and references (2026-11-21)
+
+Goals, tasks and notes get a number per workspace and type, written G-12, T-34, N-5. The number is a column
+with `unique (workspace_id, number)`, handed out by `next_item_number()` from the `item_counters` table inside
+the insert statement. The counter row stays locked until the transaction ends, so concurrent inserts queue and
+never clash; numbers are never reused after a delete. Migration 00024 backfills old rows by `created_at, id`.
+
+`hub/internal/refs` parses refs (`G-12`, `#t-34`, any case, not glued to other words, not in code) and resolves
+them with the board snapshot's rules: a goal or task is visible when its manager or owner is, a note when it has
+no goal or its goal is. Hidden and unknown refs look the same: nothing, or 404 over REST. Agents see everything
+in the workspace (as with `read_notes`); text written by a person is expanded only with what that person sees.
+Expansion adds a "Referenced items" block (max 10 items, about 1500 characters each) to goal and task prompts,
+chat messages, task comments and review change requests. The `read_item` tool shows one item in full.
+
+## Sticky notes: private and shared (2026-11-21)
+
+Notes have `visibility` (`shared` default, or `private`), a `color` from a fixed palette, and an optional board
+position (`board_x`, `board_y`, both set or both null; set means pinned as a sticky). A private note is seen by its
+author and by agents working for that person (a goal they created, a chat with them); nobody else, admins
+included, and everyone else gets 404. Private notes are left out of the notes list, board snapshot, `read_notes`,
+`read_item`, the `#` picker and ref expansion; prompts list shared notes only. Only the author changes visibility.
+Shared notes stay editable by their author or an admin.
+
+`note.saved` and `note.deleted` for a private note carry `realtime.Event.ToUserID` and reach only that person's
+sockets; the stored event row keeps `{}` instead of the note. A note turning private first sends a plain
+`note.deleted` to everyone so it leaves other boards.
+
+Each change to a note's title, body or kind first saves a revision (last 20 kept) and records the editor
+(`edited_by_user_id` or `edited_by_member_id`). Moving, recoloring and changing visibility save none.
+`GET /notes/{id}/revisions` lists them and `POST /notes/{id}/revisions/{n}/restore` puts one back, saving the
+current text first. Agents use `update_note(ref, title?, body?, mode)`; `append` is the default.
+
+## Output viewer, minimap and attachment drops (2026-11-21)
+
+Markdown is rendered with react-markdown and remark-gfm (pinned exact versions). Raw HTML is not rendered, URLs
+are filtered by the library's default transform, and web links open in a new tab. Relative image and link paths in
+a Markdown output resolve against the output's own folder and then to a sibling output (same task, then the goal);
+a link to an HTML sibling opens it in the viewer as a prototype. `.stage-in` centers its child with `margin:auto`
+so tall content is never cut off at the top. The hub sniffs the type of an output with no file extension on submit
+(`http.DetectContentType`) so HTML without an extension is stored as `text/html`.
+
+The board minimap reads node boxes from the layout and the camera from `lib/board/camera.ts`; its visibility is a
+per-browser setting. A finished goal's tasks are hidden only by its `show_tasks` flag.
+
+Attachment fields are drop zones: files can be dropped or pasted, up to 25 MB each and 20 per drop (`lib/files.ts`).
+Chat has no file attachments yet, so it has no drop zone. A dropped file outside a zone is ignored, not opened.
+
 ## Two-factor sign-in (TOTP)
 
 Every person must set up an authenticator app. Every sign-in (login, OAuth, signup, hub setup, invite accept,
 password reset) creates a *pending* session (`auth_sessions.two_factor_at` is null). `RequireUser`, `/admin`
 and the board WebSocket refuse pending sessions with 401 `two_factor_required` and `next` = `enroll` or
-`verify`. Password reset and OAuth never skip the code. Sessions that existed when migration 00024 ran are
+`verify`. Password reset and OAuth never skip the code. Sessions that existed when migration 00026 ran are
 pending too, so people already signed in enroll on their next request. Sign-in responses are
 `{"two_factor": "enroll"|"verify"}` instead of `me`.
 

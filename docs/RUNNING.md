@@ -404,6 +404,31 @@ To re-record the board GIF in the README, run `scripts/record-board.sh`. It star
 hub, web app and client (with `CANOPY_CLAUDE_BIN` set to fakeclaude), plays a goal with
 `[tasks:3] [ask] [slow:2]`, and writes `docs/assets/board.gif`. It needs docker, go, node, pnpm and ffmpeg.
 
+## Board shortcuts and attachments
+
+- **Minimap.** The small map at the bottom right shows every node and your current view. Click or drag on it to move the board. Press **M**, or use the button by the zoom control, to hide or show it; the choice is kept in your browser. It starts hidden on phones.
+- **Finished goals.** Open a finished goal from the workspace panel (filter: Done) and choose **Show its tasks on the board**.
+- **Attachments.** Drop files on any attachment field, or paste a screenshot, up to 25 MB each and 20 at a time. Chat doesn't take files yet.
+
+## Referencing items
+
+Every goal, task and note has a number that is unique in its workspace: **G-12**, **T-34**, **N-5**. The number shows on task stickies, goal chips and in the details panels, with a **Copy ID** button.
+
+- **Write an ID anywhere** you write text: a goal or task, a chat message, a comment, the "What should change?" box in a review, a note. Agents see the same IDs and can read an item with `read_item`.
+- **Type `#`** in those fields to pick from a list of goals, tasks and notes. Use Up and Down, Enter to insert, Esc to close.
+- **IDs become links** in text the board shows. A click opens the goal, task or note and centers it on the board.
+- IDs in code (`T-1` between backticks, or a code block) stay plain text. An ID you can't see, or that doesn't exist, also stays plain text.
+
+## Sticky notes
+
+A note with a board position shows on the canvas as a sticky note, with its N-5 ID, a color, its title and the first lines of the text (Markdown works). Pin or unpin it in the Notes panel, and it also shows on the minimap.
+
+- **Add one** with **Sticky note** in the top bar (or its menu on phones), or double-click empty canvas. You write it in place. New stickies are **Private**.
+- **Move it** by dragging. The position is saved a moment after you stop.
+- **Private or Shared.** A private note is seen only by you and by the agents working for you (goals you gave, chats with you). Nobody else sees it, admins included, and it never reaches their browsers. Shared notes are seen by the whole workspace. Only the author switches a note between the two (Notes panel).
+- **Who edits.** The author edits their notes; admins also edit shared ones. Agents can update notes with `update_note` when asked or clearly useful. A sticky shows "Edited by <agent>" and glows briefly when an agent changes it.
+- **History.** Every change to the title or text keeps the earlier version (the last 20). Open the note in the Notes panel and choose **Restore**; the current text is kept in the history too.
+
 ## Handover brief
 
 When every task of a goal is done, the goal’s manager writes a short handover brief (`handover.md`)

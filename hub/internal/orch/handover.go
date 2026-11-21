@@ -31,7 +31,7 @@ func (o *Orch) approveHandover(ctx context.Context, t *core.Tx, ws db.Workspace,
 		return err
 	}
 	if brief != "" {
-		if err := o.saveNote(ctx, t, ws, &g.ID, "summary", "Summary: "+g.Title, brief, nil, g.ManagerID); err != nil {
+		if _, err := o.saveNote(ctx, t, ws, &g.ID, "summary", "Summary: "+g.Title, brief, "shared", nil, g.ManagerID); err != nil {
 			return err
 		}
 	}

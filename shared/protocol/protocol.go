@@ -355,6 +355,8 @@ const (
 	ToolOwnerChange    = "request_owner_change"
 	ToolReadNotes      = "read_notes"
 	ToolWriteNote      = "write_note"
+	ToolReadItem       = "read_item"
+	ToolUpdateNote     = "update_note"
 	ToolAssignSkill    = "assign_skill"
 	ToolProposeStaff   = "propose_staff"
 	ToolUpdateStaff    = "update_staff_instructions"
