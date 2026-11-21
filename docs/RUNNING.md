@@ -393,6 +393,12 @@ To re-record the board GIF in the README, run `scripts/record-board.sh`. It star
 hub, web app and client (with `CANOPY_CLAUDE_BIN` set to fakeclaude), plays a goal with
 `[tasks:3] [ask] [slow:2]`, and writes `docs/assets/board.gif`. It needs docker, go, node, pnpm and ffmpeg.
 
+## Board shortcuts and attachments
+
+- **Minimap.** The small map at the bottom right shows every node and your current view. Click or drag on it to move the board. Press **M**, or use the button by the zoom control, to hide or show it; the choice is kept in your browser. It starts hidden on phones.
+- **Finished goals.** Open a finished goal from the workspace panel (filter: Done) and choose **Show its tasks on the board**.
+- **Attachments.** Drop files on any attachment field, or paste a screenshot, up to 25 MB each and 20 at a time. Chat doesn't take files yet.
+
 ## Referencing items
 
 Every goal, task and note has a number that is unique in its workspace: **G-12**, **T-34**, **N-5**. The number shows on task stickies, goal chips and in the details panels, with a **Copy ID** button.

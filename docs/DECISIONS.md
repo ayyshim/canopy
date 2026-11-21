@@ -412,3 +412,18 @@ Each change to a note's title, body or kind first saves a revision (last 20 kept
 (`edited_by_user_id` or `edited_by_member_id`). Moving, recoloring and changing visibility save none.
 `GET /notes/{id}/revisions` lists them and `POST /notes/{id}/revisions/{n}/restore` puts one back, saving the
 current text first. Agents use `update_note(ref, title?, body?, mode)`; `append` is the default.
+
+## Output viewer, minimap and attachment drops (2026-11-21)
+
+Markdown is rendered with react-markdown and remark-gfm (pinned exact versions). Raw HTML is not rendered, URLs
+are filtered by the library's default transform, and web links open in a new tab. Relative image and link paths in
+a Markdown output resolve against the output's own folder and then to a sibling output (same task, then the goal);
+a link to an HTML sibling opens it in the viewer as a prototype. `.stage-in` centers its child with `margin:auto`
+so tall content is never cut off at the top. The hub sniffs the type of an output with no file extension on submit
+(`http.DetectContentType`) so HTML without an extension is stored as `text/html`.
+
+The board minimap reads node boxes from the layout and the camera from `lib/board/camera.ts`; its visibility is a
+per-browser setting. A finished goal's tasks are hidden only by its `show_tasks` flag.
+
+Attachment fields are drop zones: files can be dropped or pasted, up to 25 MB each and 20 per drop (`lib/files.ts`).
+Chat has no file attachments yet, so it has no drop zone. A dropped file outside a zone is ignored, not opened.

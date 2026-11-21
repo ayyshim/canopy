@@ -234,7 +234,7 @@ export function Markdown({ text, className = "mdprev", links }: { text: string; 
           a: ({ href, children }) => {
             if (!href) return <>{children}</>;
             const ref = refOfHref(href);
-            if (ref) return <RefLink refr={ref} text={String(children)} />;
+            if (ref) return <RefLink refr={ref} text={typeof children === "string" ? children : ref.label} />;
             if (links?.relative(href)) {
               return (
                 <a href={href} onClick={(e) => { e.preventDefault(); links.open(href); }} title={`Open ${href}`}>{children}</a>
