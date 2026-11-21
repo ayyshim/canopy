@@ -1,5 +1,6 @@
 "use client";
 
+import { RefText } from "../IdTag";
 import { IdTag, CopyId } from "../IdTag";
 import { useState } from "react";
 import { markGoalDone, shipGoal, showGoalTasks } from "@/lib/board/actions";
@@ -175,8 +176,8 @@ function GivenGoalPanel({ g }: { g: GoalView }) {
             </button>
           </div>
         )}
-        {g.description && <div className="sb-sec"><span className="lbl">Description</span><span style={{ fontSize: 13.5, whiteSpace: "pre-wrap" }}>{g.description}</span></div>}
-        {g.done_when && <div className="sb-sec"><span className="lbl">Done when</span><span style={{ fontSize: 13.5 }}>{g.done_when}</span></div>}
+        {g.description && <div className="sb-sec"><span className="lbl">Description</span><span style={{ fontSize: 13.5, whiteSpace: "pre-wrap" }}><RefText text={g.description} /></span></div>}
+        {g.done_when && <div className="sb-sec"><span className="lbl">Done when</span><span style={{ fontSize: 13.5 }}><RefText text={g.done_when} /></span></div>}
         <Attachments goalId={g.id} />
         {sigs.length > 0 && <div className="sb-sec"><span className="lbl">Waiting on you ({sigs.length})</span>{sigs.map((s) => <SignalBox key={s.id} s={s} />)}</div>}
         </div></TabPanel>
@@ -219,7 +220,7 @@ function GivenGoalPanel({ g }: { g: GoalView }) {
         <TabPanel id="activity" value={tab} idBase="goal">
           {events.length ? (
             <ul className="timeline">
-              {events.map((e, i) => <li key={i}><span className="mono hint" style={{ fontSize: 11 }}>{clock(e.at)}</span> {e.summary}</li>)}
+              {events.map((e, i) => <li key={i}><span className="mono hint" style={{ fontSize: 11 }}>{clock(e.at)}</span> <RefText text={e.summary} /></li>)}
             </ul>
           ) : <EmptyState icon="◷">Nothing has happened yet.</EmptyState>}
         </TabPanel>

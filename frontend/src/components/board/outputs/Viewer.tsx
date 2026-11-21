@@ -1,5 +1,6 @@
 "use client";
 
+import { RefText } from "../IdTag";
 import { RefAssist } from "../RefAssist";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -197,7 +198,7 @@ export function Viewer() {
             {o.kind === "diff" && g?.branch && <><dt>Branch</dt><dd className="mono" style={{ fontSize: 12 }}>{g.branch}</dd></>}
             {t && <><dt>Made on</dt><dd>{computer(b, runnerForTask(b, t))?.name ?? "—"}</dd></>}
             <dt>Made at</dt><dd>{clock(v?.created_at)}</dd>
-            {v?.note && <><dt>Note</dt><dd>{v.note}</dd></>}
+            {v?.note && <><dt>Note</dt><dd><RefText text={v.note} /></dd></>}
           </dl>
           <div className="row wrap" style={{ marginTop: "auto" }}>
             {t && <button className="btn btn-sm" onClick={show}>Show on the tree</button>}

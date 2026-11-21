@@ -13,7 +13,7 @@ import { useUI } from "@/lib/board/ui";
 import type { Board, GoalView, SignalView, TaskView } from "@/lib/types";
 import { useB, useBoardCtx } from "../context";
 import { Avatar } from "../icons";
-import { RefLink } from "../IdTag";
+import { RefLink, RefText } from "../IdTag";
 import { UsageBadge } from "../../ui";
 
 export const shortTitle = (s: string) => (s.length > 34 ? s.slice(0, 32) + "…" : s);
@@ -85,7 +85,7 @@ export function SignalBox({ s }: { s: SignalView }) {
     case "question":
       body = (
         <>
-          <b>{m?.name} asks:</b> {p.question}
+          <b>{m?.name} asks:</b> <RefText text={String(p.question ?? "")} />
           <div className="leaves">
             {(p.options ?? []).map((o: string, i: number) => (
               <button key={o} className={"leaf" + (i === p.suggested ? " sugg" : "")} onClick={act("answer", { text: o })}>{o}</button>
@@ -143,7 +143,7 @@ export function SignalBox({ s }: { s: SignalView }) {
     case "owner_change":
       body = (
         <>
-          <b>Needs {personName(b, p.owner_user_id)}’s approval</b><span>{p.description}</span>
+          <b>Needs {personName(b, p.owner_user_id)}’s approval</b><span><RefText text={String(p.description ?? "")} /></span>
           {p.owner_user_id === me ? (
             <div className="row">
               <button className="btn btn-sm btn-primary" onClick={act("approve")}>Approve</button>

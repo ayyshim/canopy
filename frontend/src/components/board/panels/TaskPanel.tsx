@@ -1,5 +1,6 @@
 "use client";
 
+import { RefText } from "../IdTag";
 import { RefAssist } from "../RefAssist";
 import { IdTag, CopyId } from "../IdTag";
 import { useCatalog, skillLabel } from "@/lib/catalog";
@@ -106,8 +107,8 @@ export function TaskPanel({ id }: { id: string }) {
             </button>
           </div>
         )}
-        {t.description && <div className="sb-sec"><span className="lbl">Details</span><span style={{ whiteSpace: "pre-wrap" }}>{t.description}</span></div>}
-        {t.summary && <div className="sb-sec"><span className="lbl">Result</span><span>{t.summary}</span></div>}
+        {t.description && <div className="sb-sec"><span className="lbl">Details</span><span style={{ whiteSpace: "pre-wrap" }}><RefText text={t.description} /></span></div>}
+        {t.summary && <div className="sb-sec"><span className="lbl">Result</span><span><RefText text={t.summary} /></span></div>}
         <dl className="kv">
           <dt>Started</dt><dd>{t.started_at ? clock(t.started_at) : "Not yet"}</dd>
           <dt>Finished</dt><dd>{t.finished_at ? clock(t.finished_at) : "Not yet"}</dd>
@@ -155,7 +156,7 @@ export function TaskPanel({ id }: { id: string }) {
         <div className="sb-sec">
           <span className="lbl">Agent activity</span>
           {taskLogs.length ? (
-            <ul className="timeline">{taskLogs.map((l) => <li key={l.id}><span className="mono hint" style={{ fontSize: 11 }}>{clock(l.at)}</span> {l.text.slice(0, 300)}</li>)}</ul>
+            <ul className="timeline">{taskLogs.map((l) => <li key={l.id}><span className="mono hint" style={{ fontSize: 11 }}>{clock(l.at)}</span> <RefText text={l.text.slice(0, 300)} /></li>)}</ul>
           ) : <p className="hint">Nothing yet.</p>}
         </div>
         <div className="sb-sec">
@@ -167,7 +168,7 @@ export function TaskPanel({ id }: { id: string }) {
             return (
               <div className="comment" key={c.id}>
                 <Avatar name={name} color={color} size={24} />
-                <span><b>{name}</b> <span className="mono hint" style={{ fontSize: 11 }}>{clock(c.created_at)}</span><br />{c.text}</span>
+                <span><b>{name}</b> <span className="mono hint" style={{ fontSize: 11 }}>{clock(c.created_at)}</span><br /><RefText text={c.text} /></span>
               </div>
             );
           })}
