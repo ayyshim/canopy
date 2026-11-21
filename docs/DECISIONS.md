@@ -380,3 +380,6 @@ Mark done and ship answer "The handover brief isn’t approved yet." without an 
 `complete_task` on a handover task is refused until then. A goal reopened with a new task loses its
 approval, so it needs a fresh brief. A ready goal with no approval (made before this) goes back to
 active and gets a brief task.
+
+When a goal closes, its live sessions are ended too. Cleanup deletes their work folders, so a reopened
+goal (which needs a new brief) starts fresh sessions instead of reusing ones with a deleted folder.
