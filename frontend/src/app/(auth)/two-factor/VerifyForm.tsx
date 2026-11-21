@@ -79,7 +79,7 @@ export function VerifyForm() {
           <p className="lead">{recoveryHint(usedRecovery.two_factor.recovery_codes_left)}</p>
         </div>
         <button className="btn btn-primary wide" onClick={() => hardNavigate("/account")}>Get new recovery codes</button>
-        <button className="btn wide" onClick={() => hardNavigate(next ?? landingPath(usedRecovery))}>Continue without them</button>
+        <button className="btn wide" onClick={() => hardNavigate(next ?? landingPath(usedRecovery))}>Not now</button>
       </div>
     );
   }
