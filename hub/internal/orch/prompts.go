@@ -196,6 +196,9 @@ func taskPrompt(st *wsState, m db.Member, t db.Task, comments []db.Comment, moun
 	if t.Kind == "owner_change" {
 		b.WriteString("\nAnother person asked for this change in a folder its owner controls. The owner approved it.\n")
 	}
+	if t.Kind == "triage" {
+		b.WriteString("\nA person gave you this as a note or request. Do not do the work yourself: analyze it and assign it to the right staff.\n")
+	}
 	if t.Description != "" {
 		fmt.Fprintf(&b, "\n%s\n", t.Description)
 	}
