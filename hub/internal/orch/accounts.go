@@ -20,7 +20,7 @@ import (
 // computer's sign-in and enforces API key caps.
 func (o *Orch) onUsage(ctx context.Context, rn db.Runner, u protocol.Usage) {
 	sess, ws, ok := o.sessionOn(ctx, rn, u.SessionID)
-	if !ok || (u.TokensIn == 0 && u.TokensOut == 0) {
+	if !ok || (u.TokensIn == 0 && u.TokensOut == 0 && u.CacheRead == 0) {
 		return
 	}
 	err := o.Core.Tx(ctx, func(t *core.Tx) error {
@@ -41,14 +41,30 @@ func (o *Orch) onUsage(ctx context.Context, rn db.Runner, u protocol.Usage) {
 			return err
 		}
 		model := firstNonEmpty(u.Model, m.Model)
+		taskID, goalID := o.usageWork(ctx, q, ws, u.TaskID)
+		rows, err := q.ListModelPrices(ctx)
+		if err != nil {
+			return err
+		}
+		cost := core.NewPrices(rows).Cost(model, u.TokensIn, u.TokensOut, u.CacheRead, u.CacheWrite)
 		ev, err := q.InsertUsageEvent(ctx, db.InsertUsageEventParams{OrgID: ws.OrgID, WorkspaceID: &ws.ID, MemberID: &m.ID, AttributedUserID: attributed,
-			SessionID: &sess.ID, Cli: m.Cli, Model: model, TokensIn: u.TokensIn, TokensOut: u.TokensOut})
+			SessionID: &sess.ID, Cli: m.Cli, Model: model, TokensIn: u.TokensIn, TokensOut: u.TokensOut,
+			TaskID: taskID, GoalID: goalID, CacheRead: u.CacheRead, CacheWrite: u.CacheWrite, CostMicros: cost})
 		if err != nil {
 			return err
 		}
 		if err := q.AddUsageHourly(ctx, db.AddUsageHourlyParams{OrgID: ws.OrgID, At: ev.At, UserID: deref2(attributed), MemberID: m.ID, WorkspaceID: ws.ID, Model: model,
-			TokensIn: u.TokensIn, TokensOut: u.TokensOut}); err != nil {
+			TokensIn: u.TokensIn, TokensOut: u.TokensOut, CacheRead: u.CacheRead, CacheWrite: u.CacheWrite, CostMicros: cost}); err != nil {
 			return err
+		}
+		if taskID != nil {
+			if err := q.AddUsageWork(ctx, db.AddUsageWorkParams{GoalID: deref2(goalID), TaskID: deref2(taskID), Model: model, TokensIn: u.TokensIn,
+				TokensOut: u.TokensOut, CacheRead: u.CacheRead, CacheWrite: u.CacheWrite, CostMicros: cost}); err != nil {
+				return err
+			}
+			if err := o.emitWorkUsage(ctx, t, ws, goalID, taskID); err != nil {
+				return err
+			}
 		}
 		s, err := q.UpdateAgentSession(ctx, db.UpdateAgentSessionParams{ID: sess.ID, AddIn: u.TokensIn, AddOut: u.TokensOut})
 		if err != nil {
@@ -66,6 +82,42 @@ func (o *Orch) onUsage(ctx context.Context, rn db.Runner, u protocol.Usage) {
 	if err != nil {
 		slog.ErrorContext(ctx, "usage", "err", err)
 	}
+}
+
+// usageWork finds the task a call belongs to and that task's goal. Work outside a task has neither.
+func (o *Orch) usageWork(ctx context.Context, q *db.Queries, ws db.Workspace, taskID *uuid.UUID) (*uuid.UUID, *uuid.UUID) {
+	if taskID == nil {
+		return nil, nil
+	}
+	task, err := q.GetTask(ctx, *taskID)
+	if err != nil || task.WorkspaceID != ws.ID {
+		return nil, nil
+	}
+	return taskID, task.GoalID
+}
+
+// emitWorkUsage tells the board the new totals for a task and its goal.
+func (o *Orch) emitWorkUsage(ctx context.Context, t *core.Tx, ws db.Workspace, goalID, taskID *uuid.UUID) error {
+	var rows []db.UsageWork
+	var err error
+	if goalID != nil {
+		rows, err = t.Q.UsageWorkForGoal(ctx, *goalID)
+	} else {
+		rows, err = t.Q.UsageWorkForTask(ctx, *taskID)
+	}
+	if err != nil {
+		return err
+	}
+	goals, tasks := core.SumUsage(rows)
+	data := map[string]any{"goal_id": goalID, "task_id": taskID, "task": tasks[*taskID]}
+	if goalID != nil {
+		data["goal"] = goals[*goalID]
+	}
+	e := core.WS(ws.OrgID, ws.ID, "usage.work")
+	if task, err := t.Q.GetTask(ctx, *taskID); err == nil {
+		e.MemberID = task.MemberID // seen by whoever sees the task
+	}
+	return t.Emit(ctx, e, data)
 }
 
 // meter adds tokens to a computer's sign-in and warns at 80% and pauses at 100% of its cap.
