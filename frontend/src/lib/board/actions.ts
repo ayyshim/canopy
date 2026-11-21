@@ -4,6 +4,7 @@
 // events that follow, so these only report failures (and a few confirmations).
 import { api, ApiError, uploadFile } from "../api";
 import type { ChatMessageView, GoalView, LogLineView, NoteView, TaskView } from "../types";
+import type { NoteRevisionView } from "../core-types";
 import { useBoard, type Comment } from "./store";
 import { useUI } from "./ui";
 
@@ -112,6 +113,14 @@ export const patchWorkspace = (wsId: string, body: Record<string, unknown>) => r
 
 export const saveNote = (wsId: string, body: { title: string; body: string; kind: string }, id?: string) =>
   run(id ? api<{ note: NoteView }>("PATCH", `/notes/${id}`, body) : api<{ note: NoteView }>("POST", `/workspaces/${wsId}/notes`, body), "Note saved.");
+export type NotePatch = { title?: string; body?: string; kind?: string; visibility?: string; color?: string; board?: { x: number; y: number } | null };
+/** patchNote changes a note without a toast; sticky moves and recolors use it. */
+export const patchNote = (id: string, body: NotePatch) => api<{ note: NoteView }>("PATCH", `/notes/${id}`, body).then((r) => r.note);
+export const createSticky = (wsId: string, body: NotePatch & { title: string }) =>
+  run(api<{ note: NoteView }>("POST", `/workspaces/${wsId}/notes`, { kind: "note", ...body }));
+export const listRevisions = (id: string) => api<{ revisions: NoteRevisionView[] }>("GET", `/notes/${id}/revisions`).then((r) => r.revisions);
+export const restoreRevision = (id: string, rev: number) =>
+  run(api<{ note: NoteView }>("POST", `/notes/${id}/revisions/${rev}/restore`), "Earlier version restored.");
 export const deleteNote = (id: string) => run(api("DELETE", `/notes/${id}`), "Note deleted.");
 
 export const setDirAccess = (wsId: string, dirId: string, userId: string, mode: string) =>

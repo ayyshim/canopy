@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect } from "react";
+import { useBlockStrayDrops } from "@/components/DropZone";
 import { computer, computerFor, signInLabel } from "@/lib/board/derive";
 import { useDesktopNotifications } from "@/lib/board/notify";
 import { useAppBadge, useCloseResolvedNotifications, useDeepLink } from "@/lib/board/pushSync";
@@ -34,6 +35,7 @@ export function BoardApp({ wsId }: { wsId: string }) {
   useAppBadge(me);
   useCloseResolvedNotifications(me);
   useDeepLink(wsId, !!board);
+  useBlockStrayDrops();
   useLiveTab(currentOrg(me)?.name, board?.workspace.name ?? "", !!board && isWorkspaceActive(board));
 
   useEffect(() => {

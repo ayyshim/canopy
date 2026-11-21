@@ -61,8 +61,8 @@ func (w *wsView) seesMember(id *uuid.UUID) bool {
 func (w *wsView) seesSignal(sig db.Signal) bool {
 	if sig.ForUserID != nil {
 		// Limit, cap and "goal ready" cards are for one person: the computer's owner or the
-		// goal's person. Admins also see goal cards.
-		return *sig.ForUserID == w.v.UserID || (sig.Type == "goal_ready" && w.v.Admin())
+		// goal's person. Admins also see goal cards and handover briefs.
+		return *sig.ForUserID == w.v.UserID || ((sig.Type == "goal_ready" || sig.Type == "review") && w.v.Admin())
 	}
 	if core.PersonalSignal(sig.Type) {
 		return w.v.Admin() // a shared computer's limits

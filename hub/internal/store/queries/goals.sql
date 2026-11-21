@@ -1,6 +1,6 @@
 -- name: CreateGoal :one
-INSERT INTO goals (id, workspace_id, manager_id, title, done_when, color, created_by, runner_id, base, branch, snapshot, description, status)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+INSERT INTO goals (id, workspace_id, manager_id, title, done_when, color, created_by, runner_id, base, branch, snapshot, description, status, number)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, next_item_number($2, 'goal'))
 RETURNING *;
 
 -- name: UpdateDraftGoal :one
@@ -36,7 +36,9 @@ SET status = coalesce(sqlc.narg(status), status),
     shipped = coalesce(sqlc.narg(shipped), shipped),
     show_tasks = coalesce(sqlc.narg(show_tasks), show_tasks),
     done_by = CASE WHEN sqlc.arg(set_done_by)::boolean THEN sqlc.narg(done_by) ELSE done_by END,
-    ready_at = CASE WHEN sqlc.arg(set_ready)::boolean THEN now() ELSE ready_at END
+    ready_at = CASE WHEN sqlc.arg(set_ready)::boolean THEN now() ELSE ready_at END,
+    handover_approved_by = CASE WHEN sqlc.arg(set_handover)::boolean THEN sqlc.narg(handover_approved_by) ELSE handover_approved_by END,
+    handover_approved_at = CASE WHEN sqlc.arg(set_handover)::boolean AND sqlc.narg(handover_approved_by)::uuid IS NOT NULL THEN now() WHEN sqlc.arg(set_handover)::boolean THEN NULL ELSE handover_approved_at END
 WHERE id = sqlc.arg(id)
 RETURNING *;
 
@@ -76,3 +78,6 @@ RETURNING *;
 
 -- name: ListGoalsMovedSince :many
 SELECT * FROM goals WHERE workspace_id = $1 AND updated_at >= $2 ORDER BY updated_at DESC LIMIT 20;
+
+-- name: GetGoalByNumber :one
+SELECT * FROM goals WHERE workspace_id = $1 AND number = $2;

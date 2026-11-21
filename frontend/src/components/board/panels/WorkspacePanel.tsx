@@ -84,7 +84,7 @@ export function WorkspacePanel() {
               <button aria-pressed={b.workspace.goal_completion === "auto"} onClick={() => save({ goal_completion: "auto" })}>Mark done automatically</button>
               <button aria-pressed={b.workspace.goal_completion !== "auto"} onClick={() => save({ goal_completion: "manual" })}>Ask me first</button>
             </div>
-            <span className="hint">Done goals’ tasks are hidden from the board. Open a goal to show them again. Goals that changed code always wait for their person to ship them, unless this is automatic: then the branch is kept.</span>
+            <span className="hint">Done goals’ tasks are hidden from the board. Open a goal to show them again. Goals still wait for an approved handover brief first. Goals that changed code always wait for their person to ship them, unless this is automatic: then the branch is kept.</span>
           </div>
         )}
         </div></TabPanel>

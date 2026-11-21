@@ -23,25 +23,50 @@ import (
 var (
 	ErrGoalNotReady = errors.New("This goal still has work going on.")
 	ErrComputerOff  = errors.New("computer off")
+	ErrNoHandover   = errors.New("The handover brief isn’t approved yet.")
 	ErrNotAllowed   = errors.New("You can’t run work on that computer.")
 )
 
-// finishGoals moves goals whose tasks are all done to ready (or straight to done when the
-// workspace finishes goals automatically).
+// finishGoals asks for a handover brief once every work task of a goal is done. The goal moves
+// to ready (or straight to done when the workspace finishes goals automatically) only after its
+// person approved the brief.
 func (o *Orch) finishGoals(ctx context.Context, t *core.Tx, st *wsState) error {
 	for _, g := range st.goals {
-		if g.Status != "active" {
+		if g.Status != "active" && g.Status != "ready" {
 			continue
 		}
 		var tasks []db.Task
-		allDone := true
+		workDone, briefOpen := true, false
+		work := 0
 		for _, x := range st.tasks {
-			if x.GoalID != nil && *x.GoalID == g.ID {
-				tasks = append(tasks, x)
-				allDone = allDone && x.Status == "done"
+			if x.GoalID == nil || *x.GoalID != g.ID {
+				continue
 			}
+			tasks = append(tasks, x)
+			if x.Kind == "handover" {
+				briefOpen = briefOpen || x.Status != "done"
+				continue
+			}
+			work++
+			workDone = workDone && x.Status == "done"
 		}
-		if len(tasks) == 0 || !allDone {
+		if work == 0 || !workDone {
+			continue
+		}
+		if g.HandoverApprovedAt == nil {
+			if !briefOpen && g.ManagerID != nil {
+				if err := o.addHandoverTask(ctx, t, st, g); err != nil {
+					return err
+				}
+			}
+			if g.Status == "ready" {
+				if err := o.backToActive(ctx, t, st, g); err != nil {
+					return err
+				}
+			}
+			continue
+		}
+		if g.Status != "active" || briefOpen {
 			continue
 		}
 		if err := o.goalTasksDone(ctx, t, st, g, tasks); err != nil {
@@ -51,9 +76,39 @@ func (o *Orch) finishGoals(ctx context.Context, t *core.Tx, st *wsState) error {
 	return nil
 }
 
+// addHandoverTask gives the goal's manager the job of writing the brief for the person.
+func (o *Orch) addHandoverTask(ctx context.Context, t *core.Tx, st *wsState, g db.Goal) error {
+	task, err := t.Q.CreateTask(ctx, db.CreateTaskParams{ID: newID(), WorkspaceID: st.ws.ID, GoalID: &g.ID, MemberID: g.ManagerID, Kind: "handover",
+		Title: "Handover: " + g.Title, Status: "todo", DependsOn: []uuid.UUID{},
+		Steps:        mustJSON([]core.Step{{Title: "Read what the team did"}, {Title: "Write handover.md"}, {Title: "Submit it for review"}}),
+		RequiredDirs: []byte("[]"), AttributedUserID: g.CreatedBy, CreatedBy: g.CreatedBy})
+	if err != nil {
+		return err
+	}
+	st.tasks = append(st.tasks, task)
+	st.task[task.ID] = task
+	return emitTask(ctx, t, st.ws, task)
+}
+
+// backToActive puts a ready goal back to work while its brief is written.
+func (o *Orch) backToActive(ctx context.Context, t *core.Tx, st *wsState, g db.Goal) error {
+	ng, err := t.Q.UpdateGoal(ctx, db.UpdateGoalParams{ID: g.ID, Status: ptr("active")})
+	if err != nil {
+		return err
+	}
+	st.putGoal(ng)
+	if err := t.Emit(ctx, core.WS(st.ws.OrgID, st.ws.ID, "goal.updated"), core.ToGoal(ng)); err != nil {
+		return err
+	}
+	return o.closeReadyCard(ctx, t, st.ws, g.ID, "brief")
+}
+
 func (o *Orch) goalTasksDone(ctx context.Context, t *core.Tx, st *wsState, g db.Goal, tasks []db.Task) error {
-	summary := goalSummary(st, g, tasks, o.now())
-	if err := o.saveNote(ctx, t, st.ws, &g.ID, "summary", "Summary: "+g.Title, summary, nil, g.ManagerID); err != nil {
+	summary := g.Summary
+	if summary == "" {
+		summary = goalSummary(st, g, tasks, o.now())
+	}
+	if _, err := o.saveNote(ctx, t, st.ws, &g.ID, "summary", "Summary: "+g.Title, summary, "shared", nil, g.ManagerID); err != nil {
 		return err
 	}
 	hasCode := goalHasCode(st.goalRepos[g.ID])
@@ -110,7 +165,7 @@ func goalSummary(st *wsState, g db.Goal, tasks []db.Task, now time.Time) string 
 		fmt.Fprintf(&b, "Done when: %s\n\n", g.DoneWhen)
 	}
 	for _, x := range tasks {
-		if x.Kind == "plan" {
+		if x.Kind == "plan" || x.Kind == "handover" {
 			continue
 		}
 		who := ""
@@ -156,9 +211,34 @@ func (o *Orch) closeGoal(ctx context.Context, t *core.Tx, ws db.Workspace, g db.
 			return err
 		}
 	}
+	// Cleanup deletes the sessions' work folders, so end them; a reopened goal starts fresh ones.
+	if err := o.endGoalSessions(ctx, t, ws, g.ID); err != nil {
+		return err
+	}
 	if g.RunnerID != nil {
 		runner, id := *g.RunnerID, g.ID
 		t.AfterCommit(func() { o.send(runner, protocol.TGoalCleanup, protocol.GoalCleanup{GoalID: id}) })
+	}
+	return nil
+}
+
+func (o *Orch) endGoalSessions(ctx context.Context, t *core.Tx, ws db.Workspace, goalID uuid.UUID) error {
+	live, err := t.Q.ListGoalLiveSessions(ctx, &goalID)
+	if err != nil {
+		return err
+	}
+	for _, s := range live {
+		ns, err := t.Q.SetSessionStatus(ctx, db.SetSessionStatusParams{ID: s.ID, Status: "ended"})
+		if err != nil {
+			return err
+		}
+		if err := emitSession(ctx, t, ws, ns); err != nil {
+			return err
+		}
+		if s.RunnerID != nil {
+			runner, id := *s.RunnerID, s.ID
+			t.AfterCommit(func() { o.send(runner, protocol.TStop, protocol.SessionRef{SessionID: id}) })
+		}
 	}
 	return nil
 }
@@ -194,7 +274,7 @@ func (o *Orch) ReopenGoal(ctx context.Context, t *core.Tx, ws db.Workspace, g db
 	if g.Status != "ready" && g.Status != "done" {
 		return nil
 	}
-	ng, err := t.Q.UpdateGoal(ctx, db.UpdateGoalParams{ID: g.ID, Status: ptr("active"), ShowTasks: ptr(true)})
+	ng, err := t.Q.UpdateGoal(ctx, db.UpdateGoalParams{ID: g.ID, Status: ptr("active"), ShowTasks: ptr(true), SetHandover: true})
 	if err != nil {
 		return err
 	}
@@ -212,6 +292,9 @@ func (o *Orch) MarkGoalDone(ctx context.Context, goalID, by uuid.UUID) error {
 	return o.withGoal(ctx, goalID, func(t *core.Tx, st *wsState, g db.Goal) error {
 		if g.Status != "ready" {
 			return ErrGoalNotReady
+		}
+		if g.HandoverApprovedAt == nil {
+			return ErrNoHandover
 		}
 		shipped := map[string]any{}
 		if goalHasCode(st.goalRepos[g.ID]) {
@@ -311,6 +394,9 @@ func (o *Orch) ShipGoal(ctx context.Context, goalID uuid.UUID, action string, by
 	err := o.withGoal(ctx, goalID, func(t *core.Tx, st *wsState, g db.Goal) error {
 		if g.Status != "ready" {
 			return ErrGoalNotReady
+		}
+		if g.HandoverApprovedAt == nil {
+			return ErrNoHandover
 		}
 		if action == "keep" || !goalHasCode(st.goalRepos[g.ID]) {
 			return nil

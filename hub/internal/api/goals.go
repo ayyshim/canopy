@@ -158,6 +158,8 @@ func goalError(err error) error {
 	switch {
 	case errors.Is(err, orch.ErrGoalNotReady):
 		return httpx.NewError(http.StatusConflict, "goal_not_ready", err.Error())
+	case errors.Is(err, orch.ErrNoHandover):
+		return httpx.NewError(http.StatusConflict, "handover_not_approved", err.Error())
 	case errors.Is(err, orch.ErrNotAllowed):
 		return httpx.Validation{"runner_id": err.Error()}.Err()
 	}
@@ -181,7 +183,7 @@ func (s *Server) handleShipGoal(w http.ResponseWriter, r *http.Request) error {
 	}
 	res, err := s.Orch.ShipGoal(r.Context(), g.ID, in.Action, view.v.UserID)
 	if err != nil {
-		if errors.Is(err, orch.ErrGoalNotReady) {
+		if errors.Is(err, orch.ErrGoalNotReady) || errors.Is(err, orch.ErrNoHandover) {
 			return goalError(err)
 		}
 		return httpx.NewError(http.StatusConflict, "ship_failed", err.Error())

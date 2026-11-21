@@ -203,7 +203,7 @@ func (o *Orch) toolSubmitPlan(ctx context.Context, tc *toolCtx) error {
 		if err := o.storeTextOutput(ctx, t, tc.ws, *tc.task, tc.member, &tc.sess, "plan.md", "Plan: "+g.Title, "document", planDoc); err != nil {
 			return err
 		}
-		if err := o.saveNote(ctx, t, tc.ws, &g.ID, "plan", "Plan: "+g.Title, planDoc, nil, &tc.member.ID); err != nil {
+		if _, err := o.saveNote(ctx, t, tc.ws, &g.ID, "plan", "Plan: "+g.Title, planDoc, "shared", nil, &tc.member.ID); err != nil {
 			return err
 		}
 		return notify.Enqueue(ctx, t, tc.ws, notify.Note{Kind: "progress", MemberID: &tc.member.ID, GoalID: &g.ID, TaskID: &tc.task.ID,
@@ -357,7 +357,8 @@ func (o *Orch) toolAssignTasks(ctx context.Context, tc *toolCtx) error {
 			return err
 		}
 		body += fmt.Sprintf("# Added from “%s”\n\nBy %s.\n\n%s", tc.task.Title, tc.member.Name, sections)
-		return o.saveNote(ctx, t, tc.ws, &g.ID, "plan", title, body, nil, &tc.member.ID)
+		_, err = o.saveNote(ctx, t, tc.ws, &g.ID, "plan", title, body, "shared", nil, &tc.member.ID)
+		return err
 	})
 	if err != nil {
 		return err

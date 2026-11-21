@@ -2,9 +2,13 @@ package orch
 
 import (
 	"context"
+	"io"
+	"net/http"
 	"path"
 	"slices"
 	"strings"
+
+	"github.com/google/uuid"
 
 	"canopy/hub/internal/core"
 	"canopy/hub/internal/store/db"
@@ -41,10 +45,39 @@ func validKind(k string) bool {
 	return false
 }
 
+// sniffMime fixes the type of a file with no extension, which the runner can only call
+// octet-stream. HTML and images are then stored with their real type so the viewer shows them.
+func sniffMime(name, mime string, head []byte) string {
+	if path.Ext(name) != "" || len(head) == 0 {
+		return mime
+	}
+	switch strings.ToLower(strings.TrimSpace(strings.SplitN(mime, ";", 2)[0])) {
+	case "", "application/octet-stream", "text/plain":
+		if got := http.DetectContentType(head); got != "application/octet-stream" {
+			return got
+		}
+	}
+	return mime
+}
+
+func (o *Orch) sniffOutput(ctx context.Context, f outputFile) string {
+	if o.Blobs == nil || path.Ext(f.Name) != "" {
+		return f.Mime
+	}
+	r, _, err := o.Blobs.Get(ctx, f.BlobKey)
+	if err != nil {
+		return f.Mime
+	}
+	defer r.Close()
+	head, _ := io.ReadAll(io.LimitReader(r, 512))
+	return sniffMime(f.Name, f.Mime, head)
+}
+
 // addOutputVersion records a new version of an output (same name on the same task = same
 // fruit). With review, the task waits in Review until a person decides.
 func (o *Orch) addOutputVersion(ctx context.Context, t *core.Tx, ws db.Workspace, task db.Task, m db.Member, sess *db.Session, f outputFile, review bool) error {
 	q := t.Q
+	f.Mime = o.sniffOutput(ctx, f)
 	if f.Kind == "" || !validKind(f.Kind) {
 		f.Kind = KindFor(f.Name, f.Mime)
 	}
@@ -157,9 +190,20 @@ func (o *Orch) toolSubmitOutput(ctx context.Context, tc *toolCtx) error {
 				outID = x.ID.String()
 			}
 		}
+		payload := map[string]any{"output_id": outID, "title": firstNonEmpty(in.Title, in.Name)}
+		var forUser *uuid.UUID
+		if task.Kind == "handover" && task.GoalID != nil {
+			// The brief is for the goal's person, who alone (and admins) can approve it.
+			g, err := t.Q.GetGoal(ctx, *task.GoalID)
+			if err != nil {
+				return err
+			}
+			forUser = g.CreatedBy
+			payload["handover"] = true
+		}
 		sig, err := t.Q.CreateSignal(ctx, db.CreateSignalParams{ID: newID(), WorkspaceID: tc.ws.ID, Type: "review", MemberID: &tc.member.ID, TaskID: &task.ID,
-			SessionID: &tc.sess.ID, GoalID: task.GoalID,
-			Payload: mustJSON(map[string]any{"output_id": outID, "title": firstNonEmpty(in.Title, in.Name)}), RequestID: tc.call.CallID})
+			SessionID: &tc.sess.ID, GoalID: task.GoalID, ForUserID: forUser,
+			Payload: mustJSON(payload), RequestID: tc.call.CallID})
 		if err != nil {
 			return err
 		}

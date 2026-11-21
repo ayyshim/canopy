@@ -28,6 +28,8 @@ type UIState = {
   glow: string | null; // a node briefly highlighted by "Show on the tree"
   focus: { id: string; at: number } | null; // the canvas centers on this node when it changes
   centerOn: (id: string) => void;
+  sticky: { x: number; y: number } | null; // a new sticky being written at this spot
+  startSticky: (at: { x: number; y: number } | null) => void;
 
   openSide: (s: Side | null) => void;
   back: () => void;
@@ -57,6 +59,8 @@ export const useUI = create<UIState>((set, get) => ({
   glow: null,
   focus: null,
   centerOn: (id) => set({ focus: { id, at: Date.now() } }),
+  sticky: null,
+  startSticky: (at) => set({ sticky: at }),
 
   openSide: (s) =>
     set((st) => {

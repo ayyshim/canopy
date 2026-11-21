@@ -124,7 +124,7 @@ function CapDialog({ signalId }: { signalId: string }) {
 function ShortcutsDialog() {
   const ui = useUI();
   const rows = [["Drag", "Pan"], ["Wheel / pinch", "Zoom (25% to 220%)"], ["F", "Fit the tree"], ["] and [", "Walk items that need you"], ["G", "Give a goal"],
-    ["N", "New task"], ["O", "Outputs"], ["Alt + ←", "Back in the details panel"], ["?", "This list"], ["Esc", "Close the top-most layer"]];
+    ["N", "New task"], ["O", "Outputs"], ["M", "Show or hide the minimap"], ["Alt + ←", "Back in the details panel"], ["?", "This list"], ["Esc", "Close the top-most layer"]];
   return (
     <div className="dialog">
       <h2>Keyboard shortcuts</h2>

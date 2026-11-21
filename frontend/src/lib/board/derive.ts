@@ -1,6 +1,7 @@
 // Read-only helpers over a board snapshot. Components use these instead of digging into lists.
 import type { AccountView, AnyMember, Board, Computer, GoalView, MemberView, SignalView, TaskView } from "../types";
 import { isHidden } from "../types";
+import { tasksHiddenByGoal } from "../taskShown";
 
 export const isAdmin = (b: Board) => b.viewer.role === "admin";
 
@@ -24,7 +25,23 @@ export const chatLocked = (m: MemberView, me: string) => m.isolated && m.created
 export const independentStaff = (b: Board) => b.members.filter((m) => m.kind === "staff" && !m.reports_to);
 
 export const goalTasks = (b: Board, goalId: string) => b.tasks.filter((t) => t.goal_id === goalId);
-export const workTasks = (b: Board, goalId: string) => goalTasks(b, goalId).filter((t) => t.kind !== "plan");
+export const workTasks = (b: Board, goalId: string) => goalTasks(b, goalId).filter((t) => t.kind !== "plan" && t.kind !== "handover");
+
+/** The latest handover.md of a goal, if a brief was written. */
+export function handoverBrief(b: Board, goalId: string) {
+  const ids = new Set(goalTasks(b, goalId).filter((t) => t.kind === "handover").map((t) => t.id));
+  return b.outputs
+    .filter((o) => o.name === "handover.md" && o.task_id && ids.has(o.task_id))
+    .sort((x, y) => y.created_at.localeCompare(x.created_at))[0];
+}
+
+/** The open review of a goal's handover brief (only visible to the goal's person and admins). */
+export const handoverReview = (b: Board, goalId: string) =>
+  b.signals.find((s) => s.type === "review" && s.task_id && task(b, s.task_id)?.kind === "handover" && task(b, s.task_id)?.goal_id === goalId);
+
+/** True while a brief waits for review, even for people who can't answer it. */
+export const briefInReview = (b: Board, goalId: string) =>
+  !!handoverReview(b, goalId) || goalTasks(b, goalId).some((t) => t.kind === "handover" && t.status === "review");
 export function goalProgress(b: Board, g: GoalView): number {
   const ts = workTasks(b, g.id);
   if (!ts.length) return g.status === "done" ? 100 : 0;
@@ -35,8 +52,7 @@ export const goalHasCode = (b: Board, goalId: string) => goalRepos(b, goalId).so
 
 /** A done goal's tasks leave the board unless someone shows them again. */
 export function hiddenTask(b: Board, t: TaskView): boolean {
-  const g = goal(b, t.goal_id);
-  return !!g && g.status === "done" && !g.show_tasks;
+  return tasksHiddenByGoal(goal(b, t.goal_id));
 }
 
 export const signalsForTask = (b: Board, taskId: string) => b.signals.filter((s) => s.task_id === taskId);

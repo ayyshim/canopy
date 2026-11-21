@@ -13,6 +13,8 @@ import { useMe } from "@/lib/me";
 import { setTheme, useTheme, type Theme } from "@/lib/theme";
 import type { components } from "@/lib/api-types";
 import type { WorkspaceSummary } from "@/lib/types";
+import { camera } from "@/lib/board/camera";
+import { centerSpot } from "@/lib/stickies";
 import { useB, useBoardCtx } from "./context";
 import { Avatar, BellIcon, Brand, Chevron, DotsIcon, GridIcon, LogoutIcon } from "./icons";
 
@@ -241,6 +243,7 @@ export function TopBar() {
         {presence.length > shown.length && <span className="pav more">+{presence.length - shown.length}</span>}
       </button>
       <button className="btn out-btn" onClick={() => ui.setTray(!ui.tray)} aria-expanded={ui.tray}><GridIcon /><span className="hide-s">Outputs</span>{newOutputs > 0 && <span className="bdg">{newOutputs}</span>}</button>
+      <button className="btn hide-xs" onClick={() => { const c = camera.get(); ui.startSticky(centerSpot(c, c.w, c.h)); }} title="Add a sticky note to the board" aria-label="Add a sticky note"><span aria-hidden="true">+</span><span className="hide-s">Sticky note</span></button>
       <button className="btn btn-primary" onClick={() => ui.openDialog({ kind: "goal" })}><span aria-hidden="true">+</span><span className="hide-s">Give a goal</span></button>
       <div className="mw hide-xs">
         <button className="me-btn" onClick={() => menu.toggle("me")} aria-label="Your account" aria-expanded={menu.open === "me"}><Avatar name={meState.user.name} color={meState.user.avatar_color} size={28} /></button>
@@ -284,6 +287,7 @@ export function TopBar() {
             </div>
             {isAdmin(b) && <Link className="mi" role="menuitem" href={`/w/${wsId}/settings`}>Workspace settings</Link>}
             <button className="mi" role="menuitem" onClick={() => { menu.close(); ui.openDialog({ kind: "task" }); }}>New task</button>
+            <button className="mi" role="menuitem" onClick={() => { menu.close(); const c = camera.get(); ui.startSticky(centerSpot(c, c.w, c.h)); }}>Sticky note</button>
             <button className="mi" role="menuitem" onClick={() => { menu.close(); ui.openSide({ type: "people" }); }}>People and access</button>
             {isAdmin(b) && <button className="mi" role="menuitem" onClick={() => { menu.close(); ui.openDialog({ kind: "member", mode: "manager" }); }}>Add a manager</button>}
             <button className="mi" role="menuitem" onClick={() => { menu.close(); ui.openSide({ type: "dirs" }); }}>Directories and repositories</button>

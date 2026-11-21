@@ -46,7 +46,9 @@ func systemPrompt(st *wsState, m db.Member, mounts []protocol.Mount, notes []db.
 	b.WriteString("- complete_task(summary): when the task is done. Always call it; a task isn't finished until you do.\n")
 	b.WriteString("- request_owner_change(directory, description): when a change is needed in a folder you can only read; its owner decides.\n")
 	b.WriteString("- read_notes(query): the workspace's plans, decisions and notes. Read them before you start.\n")
-	b.WriteString("- write_note(title, body, kind): record a decision or something the next person should know.\n")
+	b.WriteString("- read_item(ref): read a goal, task or note by its ID (G-12, T-34, N-5).\n")
+	b.WriteString("- write_note(title, body, kind, visibility): record a decision or something the next person should know. Visibility private keeps it to the person you work for; use it only when they ask.\n")
+	b.WriteString("- update_note(ref, title, body, mode): change a note by its ID (N-5). You may edit people's notes when they ask, or when it clearly helps the work. Prefer mode append so nothing they wrote is lost; use replace only to rewrite the whole body. Old versions are kept.\n")
 	b.WriteString("- notify(message, level, files, links): a short message to the goal's people on their phone and in Discord. Use it for real milestones (first working build, a screenshot worth seeing, an artifact you published) or when you are blocked by something outside Canopy (level needs_attention). Don't use it for routine steps, or for what ask_question, submit_output and complete_task already notify about. Limits: 5 per task per hour, 20 per day.\n")
 	if m.Kind == "manager" {
 		b.WriteString("- submit_plan(tasks): for plan tasks, your structured plan.\n")
@@ -59,6 +61,7 @@ func systemPrompt(st *wsState, m db.Member, mounts []protocol.Mount, notes []db.
 		b.WriteString("- get_staff_instructions(member): read the current instructions of one of your staff.\n")
 		b.WriteString("- update_staff_instructions(member, instructions, reason): draft new instructions for one of your staff for an admin to approve. Read the current ones first with get_staff_instructions, then send the full new text.\n")
 	}
+	b.WriteString("\nGoals, tasks and notes have IDs like G-12, T-34 and N-5. Write them as \"T-34 Title\" or just T-34 in summaries, questions, chat replies and notes so people can follow them. When a message mentions an ID, call read_item if you need more than the Referenced items block shows.\n")
 	b.WriteString("\nYou can only see these paths:\n")
 	for _, mt := range mounts {
 		access := "read only"
@@ -89,7 +92,7 @@ func systemPrompt(st *wsState, m db.Member, mounts []protocol.Mount, notes []db.
 			if i == 8 {
 				break
 			}
-			fmt.Fprintf(&b, "- %s (%s)\n", n.Title, n.Kind)
+			fmt.Fprintf(&b, "- %s (%s)\n", noteLabel(n), n.Kind)
 		}
 	}
 	if m.Instructions != "" {
@@ -129,7 +132,7 @@ func goalOf(st *wsState, t db.Task) *db.Goal {
 // planPrompt asks a manager to plan a goal (SPEC "Orchestration loop" step 1).
 func planPrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Note) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "New goal: %s\n", g.Title)
+	fmt.Fprintf(&b, "New goal: %s\n", goalLabel(g))
 	if g.Description != "" {
 		fmt.Fprintf(&b, "Description: %s\n", g.Description)
 	}
@@ -161,19 +164,19 @@ func planPrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Note)
 // triagePrompt asks a manager to turn a person's note or change request into tasks for staff.
 func triagePrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Note) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Triage task: %s\n", t.Title)
+	fmt.Fprintf(&b, "Triage task: %s\n", taskLabel(t))
 	if t.Description != "" {
 		fmt.Fprintf(&b, "\n%s\n", t.Description)
 	}
 	b.WriteString(attachmentsLine(taskAttachments(st, t)))
 	b.WriteString("\nThis is a change request or note from a person, not work for you to do.\n")
-	fmt.Fprintf(&b, "\nGoal: %s\n", g.Title)
+	fmt.Fprintf(&b, "\nGoal: %s\n", goalLabel(g))
 	if g.Description != "" {
 		fmt.Fprintf(&b, "Description: %s\n", g.Description)
 	}
 	for _, n := range notes {
 		if n.GoalID != nil && *n.GoalID == g.ID && n.Kind == "plan" {
-			fmt.Fprintf(&b, "The plan is in the note “%s” (read_notes).\n", n.Title)
+			fmt.Fprintf(&b, "The plan is in the note %s (read_notes).\n", noteLabel(n))
 			break
 		}
 	}
@@ -189,7 +192,7 @@ func triagePrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Not
 				who = mm.Name
 			}
 		}
-		line := fmt.Sprintf("- %s (%s, %s)", x.Title, x.Status, who)
+		line := fmt.Sprintf("- %s (%s, %s)", taskLabel(x), x.Status, who)
 		if x.Status == "done" && x.Summary != "" {
 			line += ": " + x.Summary
 		}
@@ -205,6 +208,54 @@ func triagePrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Not
 	b.WriteString("Do NOT edit code, write files or do the work yourself. Your job is only to hand it to staff.\n")
 	writeTeam(&b, st, m)
 	b.WriteString("\nAfter assign_tasks succeeds, call complete_task with a one-line summary of who got what. If the request needs no work, call complete_task with no_work_reason.\n")
+	return b.String()
+}
+
+// handoverPrompt asks a manager to write the brief a person approves before a goal can finish.
+func handoverPrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Note) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "Handover task: %s\n", t.Title)
+	fmt.Fprintf(&b, "\nGoal: %s\n", g.Title)
+	if g.Description != "" {
+		fmt.Fprintf(&b, "Description: %s\n", g.Description)
+	}
+	if g.DoneWhen != "" {
+		fmt.Fprintf(&b, "Goal is done when: %s\n", g.DoneWhen)
+	}
+	b.WriteString("\nTasks on this goal:\n")
+	for _, x := range st.tasks {
+		if x.GoalID == nil || *x.GoalID != g.ID || x.ID == t.ID || x.Kind == "plan" || x.Kind == "handover" {
+			continue
+		}
+		who := "unassigned"
+		if x.MemberID != nil {
+			if mm, ok := st.member[*x.MemberID]; ok {
+				who = mm.Name
+			}
+		}
+		fmt.Fprintf(&b, "- %s (%s): %s\n", x.Title, who, firstNonEmpty(x.Summary, "done"))
+	}
+	for _, n := range notes {
+		if n.GoalID != nil && *n.GoalID == g.ID && n.Kind != "summary" {
+			fmt.Fprintf(&b, "Note “%s” (%s): read it with read_notes.\n", n.Title, n.Kind)
+		}
+	}
+	if repos := st.goalRepos[g.ID]; len(repos) > 0 {
+		b.WriteString("\nCode changed on the goal branch " + g.Branch + ":\n")
+		for _, r := range repos {
+			if r.TipSha == "" || r.TipSha == r.BaseSha {
+				continue
+			}
+			fmt.Fprintf(&b, "- %s: %d commits since %s\n", st.dir[r.DirectoryID].Name, r.Commits, firstNonEmpty(r.Base, g.Base, "the default branch"))
+		}
+		b.WriteString("Read the diff in each mounted repository, for example `git diff " + baseRef(g.Base) + "...HEAD`.\n")
+	}
+	b.WriteString("\nYou are writing a handover brief for the person who gave this goal. Do NOT change code or redo any work. ")
+	b.WriteString("Read the task summaries above, the outputs, the notes and the diff. Then write handover.md in plain words, short headings and no jargon, covering:\n")
+	b.WriteString("1. What was asked.\n2. What changed and where.\n3. How to check it.\n4. What isn’t done or is risky.\n5. What the person must decide.\n")
+	fmt.Fprintf(&b, "\nSave it as ./%s/handover.md and call submit_output with needs_review set to true. ", OutputsDir(t.ID))
+	b.WriteString("The person approves it or asks for changes; if they ask for changes, revise the same file and call submit_output again. ")
+	b.WriteString("After it is approved, call complete_task with a one-line summary. Do not call complete_task before that.\n")
 	return b.String()
 }
 
@@ -246,9 +297,9 @@ func writeTeam(b *strings.Builder, st *wsState, m db.Member) {
 // taskPrompt hands a task to a member.
 func taskPrompt(st *wsState, m db.Member, t db.Task, comments []db.Comment, mounts []protocol.Mount) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Task: %s\n", t.Title)
+	fmt.Fprintf(&b, "Task: %s\n", taskLabel(t))
 	if g := goalOf(st, t); g != nil {
-		fmt.Fprintf(&b, "Goal: %s\n", g.Title)
+		fmt.Fprintf(&b, "Goal: %s\n", goalLabel(*g))
 		if g.Description != "" {
 			fmt.Fprintf(&b, "Goal description: %s\n", g.Description)
 		}
@@ -291,7 +342,7 @@ func taskPrompt(st *wsState, m db.Member, t db.Task, comments []db.Comment, moun
 	}
 	for _, depID := range t.DependsOn {
 		if dep, ok := st.task[depID]; ok && dep.Summary != "" {
-			fmt.Fprintf(&b, "\nResult of “%s”: %s\n", dep.Title, dep.Summary)
+			fmt.Fprintf(&b, "\nResult of %s: %s\n", taskLabel(dep), dep.Summary)
 		}
 	}
 	if len(comments) > 0 {
@@ -327,11 +378,11 @@ func handoff(st *wsState, k sessKey, notes []db.Note) string {
 		return ""
 	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "You are picking up the goal “%s” in a new session. Done so far:\n", g.Title)
+	fmt.Fprintf(&b, "You are picking up the goal %s in a new session. Done so far:\n", goalLabel(g))
 	any := false
 	for _, t := range st.tasks {
 		if t.GoalID != nil && *t.GoalID == g.ID && t.Status == "done" && t.Kind != "plan" {
-			fmt.Fprintf(&b, "- %s: %s\n", t.Title, firstNonEmpty(t.Summary, "done"))
+			fmt.Fprintf(&b, "- %s: %s\n", taskLabel(t), firstNonEmpty(t.Summary, "done"))
 			any = true
 		}
 	}
@@ -340,7 +391,7 @@ func handoff(st *wsState, k sessKey, notes []db.Note) string {
 	}
 	for _, n := range notes {
 		if n.GoalID != nil && *n.GoalID == g.ID && n.Kind == "plan" {
-			fmt.Fprintf(&b, "The plan is in the note “%s” (read_notes).\n", n.Title)
+			fmt.Fprintf(&b, "The plan is in the note %s (read_notes).\n", noteLabel(n))
 			break
 		}
 	}

@@ -1,7 +1,7 @@
 -- name: CreateTask :one
 INSERT INTO tasks (id, workspace_id, goal_id, member_id, kind, title, description, skill, status, depends_on, steps,
-                   required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, plan_key)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+                   required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, plan_key, number)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, next_item_number($2, 'task'))
 RETURNING *;
 
 -- name: GetTask :one
@@ -52,3 +52,6 @@ UPDATE tasks SET nudges = 0 WHERE id = $1;
 
 -- name: SetTaskDirs :one
 UPDATE tasks SET required_dirs = $2 WHERE id = $1 RETURNING *;
+
+-- name: GetTaskByNumber :one
+SELECT * FROM tasks WHERE workspace_id = $1 AND number = $2;

@@ -62,7 +62,7 @@ func boardText(st *wsState, now time.Time, withDone bool) string {
 		doing := "idle"
 		for _, t := range st.tasks {
 			if t.MemberID != nil && *t.MemberID == m.ID && (t.Status == "doing" || t.Status == "review") {
-				doing = "on “" + t.Title + "”"
+				doing = "on " + taskLabel(t)
 				break
 			}
 		}
@@ -94,7 +94,7 @@ func boardText(st *wsState, now time.Time, withDone bool) string {
 				done++
 			}
 		}
-		fmt.Fprintf(&b, "\n## %s [%s], manager %s, %d of %d tasks done, started %s\n", g.Title, g.Status, name(g.ManagerID), done, len(tasks), ago(now, g.CreatedAt))
+		fmt.Fprintf(&b, "\n## %s [%s], manager %s, %d of %d tasks done, started %s\n", goalLabel(g), g.Status, name(g.ManagerID), done, len(tasks), ago(now, g.CreatedAt))
 		if g.DoneWhen != "" {
 			fmt.Fprintf(&b, "Done when: %s\n", g.DoneWhen)
 		}
@@ -115,7 +115,7 @@ func boardText(st *wsState, now time.Time, withDone bool) string {
 	for _, s := range st.signals {
 		what := strings.ReplaceAll(s.Type, "_", " ")
 		if s.TaskID != nil {
-			what += " on “" + st.task[*s.TaskID].Title + "”"
+			what += " on " + taskLabel(st.task[*s.TaskID])
 		}
 		fmt.Fprintf(&b, "- %s from %s, open %s\n", what, name(s.MemberID), ago(now, s.CreatedAt))
 	}
@@ -142,7 +142,7 @@ func tasksOf(st *wsState, goal *uuid.UUID) []db.Task {
 
 func writeTasks(b *strings.Builder, st *wsState, tasks []db.Task, now time.Time, name func(*uuid.UUID) string) {
 	for _, t := range tasks {
-		line := fmt.Sprintf("- [%s] %s, %s", t.Status, t.Title, name(t.MemberID))
+		line := fmt.Sprintf("- [%s] %s, %s", t.Status, taskLabel(t), name(t.MemberID))
 		switch {
 		case t.Status == "done" && t.StartedAt != nil && t.FinishedAt != nil:
 			line += ", took " + dur(t.FinishedAt.Sub(*t.StartedAt))
@@ -152,7 +152,7 @@ func writeTasks(b *strings.Builder, st *wsState, tasks []db.Task, now time.Time,
 		var waits []string
 		for _, d := range t.DependsOn {
 			if dt, ok := st.task[d]; ok && dt.Status != "done" {
-				waits = append(waits, "“"+dt.Title+"”")
+				waits = append(waits, taskLabel(dt))
 			}
 		}
 		if len(waits) > 0 {

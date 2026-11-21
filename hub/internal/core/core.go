@@ -34,8 +34,12 @@ func (t *Tx) Emit(ctx context.Context, e realtime.Event, data any) error {
 		return err
 	}
 	e.Data = b
+	stored := b
+	if e.ToUserID != nil {
+		stored = []byte("{}") // the log is shared; a one-person event's content stays out of it
+	}
 	row, err := t.Q.InsertEvent(ctx, db.InsertEventParams{
-		OrgID: e.OrgID, WorkspaceID: e.WorkspaceID, Type: e.Type, MemberID: e.MemberID, AdminOnly: e.AdminOnly, Data: b,
+		OrgID: e.OrgID, WorkspaceID: e.WorkspaceID, Type: e.Type, MemberID: e.MemberID, AdminOnly: e.AdminOnly, Data: stored,
 	})
 	if err != nil {
 		return err
@@ -74,6 +78,11 @@ func WS(orgID, wsID uuid.UUID, typ string) realtime.Event {
 // WSMember builds a workspace event that belongs to one agent.
 func WSMember(orgID, wsID, memberID uuid.UUID, typ string) realtime.Event {
 	return realtime.Event{OrgID: orgID, WorkspaceID: &wsID, Type: typ, MemberID: &memberID}
+}
+
+// WSUser builds a workspace event only one person's sockets receive.
+func WSUser(orgID, wsID, userID uuid.UUID, typ string) realtime.Event {
+	return realtime.Event{OrgID: orgID, WorkspaceID: &wsID, Type: typ, ToUserID: &userID}
 }
 
 // Org builds an organization-wide event.
