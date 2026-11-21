@@ -393,6 +393,15 @@ To re-record the board GIF in the README, run `scripts/record-board.sh`. It star
 hub, web app and client (with `CANOPY_CLAUDE_BIN` set to fakeclaude), plays a goal with
 `[tasks:3] [ask] [slow:2]`, and writes `docs/assets/board.gif`. It needs docker, go, node, pnpm and ffmpeg.
 
+## Referencing items
+
+Every goal, task and note has a number that is unique in its workspace: **G-12**, **T-34**, **N-5**. The number shows on task stickies, goal chips and in the details panels, with a **Copy ID** button.
+
+- **Write an ID anywhere** you write text: a goal or task, a chat message, a comment, the "What should change?" box in a review, a note. Agents see the same IDs and can read an item with `read_item`.
+- **Type `#`** in those fields to pick from a list of goals, tasks and notes. Use Up and Down, Enter to insert, Esc to close.
+- **IDs become links** in text the board shows. A click opens the goal, task or note and centers it on the board.
+- IDs in code (`T-1` between backticks, or a code block) stay plain text. An ID you can't see, or that doesn't exist, also stays plain text.
+
 ## Prototype pages
 
 When an agent submits an HTML file, the output viewer shows it as a live page ("Prototype"), with its CSS,
