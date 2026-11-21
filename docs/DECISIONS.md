@@ -400,3 +400,22 @@ lasts across the pages of one preview and is lost when the viewer reloads the fr
 
 **Trade-off.** Preview pages can call any https site (`connect-src https:`), so they can send what they know
 elsewhere. They know nothing of the hub, but people should still only preview work from their own team.
+
+## Two-factor sign-in (TOTP)
+
+Every person must set up an authenticator app. Every sign-in (login, OAuth, signup, hub setup, invite accept,
+password reset) creates a *pending* session (`auth_sessions.two_factor_at` is null). `RequireUser`, `/admin`
+and the board WebSocket refuse pending sessions with 401 `two_factor_required` and `next` = `enroll` or
+`verify`. Password reset and OAuth never skip the code. Sessions that existed when migration 00024 ran are
+pending too, so people already signed in enroll on their next request. Sign-in responses are
+`{"two_factor": "enroll"|"verify"}` instead of `me`.
+
+Codes are RFC 6238 (SHA1, 6 digits, 30 s, one step of drift either side), written by hand with `crypto/hmac`.
+A time step that was accepted once is stored (`users.totp_last_step`) and never accepted again. Ten recovery
+codes are made at enrollment, shown once, stored as SHA-256 hashes like tokens, and each works once. Five wrong
+codes end the session. The setup secret is returned only by `POST /auth/two-factor/setup` before enrollment
+finishes, and is never logged.
+
+**Trade-off.** The TOTP secret is stored unencrypted in `users.totp_secret` (the code check needs it); anyone
+with database read access can generate codes. Encrypting it needs a hub key that doesn't exist yet. There is
+no way yet to reset two-factor for someone who lost both their device and recovery codes.
