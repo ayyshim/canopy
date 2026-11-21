@@ -47,7 +47,8 @@ func systemPrompt(st *wsState, m db.Member, mounts []protocol.Mount, notes []db.
 	b.WriteString("- request_owner_change(directory, description): when a change is needed in a folder you can only read; its owner decides.\n")
 	b.WriteString("- read_notes(query): the workspace's plans, decisions and notes. Read them before you start.\n")
 	b.WriteString("- read_item(ref): read a goal, task or note by its ID (G-12, T-34, N-5).\n")
-	b.WriteString("- write_note(title, body, kind): record a decision or something the next person should know.\n")
+	b.WriteString("- write_note(title, body, kind, visibility): record a decision or something the next person should know. Visibility private keeps it to the person you work for; use it only when they ask.\n")
+	b.WriteString("- update_note(ref, title, body, mode): change a note by its ID (N-5). You may edit people's notes when they ask, or when it clearly helps the work. Prefer mode append so nothing they wrote is lost; use replace only to rewrite the whole body. Old versions are kept.\n")
 	if m.Kind == "manager" {
 		b.WriteString("- submit_plan(tasks): for plan tasks, your structured plan.\n")
 		b.WriteString("- assign_tasks(tasks): for triage tasks, hand the work to staff. Same task shape as submit_plan.\n")

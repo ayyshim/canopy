@@ -52,7 +52,7 @@ func (o *Orch) finishGoals(ctx context.Context, t *core.Tx, st *wsState) error {
 
 func (o *Orch) goalTasksDone(ctx context.Context, t *core.Tx, st *wsState, g db.Goal, tasks []db.Task) error {
 	summary := goalSummary(st, g, tasks, o.now())
-	if _, err := o.saveNote(ctx, t, st.ws, &g.ID, "summary", "Summary: "+g.Title, summary, nil, g.ManagerID); err != nil {
+	if _, err := o.saveNote(ctx, t, st.ws, &g.ID, "summary", "Summary: "+g.Title, summary, "shared", nil, g.ManagerID); err != nil {
 		return err
 	}
 	hasCode := goalHasCode(st.goalRepos[g.ID])

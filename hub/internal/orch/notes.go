@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"canopy/hub/internal/core"
+	"canopy/hub/internal/refs"
 	"canopy/hub/internal/store"
 	"canopy/hub/internal/store/db"
 )
@@ -16,7 +17,7 @@ import (
 // summaries per goal, decisions and free notes. Agents read and write them with tools.
 
 // saveNote writes a note. A goal has one plan and one summary, so those are replaced.
-func (o *Orch) saveNote(ctx context.Context, t *core.Tx, ws db.Workspace, goalID *uuid.UUID, kind, title, body string, byUser, byMember *uuid.UUID) (db.Note, error) {
+func (o *Orch) saveNote(ctx context.Context, t *core.Tx, ws db.Workspace, goalID *uuid.UUID, kind, title, body, visibility string, byUser, byMember *uuid.UUID) (db.Note, error) {
 	var n db.Note
 	var err error
 	if goalID != nil && (kind == "plan" || kind == "summary") {
@@ -31,12 +32,12 @@ func (o *Orch) saveNote(ctx context.Context, t *core.Tx, ws db.Workspace, goalID
 	}
 	if err == errNoNote {
 		n, err = t.Q.CreateNote(ctx, db.CreateNoteParams{ID: newID(), WorkspaceID: ws.ID, GoalID: goalID, Kind: kind, Title: title, Body: body,
-			AuthorUserID: byUser, AuthorMemberID: byMember})
+			AuthorUserID: byUser, AuthorMemberID: byMember, Visibility: visibility})
 	}
 	if err != nil {
 		return n, err
 	}
-	return n, t.Emit(ctx, core.WS(ws.OrgID, ws.ID, "note.saved"), core.ToNote(n))
+	return n, t.EmitNoteSaved(ctx, ws, nil, n)
 }
 
 // workingFor is the person this session works for: the person in a chat, or the person who
@@ -94,9 +95,10 @@ func (o *Orch) toolReadNotes(ctx context.Context, tc *toolCtx) error {
 
 func (o *Orch) toolWriteNote(ctx context.Context, tc *toolCtx) error {
 	var in struct {
-		Title string `json:"title"`
-		Body  string `json:"body"`
-		Kind  string `json:"kind"`
+		Title      string `json:"title"`
+		Body       string `json:"body"`
+		Kind       string `json:"kind"`
+		Visibility string `json:"visibility"`
 	}
 	if err := decode(tc.call.Args, &in); err != nil {
 		return err
@@ -111,14 +113,84 @@ func (o *Orch) toolWriteNote(ctx context.Context, tc *toolCtx) error {
 	if tc.task != nil {
 		goalID = tc.task.GoalID
 	}
+	visibility := "shared"
+	var byUser *uuid.UUID
+	if in.Visibility == "private" {
+		byUser = o.workingFor(ctx, tc)
+		if byUser == nil {
+			return toolError("A private note belongs to a person. Make it shared, or write it while working for someone.")
+		}
+		visibility = "private"
+	}
 	var saved db.Note
 	err := o.Core.Tx(ctx, func(t *core.Tx) (err error) {
-		saved, err = o.saveNote(ctx, t, tc.ws, goalID, in.Kind, in.Title, in.Body, nil, &tc.member.ID)
+		saved, err = o.saveNote(ctx, t, tc.ws, goalID, in.Kind, in.Title, in.Body, visibility, byUser, &tc.member.ID)
 		return err
 	})
 	if err != nil {
 		return err
 	}
 	o.reply(tc, "Saved the note "+noteLabel(saved)+".", false)
+	return nil
+}
+
+// toolUpdateNote edits a shared note, or a private note of the person the agent works for.
+// The old text is saved as a revision first and the agent is recorded as the editor.
+func (o *Orch) toolUpdateNote(ctx context.Context, tc *toolCtx) error {
+	var in struct {
+		Ref   string  `json:"ref"`
+		Title *string `json:"title"`
+		Body  *string `json:"body"`
+		Mode  string  `json:"mode"`
+	}
+	if err := decode(tc.call.Args, &in); err != nil {
+		return err
+	}
+	ref, ok := refs.ParseOne(in.Ref)
+	if !ok || ref.Kind != refs.Note {
+		return toolError("Give a note ID like N-5.")
+	}
+	if in.Mode != "" && in.Mode != "append" && in.Mode != "replace" {
+		return toolError("Mode is append or replace.")
+	}
+	if in.Title != nil && strings.TrimSpace(*in.Title) == "" {
+		return toolError("The title can't be empty.")
+	}
+	if in.Title == nil && in.Body == nil {
+		return toolError("Give a new title or body.")
+	}
+	it, ok, err := refs.Resolver{Q: o.Store.Queries}.One(ctx, tc.ws.ID, refs.ForUser(o.workingFor(ctx, tc)), ref)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return toolError("No note " + ref.String() + " in this workspace.")
+	}
+	var saved db.Note
+	err = o.Core.Tx(ctx, func(t *core.Tx) error {
+		cur, err := t.Q.GetNote(ctx, it.ID)
+		if err != nil {
+			return err
+		}
+		p := db.UpdateNoteParams{ID: cur.ID, Title: in.Title, SetEditor: true, EditedByMemberID: &tc.member.ID}
+		if in.Body != nil {
+			body := *in.Body
+			if in.Mode != "replace" && strings.TrimSpace(cur.Body) != "" {
+				body = strings.TrimRight(cur.Body, "\n ") + "\n\n" + body
+			}
+			p.Body = &body
+		}
+		if err := t.SaveNoteRevision(ctx, cur.ID); err != nil {
+			return err
+		}
+		if saved, err = t.Q.UpdateNote(ctx, p); err != nil {
+			return err
+		}
+		return t.EmitNoteSaved(ctx, tc.ws, &cur, saved)
+	})
+	if err != nil {
+		return err
+	}
+	o.reply(tc, "Updated the note "+noteLabel(saved)+".", false)
 	return nil
 }
