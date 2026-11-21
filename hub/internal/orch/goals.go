@@ -200,9 +200,34 @@ func (o *Orch) closeGoal(ctx context.Context, t *core.Tx, ws db.Workspace, g db.
 			return err
 		}
 	}
+	// Cleanup deletes the sessions' work folders, so end them; a reopened goal starts fresh ones.
+	if err := o.endGoalSessions(ctx, t, ws, g.ID); err != nil {
+		return err
+	}
 	if g.RunnerID != nil {
 		runner, id := *g.RunnerID, g.ID
 		t.AfterCommit(func() { o.send(runner, protocol.TGoalCleanup, protocol.GoalCleanup{GoalID: id}) })
+	}
+	return nil
+}
+
+func (o *Orch) endGoalSessions(ctx context.Context, t *core.Tx, ws db.Workspace, goalID uuid.UUID) error {
+	live, err := t.Q.ListGoalLiveSessions(ctx, &goalID)
+	if err != nil {
+		return err
+	}
+	for _, s := range live {
+		ns, err := t.Q.SetSessionStatus(ctx, db.SetSessionStatusParams{ID: s.ID, Status: "ended"})
+		if err != nil {
+			return err
+		}
+		if err := emitSession(ctx, t, ws, ns); err != nil {
+			return err
+		}
+		if s.RunnerID != nil {
+			runner, id := *s.RunnerID, s.ID
+			t.AfterCommit(func() { o.send(runner, protocol.TStop, protocol.SessionRef{SessionID: id}) })
+		}
 	}
 	return nil
 }

@@ -321,7 +321,13 @@ func handover(text string) {
 	result("Handover brief approved.", false)
 }
 
+// A fresh session's first turn starts with a handoff; the task text follows it.
+var taskLine = regexp.MustCompile(`(?m)^(New goal:|Handover task:|Task:)`)
+
 func handle(text string) {
+	if loc := taskLine.FindStringIndex(text); loc != nil {
+		text = text[loc[0]:]
+	}
 	switch {
 	case strings.HasPrefix(text, "Handover task:"):
 		remember(text)
