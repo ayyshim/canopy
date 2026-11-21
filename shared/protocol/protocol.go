@@ -365,6 +365,9 @@ const (
 	ToolGetAttachments = "get_attachments"
 	ToolAttachFile     = "attach_file"
 	ToolNotify         = "notify"
+	ToolJobRunReport   = "job_run_report"
+	ToolJobMemoryRead  = "job_memory_read"
+	ToolJobRunRead     = "job_run_read"
 )
 
 // ---- Directory mirror (DECISIONS: Directories) ----

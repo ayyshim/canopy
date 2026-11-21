@@ -57,6 +57,12 @@ var Defs = []Def{
 		`{"type":"object","properties":{"name":{"type":"string","description":"only this file; leave out for all"}}}`},
 	{protocol.ToolNotify, "Send a short message to the people on this goal, on their phone and in Discord. Only for real milestones (a first working build, a screenshot worth seeing, an artifact you published) or when you are blocked by something outside Canopy. Not for routine steps, and not for what ask_question, submit_output and complete_task already notify about. Limits: 5 per task per hour, 20 per day.",
 		`{"type":"object","properties":{"message":{"type":"string","description":"one or two plain sentences"},"level":{"type":"string","enum":["info","milestone","needs_attention"],"description":"needs_attention is for being blocked; it counts as an error notice"},"files":{"type":"array","items":{"type":"string"},"description":"names of outputs from this task or goal to attach"},"links":{"type":"array","items":{"type":"string"},"description":"https links, such as a published artifact"}},"required":["message"]}`},
+	{protocol.ToolJobRunReport, "Job runs only: report how this run went before complete_task. result is ok, attention (a person should look) or nothing_to_do. Continuous jobs: new_memory is the full rewritten summary (at most 5,000 characters); it is saved only if the run succeeds.",
+		`{"type":"object","properties":{"title":{"type":"string","description":"short title of this run, such as the episode name"},"summary":{"type":"string","description":"what you did and found, a few sentences"},"result":{"type":"string","enum":["ok","attention","nothing_to_do"]},"new_memory":{"type":"string","description":"continuous jobs only: the rewritten rolling summary"}},"required":["title","summary","result"]}`},
+	{protocol.ToolJobMemoryRead, "Job runs only: read the job's brief, rolling summary and the full run log.",
+		`{"type":"object","properties":{}}`},
+	{protocol.ToolJobRunRead, "Job runs only: read one earlier run of this job by its number: title, summary, result, the summary saved after it and its output names.",
+		`{"type":"object","properties":{"n":{"type":"integer","description":"run number"}},"required":["n"]}`},
 	{protocol.ToolAttachFile, "Attach a file to your goal (default) or your task, so people and other agents on the goal can use it.",
 		`{"type":"object","properties":{"path":{"type":"string"},"to":{"type":"string","enum":["goal","task"]}},"required":["path"]}`},
 }
