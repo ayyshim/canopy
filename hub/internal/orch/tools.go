@@ -77,6 +77,10 @@ func (o *Orch) onToolCall(ctx context.Context, rn db.Runner, c protocol.ToolCall
 		handle = o.toolOwnerChange
 	case protocol.ToolReadNotes:
 		handle = o.toolReadNotes
+	case protocol.ToolReadItem:
+		handle = o.toolReadItem
+	case protocol.ToolUpdateNote:
+		handle = o.toolUpdateNote
 	case protocol.ToolWriteNote:
 		handle = o.toolWriteNote
 	case protocol.ToolAssignSkill:
@@ -606,7 +610,7 @@ func (o *Orch) toolOwnerChange(ctx context.Context, tc *toolCtx) error {
 		return err
 	}
 	owner, _ := o.Store.GetUserByID(ctx, dir.OwnerUserID)
-	o.reply(tc, fmt.Sprintf("Requested “%s”. %s owns %s and must approve it; you can continue with other work meanwhile.", created.Title, owner.Name, dir.Path), false)
+	o.reply(tc, fmt.Sprintf("Requested %s. %s owns %s and must approve it; you can continue with other work meanwhile.", taskLabel(created), owner.Name, dir.Path), false)
 	return nil
 }
 

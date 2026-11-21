@@ -107,7 +107,7 @@ func (o *Orch) goalTasksDone(ctx context.Context, t *core.Tx, st *wsState, g db.
 	if summary == "" {
 		summary = goalSummary(st, g, tasks, o.now())
 	}
-	if err := o.saveNote(ctx, t, st.ws, &g.ID, "summary", "Summary: "+g.Title, summary, nil, g.ManagerID); err != nil {
+	if _, err := o.saveNote(ctx, t, st.ws, &g.ID, "summary", "Summary: "+g.Title, summary, "shared", nil, g.ManagerID); err != nil {
 		return err
 	}
 	hasCode := goalHasCode(st.goalRepos[g.ID])

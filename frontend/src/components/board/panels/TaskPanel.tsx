@@ -1,5 +1,8 @@
 "use client";
 
+import { RefText } from "../IdTag";
+import { RefAssist } from "../RefAssist";
+import { IdTag, CopyId } from "../IdTag";
 import { useCatalog, skillLabel } from "@/lib/catalog";
 import { useEffect, useState } from "react";
 import { loadActivity, loadTask, postComment } from "@/lib/board/actions";
@@ -67,7 +70,7 @@ export function TaskPanel({ id }: { id: string }) {
         { id: "outputs", label: "Outputs", count: outs.length },
         { id: "discussion", label: "Discussion", count: comments?.length || undefined },
         { id: "usage", label: "Usage" },
-      ]} />}><span className="tag">Task</span><h2>{t.title}</h2></PanelHead>
+      ]} />}><span className="row" style={{ gap: 6 }}><span className="tag">Task</span><IdTag kind="task" number={t.number} /><CopyId kind="task" number={t.number} /></span><h2>{t.title}</h2></PanelHead>
       <PanelBody>
         <TabPanel id="overview" value={tab} idBase="task"><div className="stack">
         <div className="row wrap">
@@ -104,8 +107,8 @@ export function TaskPanel({ id }: { id: string }) {
             </button>
           </div>
         )}
-        {t.description && <div className="sb-sec"><span className="lbl">Details</span><span style={{ whiteSpace: "pre-wrap" }}>{t.description}</span></div>}
-        {t.summary && <div className="sb-sec"><span className="lbl">Result</span><span>{t.summary}</span></div>}
+        {t.description && <div className="sb-sec"><span className="lbl">Details</span><span style={{ whiteSpace: "pre-wrap" }}><RefText text={t.description} /></span></div>}
+        {t.summary && <div className="sb-sec"><span className="lbl">Result</span><span><RefText text={t.summary} /></span></div>}
         <dl className="kv">
           <dt>Started</dt><dd>{t.started_at ? clock(t.started_at) : "Not yet"}</dd>
           <dt>Finished</dt><dd>{t.finished_at ? clock(t.finished_at) : "Not yet"}</dd>
@@ -153,7 +156,7 @@ export function TaskPanel({ id }: { id: string }) {
         <div className="sb-sec">
           <span className="lbl">Agent activity</span>
           {taskLogs.length ? (
-            <ul className="timeline">{taskLogs.map((l) => <li key={l.id}><span className="mono hint" style={{ fontSize: 11 }}>{clock(l.at)}</span> {l.text.slice(0, 300)}</li>)}</ul>
+            <ul className="timeline">{taskLogs.map((l) => <li key={l.id}><span className="mono hint" style={{ fontSize: 11 }}>{clock(l.at)}</span> <RefText text={l.text.slice(0, 300)} /></li>)}</ul>
           ) : <p className="hint">Nothing yet.</p>}
         </div>
         <div className="sb-sec">
@@ -165,7 +168,7 @@ export function TaskPanel({ id }: { id: string }) {
             return (
               <div className="comment" key={c.id}>
                 <Avatar name={name} color={color} size={24} />
-                <span><b>{name}</b> <span className="mono hint" style={{ fontSize: 11 }}>{clock(c.created_at)}</span><br />{c.text}</span>
+                <span><b>{name}</b> <span className="mono hint" style={{ fontSize: 11 }}>{clock(c.created_at)}</span><br /><RefText text={c.text} /></span>
               </div>
             );
           })}
@@ -178,7 +181,7 @@ export function TaskPanel({ id }: { id: string }) {
         <form className="stack-sm" style={{ width: "100%", gap: 6 }} onSubmit={send}>
           <label className="lbl" htmlFor="comment-input">Comment for {m?.name ?? "the agent"}</label>
           <div className="row">
-            <input className="input" id="comment-input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Add context or a change" />
+            <RefAssist><input className="input" id="comment-input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Add context or a change" /></RefAssist>
             <button className="btn btn-primary btn-sm" type="submit">Post</button>
           </div>
         </form>

@@ -51,7 +51,7 @@ func TestReadBoardTool(t *testing.T) {
 	if res.IsError {
 		t.Fatalf("read_board: %+v", res)
 	}
-	for _, want := range []string{"Team:", "Riley (manager)", "Dev (developer, reports to Riley)", "## Ship the export", "Waiting on people:"} {
+	for _, want := range []string{"Team:", "Riley (manager)", "Dev (developer, reports to Riley)", "## G-1 Ship the export", "Waiting on people:"} {
 		if !strings.Contains(res.Text, want) {
 			t.Errorf("board misses %q:\n%s", want, res.Text)
 		}

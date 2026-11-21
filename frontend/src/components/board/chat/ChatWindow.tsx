@@ -1,5 +1,7 @@
 "use client";
 
+import { RefText } from "../IdTag";
+import { RefAssist } from "../RefAssist";
 import { useCatalog, skillLabel } from "@/lib/catalog";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { loadActivity, loadChat, markChatRead, sendChat } from "@/lib/board/actions";
@@ -153,7 +155,7 @@ export function ChatWindow({ win, index }: { win: ChatWin; index: number }) {
               ))}
               {!b.sessions.some((z) => z.member_id === m.id) && <span className="sys2">No session yet. It starts when this member has work.</span>}
               {(logs ?? []).slice(-80).map((l) => (
-                <div key={l.id}><span className="sys2">{clock(l.at)}</span> <span className={l.kind === "human" ? "you" : l.kind === "error" ? "err" : ""}>{l.text}</span></div>
+                <div key={l.id}><span className="sys2">{clock(l.at)}</span> <span className={l.kind === "human" ? "you" : l.kind === "error" ? "err" : ""}><RefText text={l.text} /></span></div>
               ))}
             </div>
             {b.outputs.some((o) => o.member_id === m.id) && (
@@ -176,9 +178,9 @@ export function ChatWindow({ win, index }: { win: ChatWin; index: number }) {
             </div>
           )}
           <div className="cbox">
-            <textarea rows={1} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={keyDown}
+            <RefAssist><textarea rows={1} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={keyDown}
               placeholder={asGoal ? `Describe the goal for ${m.name}…` : `Message ${m.name}…`} aria-label={`Message to ${m.name}`}
-              style={{ height: Math.min(120, 22 + 20 * (draft.split("\n").length - 1)) }} />
+              style={{ height: Math.min(120, 22 + 20 * (draft.split("\n").length - 1)) }} /></RefAssist>
             <button className="sendb" onClick={submit} aria-label={asGoal ? "Give goal" : "Send message"} disabled={!draft.trim()}>
               <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" stroke="currentColor" strokeWidth="1.9" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
@@ -211,7 +213,7 @@ function Thread({ m, msgs, typing, jump, mine, greet }: { m: MemberView; msgs: C
       <div className={`grp ${g.you ? "you" : "them"}`} key={"g" + g.items[0].id}>
         <div className="gmeta"><b>{g.name}</b>{clock(g.at)}</div>
         {g.items.map((x) => (
-          <div className={"bub" + (flash === x.id ? " flash" : "")} key={x.id} data-mid={x.id}>{x.as_goal && <span className="gtag">GOAL</span>}{x.text}</div>
+          <div className={"bub" + (flash === x.id ? " flash" : "")} key={x.id} data-mid={x.id}>{x.as_goal && <span className="gtag">GOAL</span>}<RefText text={x.text} /></div>
         ))}
       </div>,
     );

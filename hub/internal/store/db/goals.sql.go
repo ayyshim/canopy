@@ -24,9 +24,9 @@ func (q *Queries) CountGoals(ctx context.Context, workspaceID uuid.UUID) (int64,
 }
 
 const createGoal = `-- name: CreateGoal :one
-INSERT INTO goals (id, workspace_id, manager_id, title, done_when, color, created_by, runner_id, base, branch, snapshot, description, status)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at
+INSERT INTO goals (id, workspace_id, manager_id, title, done_when, color, created_by, runner_id, base, branch, snapshot, description, status, number)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, next_item_number($2, 'goal'))
+RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number
 `
 
 type CreateGoalParams struct {
@@ -87,6 +87,7 @@ func (q *Queries) CreateGoal(ctx context.Context, arg CreateGoalParams) (Goal, e
 		&i.Description,
 		&i.HandoverApprovedBy,
 		&i.HandoverApprovedAt,
+		&i.Number,
 	)
 	return i, err
 }
@@ -104,7 +105,7 @@ func (q *Queries) DeleteDraftGoal(ctx context.Context, id uuid.UUID) (int64, err
 }
 
 const getGoal = `-- name: GetGoal :one
-SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at FROM goals WHERE id = $1
+SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number FROM goals WHERE id = $1
 `
 
 func (q *Queries) GetGoal(ctx context.Context, id uuid.UUID) (Goal, error) {
@@ -135,13 +136,56 @@ func (q *Queries) GetGoal(ctx context.Context, id uuid.UUID) (Goal, error) {
 		&i.Description,
 		&i.HandoverApprovedBy,
 		&i.HandoverApprovedAt,
+		&i.Number,
+	)
+	return i, err
+}
+
+const getGoalByNumber = `-- name: GetGoalByNumber :one
+SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number FROM goals WHERE workspace_id = $1 AND number = $2
+`
+
+type GetGoalByNumberParams struct {
+	WorkspaceID uuid.UUID
+	Number      int32
+}
+
+func (q *Queries) GetGoalByNumber(ctx context.Context, arg GetGoalByNumberParams) (Goal, error) {
+	row := q.db.QueryRow(ctx, getGoalByNumber, arg.WorkspaceID, arg.Number)
+	var i Goal
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.ManagerID,
+		&i.Title,
+		&i.DoneWhen,
+		&i.Color,
+		&i.Status,
+		&i.Summary,
+		&i.CreatedBy,
+		&i.PlannedAt,
+		&i.FinishedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RunnerID,
+		&i.Base,
+		&i.Branch,
+		&i.Snapshot,
+		&i.Shipped,
+		&i.ShowTasks,
+		&i.DoneBy,
+		&i.ReadyAt,
+		&i.Description,
+		&i.HandoverApprovedBy,
+		&i.HandoverApprovedAt,
+		&i.Number,
 	)
 	return i, err
 }
 
 const giveDraftGoal = `-- name: GiveDraftGoal :one
 UPDATE goals SET status = 'planning', created_at = now() WHERE id = $1 AND status = 'draft'
-RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at
+RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number
 `
 
 func (q *Queries) GiveDraftGoal(ctx context.Context, id uuid.UUID) (Goal, error) {
@@ -172,6 +216,7 @@ func (q *Queries) GiveDraftGoal(ctx context.Context, id uuid.UUID) (Goal, error)
 		&i.Description,
 		&i.HandoverApprovedBy,
 		&i.HandoverApprovedAt,
+		&i.Number,
 	)
 	return i, err
 }
@@ -278,7 +323,7 @@ func (q *Queries) ListGoalRepos(ctx context.Context, goalID uuid.UUID) ([]GoalRe
 }
 
 const listGoals = `-- name: ListGoals :many
-SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at FROM goals WHERE workspace_id = $1 ORDER BY created_at, id
+SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number FROM goals WHERE workspace_id = $1 ORDER BY created_at, id
 `
 
 func (q *Queries) ListGoals(ctx context.Context, workspaceID uuid.UUID) ([]Goal, error) {
@@ -315,6 +360,7 @@ func (q *Queries) ListGoals(ctx context.Context, workspaceID uuid.UUID) ([]Goal,
 			&i.Description,
 			&i.HandoverApprovedBy,
 			&i.HandoverApprovedAt,
+			&i.Number,
 		); err != nil {
 			return nil, err
 		}
@@ -327,7 +373,7 @@ func (q *Queries) ListGoals(ctx context.Context, workspaceID uuid.UUID) ([]Goal,
 }
 
 const listGoalsMovedSince = `-- name: ListGoalsMovedSince :many
-SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at FROM goals WHERE workspace_id = $1 AND updated_at >= $2 ORDER BY updated_at DESC LIMIT 20
+SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number FROM goals WHERE workspace_id = $1 AND updated_at >= $2 ORDER BY updated_at DESC LIMIT 20
 `
 
 type ListGoalsMovedSinceParams struct {
@@ -369,6 +415,7 @@ func (q *Queries) ListGoalsMovedSince(ctx context.Context, arg ListGoalsMovedSin
 			&i.Description,
 			&i.HandoverApprovedBy,
 			&i.HandoverApprovedAt,
+			&i.Number,
 		); err != nil {
 			return nil, err
 		}
@@ -451,7 +498,7 @@ const updateDraftGoal = `-- name: UpdateDraftGoal :one
 UPDATE goals
 SET manager_id = $2, title = $3, done_when = $4, description = $5, runner_id = $6, base = $7, branch = $8, snapshot = $9
 WHERE id = $1 AND status = 'draft'
-RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at
+RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number
 `
 
 type UpdateDraftGoalParams struct {
@@ -504,6 +551,7 @@ func (q *Queries) UpdateDraftGoal(ctx context.Context, arg UpdateDraftGoalParams
 		&i.Description,
 		&i.HandoverApprovedBy,
 		&i.HandoverApprovedAt,
+		&i.Number,
 	)
 	return i, err
 }
@@ -523,7 +571,7 @@ SET status = coalesce($1, status),
     handover_approved_by = CASE WHEN $14::boolean THEN $15 ELSE handover_approved_by END,
     handover_approved_at = CASE WHEN $14::boolean AND $15::uuid IS NOT NULL THEN now() WHEN $14::boolean THEN NULL ELSE handover_approved_at END
 WHERE id = $16
-RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at
+RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number
 `
 
 type UpdateGoalParams struct {
@@ -590,6 +638,7 @@ func (q *Queries) UpdateGoal(ctx context.Context, arg UpdateGoalParams) (Goal, e
 		&i.Description,
 		&i.HandoverApprovedBy,
 		&i.HandoverApprovedAt,
+		&i.Number,
 	)
 	return i, err
 }

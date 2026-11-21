@@ -196,7 +196,7 @@ func (o *Orch) startTask(ctx context.Context, t *core.Tx, st *wsState, runner uu
 	if err != nil {
 		return err
 	}
-	notes, err := q.ListNotes(ctx, st.ws.ID)
+	notes, err := q.ListNotes(ctx, db.ListNotesParams{WorkspaceID: st.ws.ID})
 	if err != nil {
 		return err
 	}
@@ -216,6 +216,7 @@ func (o *Orch) startTask(ctx context.Context, t *core.Tx, st *wsState, runner uu
 			text = handoverPrompt(st, m, task, *g, notes)
 		}
 	}
+	text += o.taskReferences(ctx, st, task)
 	nt, err := q.UpdateTask(ctx, db.UpdateTaskParams{ID: task.ID, Status: ptr("doing"), SetStarted: task.StartedAt == nil})
 	if err != nil {
 		return err

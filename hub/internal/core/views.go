@@ -106,19 +106,27 @@ func ToClone(c db.DirectoryClone) CloneView {
 }
 
 type NoteView struct {
-	ID             uuid.UUID  `json:"id"`
-	GoalID         *uuid.UUID `json:"goal_id"`
-	Kind           string     `json:"kind"`
-	Title          string     `json:"title"`
-	Body           string     `json:"body"`
-	AuthorUserID   *uuid.UUID `json:"author_user_id"`
-	AuthorMemberID *uuid.UUID `json:"author_member_id"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	ID               uuid.UUID  `json:"id"`
+	Number           int32      `json:"number"`
+	GoalID           *uuid.UUID `json:"goal_id"`
+	Kind             string     `json:"kind"`
+	Title            string     `json:"title"`
+	Body             string     `json:"body"`
+	AuthorUserID     *uuid.UUID `json:"author_user_id"`
+	AuthorMemberID   *uuid.UUID `json:"author_member_id"`
+	Visibility       string     `json:"visibility"`
+	Color            string     `json:"color"`
+	BoardX           *float64   `json:"board_x"`
+	BoardY           *float64   `json:"board_y"`
+	EditedByUserID   *uuid.UUID `json:"edited_by_user_id"`
+	EditedByMemberID *uuid.UUID `json:"edited_by_member_id"`
+	UpdatedAt        time.Time  `json:"updated_at"`
 }
 
 func ToNote(n db.Note) NoteView {
-	return NoteView{ID: n.ID, GoalID: n.GoalID, Kind: n.Kind, Title: n.Title, Body: n.Body, AuthorUserID: n.AuthorUserID,
-		AuthorMemberID: n.AuthorMemberID, UpdatedAt: n.UpdatedAt}
+	return NoteView{ID: n.ID, Number: n.Number, GoalID: n.GoalID, Kind: n.Kind, Title: n.Title, Body: n.Body, AuthorUserID: n.AuthorUserID,
+		AuthorMemberID: n.AuthorMemberID, Visibility: n.Visibility, Color: n.Color, BoardX: n.BoardX, BoardY: n.BoardY,
+		EditedByUserID: n.EditedByUserID, EditedByMemberID: n.EditedByMemberID, UpdatedAt: n.UpdatedAt}
 }
 
 type GrantView struct {

@@ -258,6 +258,9 @@ func (b *boardConn) filter(ctx context.Context, e realtime.Event) (outMsg, bool)
 	if e.FromUser != nil && *e.FromUser == b.user.ID && e.Ephemeral {
 		return outMsg{}, false // your own cursor and typing
 	}
+	if e.ToUserID != nil && *e.ToUserID != b.user.ID {
+		return outMsg{}, false
+	}
 	forMe := e.ForUserID != nil && *e.ForUserID == b.user.ID
 	if e.AdminOnly && !v.Admin() && !forMe {
 		return outMsg{}, false
