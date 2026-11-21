@@ -156,6 +156,14 @@ func TestPreviewNames(t *testing.T) {
 	if _, _, body := get(t, base, p+"shared.js"); body != "// A" {
 		t.Errorf("same task first: %q", body)
 	}
+	// A page link that misses gets a 404 page that reports its name; other requests get a plain 404.
+	req, _ := http.NewRequest("GET", base+p+"missing.html", nil)
+	req.Header.Set("Accept", "text/html")
+	if res, err := http.DefaultClient.Do(req); err != nil || res.StatusCode != 404 || !strings.Contains(res.Header.Get("Content-Type"), "text/html") {
+		t.Errorf("missing page: %v %v", res, err)
+	} else if b, _ := io.ReadAll(res.Body); !strings.Contains(string(b), "canopy-preview") || strings.Contains(string(b), "about") {
+		t.Errorf("missing page body: %s", b)
+	}
 	for _, bad := range []string{"missing.html", "assets/", "assets/nope.css", "../index.html", "assets/../index.html", "%2e%2e/index.html", "a%5Cb"} {
 		if st, _, _ := get(t, base, p+bad); st != http.StatusNotFound {
 			t.Errorf("%q: %d", bad, st)

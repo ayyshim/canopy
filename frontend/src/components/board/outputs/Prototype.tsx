@@ -46,7 +46,6 @@ export function Prototype({ o, outputs, goalOf, rev, header, onOpen }: {
 }) {
   const stage = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLIFrameElement>(null);
-  const gotMessage = useRef(false);
   const [via, setVia] = useState<string | null>(null);
 
   const [entry, setEntry] = useState(o);
@@ -80,8 +79,8 @@ export function Prototype({ o, outputs, goalOf, rev, header, onOpen }: {
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       if (e.source !== frame.current?.contentWindow || e.data?.type !== "canopy-preview" || typeof e.data.name !== "string") return;
-      gotMessage.current = true;
       const name = pageName(e.data.name);
+      if (e.data.missing) { setMissing(name); return; }
       setPage(name);
       setTrail((t) => (t[t.length - 1] === name ? t : [...t, name]));
       const target = findOutputByName(outputs, entry, name, goalOf);
@@ -92,13 +91,6 @@ export function Prototype({ o, outputs, goalOf, rev, header, onOpen }: {
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
   }, [outputs, entry, goalOf, o.id, onOpen]);
-
-  // A page the hub can't find has no script, so it never reports in.
-  const onLoad = () => {
-    gotMessage.current = false;
-    const shown = page;
-    setTimeout(() => { if (!gotMessage.current && frame.current) setMissing(shown); }, 1500);
-  };
 
   const back = () => {
     if (trail.length < 2) return;
@@ -128,7 +120,7 @@ export function Prototype({ o, outputs, goalOf, rev, header, onOpen }: {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).closest("textarea, input, select") || e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.key === "Escape" && fs === "overlay") { e.stopImmediatePropagation(); setFs(""); }
+      if (e.key === "Escape" && fs) { e.stopImmediatePropagation(); if (document.fullscreenElement) void document.exitFullscreen(); setFs(""); }
       else if (e.key === "f" || e.key === "F") { e.preventDefault(); void toggleFs(); }
     };
     window.addEventListener("keydown", onKey, true);
@@ -153,7 +145,7 @@ export function Prototype({ o, outputs, goalOf, rev, header, onOpen }: {
       <div className="pstage">
         <div className="pframe" style={{ maxWidth: WIDTHS[width] }}>
           {ready ? (
-            <iframe key={`${nav}:${ready.base}:${rev}`} ref={frame} className="pif" title={o.title} src={src} sandbox={SANDBOX} onLoad={onLoad} />
+            <iframe key={`${nav}:${ready.base}:${rev}`} ref={frame} className="pif" title={o.title} src={src} sandbox={SANDBOX} />
           ) : grant === "failed" ? (
             <div className="pnote"><b>Couldn’t open this prototype</b><span>Try Reload in a moment.</span></div>
           ) : (

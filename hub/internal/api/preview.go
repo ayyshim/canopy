@@ -76,7 +76,29 @@ func escapePath(name string) string {
 }
 
 // handlePreviewFile serves one named output to a token holder; the token is the only credential.
+// A page that isn't found gets a small 404 page that tells the viewer which name was missing.
 func (s *Server) handlePreviewFile(w http.ResponseWriter, r *http.Request) error {
+	err := s.servePreview(w, r)
+	if !errors.Is(err, httpx.ErrNotFound) || !strings.Contains(r.Header.Get("Accept"), "text/html") {
+		return err
+	}
+	name := pathParam(r, "*")
+	g, ok, gerr := s.previews().Get(r.Context(), pathParam(r, "token"))
+	if gerr != nil || !ok || !s.Now().Before(g.ExpiresAt) || name == "" || strings.Contains(name, "..") {
+		return err
+	}
+	h := w.Header()
+	h.Set("Content-Type", "text/html; charset=utf-8")
+	h.Set("Content-Security-Policy", previewCSP)
+	h.Set("Referrer-Policy", "no-referrer")
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusNotFound)
+	_, _ = w.Write(injectPreviewScript([]byte("<!doctype html><html><head><meta charset=utf-8><meta name=canopy-missing content=1><title>Page not found</title></head><body style=\"font:16px system-ui;padding:24px\">Page not found</body></html>")))
+	return nil
+}
+
+func (s *Server) servePreview(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	g, ok, err := s.previews().Get(ctx, pathParam(r, "token"))
 	if err != nil {
@@ -182,7 +204,7 @@ function mem(){var d={};return{getItem:function(k){return k in d?d[k]:null},setI
 if(!ok){try{Object.defineProperty(window,n,{value:mem(),configurable:true})}catch(e){}}});
 var m=location.pathname.match(/\/preview\/[^\/]+\/(.*)$/);
 function name(){try{return m?decodeURIComponent(m[1]):''}catch(e){return m?m[1]:''}}
-window.addEventListener('load',function(){parent.postMessage({type:'canopy-preview',name:name()},'*')});
+window.addEventListener('load',function(){parent.postMessage({type:'canopy-preview',name:name(),missing:!!document.querySelector('meta[name=canopy-missing]')},'*')});
 document.addEventListener('click',function(e){var a=e.target&&e.target.closest&&e.target.closest('a[href]');if(!a||e.defaultPrevented)return;
 try{var u=new URL(a.href,location.href);if((u.protocol==='http:'||u.protocol==='https:')&&u.host!==location.host){a.target='_blank';a.rel='noopener noreferrer'}}catch(x){}},true);
 })();</script>`
