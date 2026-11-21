@@ -81,3 +81,25 @@ func TestIsolatedStaffChat(t *testing.T) {
 		t.Errorf("other mark read: %d", r.Status)
 	}
 }
+
+// Staff made before creators were recorded belong to whoever isolates them.
+func TestIsolateOldStaffClaimsCreator(t *testing.T) {
+	e := newEnv(t)
+	owner, me := e.signup("Old Staff Co")
+	ws, _ := e.createWorkspace(owner, currentOrg(me), setupPayload())
+	r := owner.do("POST", "/api/v1/workspaces/"+ws+"/members", map[string]any{"name": "Updater", "kind": "staff", "skill": "developer"})
+	if r.Status != http.StatusCreated {
+		t.Fatalf("create: %d %v", r.Status, r.Body)
+	}
+	id := str(r.Body["member"].(map[string]any)["id"])
+	if _, err := e.store.Pool.Exec(context.Background(), `UPDATE members SET created_by = NULL WHERE id = $1`, id); err != nil {
+		t.Fatal(err)
+	}
+	r = owner.do("PATCH", "/api/v1/workspaces/"+ws+"/members/"+id, map[string]any{"isolated": true})
+	if r.Status != http.StatusOK || str(r.Body["member"].(map[string]any)["created_by"]) != str(me["user"].(map[string]any)["id"]) {
+		t.Fatalf("isolate old staff: %d %v", r.Status, r.Body)
+	}
+	if r := owner.do("GET", "/api/v1/workspaces/"+ws+"/members/"+id+"/chat", nil); r.Status != http.StatusOK {
+		t.Errorf("chat after isolating: %d", r.Status)
+	}
+}
