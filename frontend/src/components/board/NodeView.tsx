@@ -264,7 +264,7 @@ export function NodeView({ n }: { n: Node }) {
       );
     }
     case "more":
-      return <button className={`node fruit more${dimFor(n.taskId)}`} style={style} onClick={() => ui.setTray(true)} aria-label="Show all outputs for this task">+{n.n}</button>;
+      return <button className={`node fruit more${dimFor(n.taskId)}`} style={style} onClick={() => ui.openOutputs({ tasks: [n.taskId], scope: "all" })} aria-label="Show all outputs for this task">+{n.n}</button>;
     case "sig": {
       const { height: _h, ...rest } = style;
       void _h;

@@ -18,7 +18,8 @@ import { Canvas } from "./Canvas";
 import { Chats } from "./chat/ChatWindow";
 import { BoardCtx, useB, useBoardCtx } from "./context";
 import { Dialogs } from "./dialogs/Dialogs";
-import { Tray } from "./outputs/Tray";
+import { fromSearch } from "@/lib/outputs/filter";
+import { FileManager } from "./outputs/FileManager";
 import { Viewer } from "./outputs/Viewer";
 import { Panel } from "./panels/Panel";
 import { TopBar } from "./TopBar";
@@ -61,6 +62,7 @@ export function BoardApp({ wsId }: { wsId: string }) {
         <TopBar />
         <Main />
       </div>
+      <FileManager />
       <Viewer />
       <Dialogs />
       <Toasts />
@@ -70,16 +72,15 @@ export function BoardApp({ wsId }: { wsId: string }) {
 
 function Main() {
   const side = useUI((s) => s.side);
-  const tray = useUI((s) => s.tray);
+  // A link with ?outputs=1 comes back to the file manager.
   useEffect(() => {
-    document.body.classList.toggle("tray-open", tray);
-  }, [tray]);
+    if (fromSearch(window.location.search)) useUI.getState().setTray(true);
+  }, []);
   return (
     <div className={"main" + (side ? " side-open" : "")}>
       {/* Overlays come first so keyboard and screen reader users reach them before the tree. */}
       <Panel />
       <Chats />
-      <Tray />
       <Banners />
       <Canvas />
     </div>

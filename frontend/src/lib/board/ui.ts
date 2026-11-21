@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import type { Fm } from "../outputs/filter";
 
 export type Side = { type: "ws" | "goal" | "task" | "people" | "pool" | "dirs" | "notes"; id?: string };
 export type ChatAnchor = { left: number; top: number; right: number; bottom: number };
@@ -21,7 +22,8 @@ type UIState = {
   side: Side | null;
   nav: Side[]; // panels to go back to
   chats: ChatWin[];
-  tray: boolean;
+  tray: boolean; // the outputs file manager is open
+  fmPreset: Partial<Fm> | null; // filters the file manager starts with, once
   viewer: { outputId: string; version?: number } | null;
   dialog: Dialog | null;
   toasts: Toast[];
@@ -37,6 +39,7 @@ type UIState = {
   updateChat: (id: string, patch: Partial<ChatWin>) => void;
   closeChat: (id: string) => void;
   setTray: (v: boolean) => void;
+  openOutputs: (preset?: Partial<Fm>) => void;
   openViewer: (outputId: string, version?: number) => void;
   closeViewer: () => void;
   openDialog: (d: Dialog | null) => void;
@@ -53,6 +56,7 @@ export const useUI = create<UIState>((set, get) => ({
   nav: [],
   chats: [],
   tray: false,
+  fmPreset: null,
   viewer: null,
   dialog: null,
   toasts: [],
@@ -84,6 +88,7 @@ export const useUI = create<UIState>((set, get) => ({
   updateChat: (id, patch) => set((st) => ({ chats: st.chats.map((c) => (c.id === id ? { ...c, ...patch } : c)) })),
   closeChat: (id) => set((st) => ({ chats: st.chats.filter((c) => c.id !== id) })),
   setTray: (tray) => set({ tray }),
+  openOutputs: (preset) => set({ tray: true, fmPreset: preset ?? null }),
   openViewer: (outputId, version) => set({ viewer: { outputId, version } }),
   closeViewer: () => set({ viewer: null }),
   openDialog: (dialog) => set({ dialog }),
