@@ -84,7 +84,7 @@ func boardText(st *wsState, now time.Time, withDone bool) string {
 				took = append(took, t.FinishedAt.Sub(*t.StartedAt))
 			}
 		}
-		if g.Status == "done" && !withDone {
+		if (g.Status == "done" || g.Status == "stopped") && !withDone {
 			hidden++
 			continue
 		}
