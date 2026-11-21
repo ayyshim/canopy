@@ -375,5 +375,8 @@ the file route stays as before (`default-src 'none'; sandbox`). Page names are l
 in the other tasks of the goal, so pages can link to each other with relative paths. Responses also send
 `Access-Control-Allow-Origin: *`, because pages on an opaque origin need CORS for fonts, modules and fetch.
 
+Pages have no real `localStorage` on an opaque origin, so the injected helper keeps it in `window.name`. That
+lasts across the pages of one preview and is lost when the viewer reloads the frame.
+
 **Trade-off.** Preview pages can call any https site (`connect-src https:`), so they can send what they know
 elsewhere. They know nothing of the hub, but people should still only preview work from their own team.
