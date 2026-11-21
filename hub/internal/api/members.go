@@ -361,9 +361,15 @@ func (s *Server) handlePatchMember(w http.ResponseWriter, r *http.Request) error
 	if err := val.Err(); err != nil {
 		return err
 	}
+	// Staff made before creators were recorded belong to whoever isolates them.
+	var claim *uuid.UUID
+	if wantIsolated && m.CreatedBy == nil {
+		uid := identity(r).UserID
+		claim = &uid
+	}
 	err = s.Core.Tx(ctx, func(t *core.Tx) error {
 		updated, err := t.Q.UpdateMember(ctx, db.UpdateMemberParams{ID: m.ID, Name: in.Name, SetSkill: setSkill, Skill: in.Skill,
-			SetReportsTo: in.SetReportsTo, ReportsTo: in.ReportsTo, Cli: in.CLI, Model: model, Instructions: in.Instructions, Sleeping: in.Sleeping, Isolated: in.Isolated})
+			SetReportsTo: in.SetReportsTo, ReportsTo: in.ReportsTo, Cli: in.CLI, Model: model, Instructions: in.Instructions, Sleeping: in.Sleeping, Isolated: in.Isolated, ClaimBy: claim})
 		if err != nil {
 			return err
 		}

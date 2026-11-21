@@ -14,6 +14,7 @@ import (
 	"canopy/hub/internal/blob"
 	"canopy/hub/internal/core"
 	"canopy/hub/internal/domain"
+	"canopy/hub/internal/store"
 	"canopy/hub/internal/store/db"
 )
 
@@ -171,96 +172,18 @@ func (o *Orch) toolSubmitPlan(ctx context.Context, tc *toolCtx) error {
 		if problems := validatePlan(in.Tasks, st.dirs); len(problems) > 0 {
 			return toolError("The plan needs changes:\n- " + strings.Join(problems, "\n- ") + "\nFix these and call submit_plan again.")
 		}
-		load := map[uuid.UUID]int{}
-		for _, x := range st.tasks {
-			if x.MemberID != nil && x.Status != "done" {
-				load[*x.MemberID]++
-			}
-		}
-		ids := map[string]uuid.UUID{}
-		for _, pt := range in.Tasks {
-			ids[pt.Key] = newID()
-		}
 		var doc strings.Builder
 		fmt.Fprintf(&doc, "# Plan: %s\n\nBy %s.\n", g.Title, tc.member.Name)
 		if g.DoneWhen != "" {
 			fmt.Fprintf(&doc, "Done when: %s\n", g.DoneWhen)
 		}
 		doc.WriteString("\n")
-		for _, pt := range in.Tasks {
-			memberID, borrowed := assign(st, tc.member, pt.Skill, load)
-			load[memberID]++
-			deps := make([]uuid.UUID, 0, len(pt.DependsOn))
-			for _, d := range pt.DependsOn {
-				deps = append(deps, ids[d])
-			}
-			steps := make([]core.Step, 0, len(pt.Steps))
-			for _, s := range pt.Steps {
-				if strings.TrimSpace(s) != "" {
-					steps = append(steps, core.Step{Title: s})
-				}
-			}
-			var needs []core.DirNeed
-			crossOwner := (*db.Directory)(nil)
-			for _, d := range pt.Directories {
-				dir := findDirectory(st.dirs, d.Path)
-				needs = append(needs, core.DirNeed{DirectoryID: dir.ID, Mode: d.Mode})
-				// Writing a directory the goal giver can't write needs its owner's approval.
-				// Repositories don't need it: work stays on the goal's branch until its person ships it.
-				if d.Mode == "read_write" && dir.RepoRemote == "" && g.CreatedBy != nil && authz.PersonDirMode(*dir, *g.CreatedBy, st.dirAccess[dir.ID]) != "read_write" {
-					crossOwner = dir
-				}
-			}
-			skill := pt.Skill
-			params := db.CreateTaskParams{ID: ids[pt.Key], WorkspaceID: tc.ws.ID, GoalID: &g.ID, MemberID: &memberID, Kind: "work", Title: pt.Title,
-				Description: pt.Description, Skill: &skill, Status: "waiting", DependsOn: deps, Steps: mustJSON(nonNilSteps(steps)),
-				RequiredDirs: mustJSON(nonNilNeeds(needs)), Borrowed: borrowed, AttributedUserID: g.CreatedBy, CreatedBy: g.CreatedBy,
-				CreatedByMember: &tc.member.ID, PlanKey: pt.Key}
-			if crossOwner != nil {
-				params.Kind, params.AttributedUserID = "owner_change", &crossOwner.OwnerUserID
-				if w := pickWriter(st, crossOwner.ID, nil); w != nil {
-					params.MemberID = w
-				}
-			}
-			task, err := q.CreateTask(ctx, params)
-			if err != nil {
-				return err
-			}
-			st.tasks = append(st.tasks, task)
-			st.task[task.ID] = task
-			if err := emitTask(ctx, t, tc.ws, task); err != nil {
-				return err
-			}
-			if crossOwner != nil {
-				sig, err := q.CreateSignal(ctx, db.CreateSignalParams{ID: newID(), WorkspaceID: tc.ws.ID, Type: "owner_change", MemberID: task.MemberID, TaskID: &task.ID,
-					Payload: mustJSON(map[string]any{"directory_id": crossOwner.ID, "path": crossOwner.Path, "owner_user_id": crossOwner.OwnerUserID,
-						"requested_by_user_id": g.CreatedBy, "requested_by_member_id": tc.member.ID, "title": task.Title, "description": task.Description})})
-				if err != nil {
-					return err
-				}
-				e := core.WS(tc.ws.OrgID, tc.ws.ID, "signal.opened")
-				e.MemberID, e.ForUserID = sig.MemberID, &crossOwner.OwnerUserID
-				if err := t.Emit(ctx, e, core.ToSignal(sig)); err != nil {
-					return err
-				}
-			}
-			who := st.member[*task.MemberID].Name
-			if borrowed {
-				who += " (borrowed)"
-			}
-			fmt.Fprintf(&doc, "## %s\n\n- Assigned to: %s\n- Skill: %s\n", pt.Title, who, pt.Skill)
-			if len(pt.DependsOn) > 0 {
-				fmt.Fprintf(&doc, "- After: %s\n", strings.Join(pt.DependsOn, ", "))
-			}
-			if crossOwner != nil {
-				fmt.Fprintf(&doc, "- Needs approval from the owner of %s\n", crossOwner.Path)
-			}
-			for i, s := range steps {
-				fmt.Fprintf(&doc, "%d. %s\n", i+1, s.Title)
-			}
-			doc.WriteString("\n")
-			accepted++
+		sections, err := o.createPlanTasks(ctx, t, tc, st, g, in.Tasks, nil)
+		if err != nil {
+			return err
 		}
+		accepted = len(in.Tasks)
+		doc.WriteString(sections)
 		planDoc = doc.String()
 		ng, err := q.UpdateGoal(ctx, db.UpdateGoalParams{ID: g.ID, Status: ptr("active"), SetPlanned: true})
 		if err != nil {
@@ -288,6 +211,153 @@ func (o *Orch) toolSubmitPlan(ctx context.Context, tc *toolCtx) error {
 		return err
 	}
 	o.reply(tc, fmt.Sprintf("Plan accepted: %d tasks. It’s saved as the note “Plan: %s”. Now call complete_task.", accepted, g.Title), false)
+	o.Kick(ctx, tc.ws.ID)
+	return nil
+}
+
+// createPlanTasks adds planned tasks to a goal for the manager, picking staff by skill and load.
+// parent, when set, is the task they came from. It returns the plan text that describes them.
+func (o *Orch) createPlanTasks(ctx context.Context, t *core.Tx, tc *toolCtx, st *wsState, g db.Goal, tasks []planTask, parent *uuid.UUID) (string, error) {
+	q := t.Q
+	load := map[uuid.UUID]int{}
+	for _, x := range st.tasks {
+		if x.MemberID != nil && x.Status != "done" {
+			load[*x.MemberID]++
+		}
+	}
+	ids := map[string]uuid.UUID{}
+	for _, pt := range tasks {
+		ids[pt.Key] = newID()
+	}
+	var doc strings.Builder
+	for _, pt := range tasks {
+		memberID, borrowed := assign(st, tc.member, pt.Skill, load)
+		load[memberID]++
+		deps := make([]uuid.UUID, 0, len(pt.DependsOn))
+		for _, d := range pt.DependsOn {
+			deps = append(deps, ids[d])
+		}
+		steps := make([]core.Step, 0, len(pt.Steps))
+		for _, s := range pt.Steps {
+			if strings.TrimSpace(s) != "" {
+				steps = append(steps, core.Step{Title: s})
+			}
+		}
+		var needs []core.DirNeed
+		crossOwner := (*db.Directory)(nil)
+		for _, d := range pt.Directories {
+			dir := findDirectory(st.dirs, d.Path)
+			needs = append(needs, core.DirNeed{DirectoryID: dir.ID, Mode: d.Mode})
+			// Writing a directory the goal giver can't write needs its owner's approval.
+			// Repositories don't need it: work stays on the goal's branch until its person ships it.
+			if d.Mode == "read_write" && dir.RepoRemote == "" && g.CreatedBy != nil && authz.PersonDirMode(*dir, *g.CreatedBy, st.dirAccess[dir.ID]) != "read_write" {
+				crossOwner = dir
+			}
+		}
+		skill := pt.Skill
+		params := db.CreateTaskParams{ID: ids[pt.Key], WorkspaceID: tc.ws.ID, GoalID: &g.ID, MemberID: &memberID, Kind: "work", Title: pt.Title,
+			Description: pt.Description, Skill: &skill, Status: "waiting", DependsOn: deps, Steps: mustJSON(nonNilSteps(steps)),
+			RequiredDirs: mustJSON(nonNilNeeds(needs)), Borrowed: borrowed, AttributedUserID: g.CreatedBy, CreatedBy: g.CreatedBy,
+			CreatedByMember: &tc.member.ID, ParentTaskID: parent, PlanKey: pt.Key}
+		if crossOwner != nil {
+			params.Kind, params.AttributedUserID = "owner_change", &crossOwner.OwnerUserID
+			if w := pickWriter(st, crossOwner.ID, nil); w != nil {
+				params.MemberID = w
+			}
+		}
+		task, err := q.CreateTask(ctx, params)
+		if err != nil {
+			return "", err
+		}
+		st.tasks = append(st.tasks, task)
+		st.task[task.ID] = task
+		if err := emitTask(ctx, t, tc.ws, task); err != nil {
+			return "", err
+		}
+		if crossOwner != nil {
+			sig, err := q.CreateSignal(ctx, db.CreateSignalParams{ID: newID(), WorkspaceID: tc.ws.ID, Type: "owner_change", MemberID: task.MemberID, TaskID: &task.ID,
+				Payload: mustJSON(map[string]any{"directory_id": crossOwner.ID, "path": crossOwner.Path, "owner_user_id": crossOwner.OwnerUserID,
+					"requested_by_user_id": g.CreatedBy, "requested_by_member_id": tc.member.ID, "title": task.Title, "description": task.Description})})
+			if err != nil {
+				return "", err
+			}
+			e := core.WS(tc.ws.OrgID, tc.ws.ID, "signal.opened")
+			e.MemberID, e.ForUserID = sig.MemberID, &crossOwner.OwnerUserID
+			if err := t.Emit(ctx, e, core.ToSignal(sig)); err != nil {
+				return "", err
+			}
+		}
+		who := st.member[*task.MemberID].Name
+		if borrowed {
+			who += " (borrowed)"
+		}
+		fmt.Fprintf(&doc, "## %s\n\n- Assigned to: %s\n- Skill: %s\n", pt.Title, who, pt.Skill)
+		if len(pt.DependsOn) > 0 {
+			fmt.Fprintf(&doc, "- After: %s\n", strings.Join(pt.DependsOn, ", "))
+		}
+		if crossOwner != nil {
+			fmt.Fprintf(&doc, "- Needs approval from the owner of %s\n", crossOwner.Path)
+		}
+		for i, s := range steps {
+			fmt.Fprintf(&doc, "%d. %s\n", i+1, s.Title)
+		}
+		doc.WriteString("\n")
+	}
+	return doc.String(), nil
+}
+
+// toolAssignTasks lets a manager hand a triage task's work to staff as new tasks on the goal.
+func (o *Orch) toolAssignTasks(ctx context.Context, tc *toolCtx) error {
+	var in struct {
+		Tasks []planTask `json:"tasks"`
+	}
+	if err := decode(tc.call.Args, &in); err != nil {
+		return err
+	}
+	if tc.member.Kind != "manager" || tc.task == nil || tc.task.Kind != "triage" || tc.task.GoalID == nil {
+		return toolError("Only a manager working on a triage task can assign tasks.")
+	}
+	var g db.Goal
+	var sections string
+	err := o.Core.Tx(ctx, func(t *core.Tx) error {
+		q := t.Q
+		if err := q.LockWorkspace(ctx, tc.ws.ID); err != nil {
+			return err
+		}
+		st, err := o.load(ctx, q, tc.ws.ID)
+		if err != nil {
+			return err
+		}
+		if g, err = q.GetGoal(ctx, *tc.task.GoalID); err != nil {
+			return err
+		}
+		if g.Status == "planning" || g.Status == "draft" {
+			return toolError("This goal has no plan yet.")
+		}
+		if problems := validatePlan(in.Tasks, st.dirs); len(problems) > 0 {
+			return toolError("The tasks need changes:\n- " + strings.Join(problems, "\n- ") + "\nFix these and call assign_tasks again.")
+		}
+		if sections, err = o.createPlanTasks(ctx, t, tc, st, g, in.Tasks, &tc.task.ID); err != nil {
+			return err
+		}
+		if err := core.GoalEvent(ctx, t, tc.ws, g, "tasks_assigned", fmt.Sprintf("Assigned %d tasks from “%s”", len(in.Tasks), tc.task.Title),
+			map[string]any{"task_id": tc.task.ID}); err != nil {
+			return err
+		}
+		title := "Plan: " + g.Title
+		body := "# " + title + "\n\n"
+		if n, err := q.GoalNote(ctx, db.GoalNoteParams{GoalID: &g.ID, Kind: "plan"}); err == nil {
+			body = strings.TrimRight(n.Body, "\n") + "\n\n"
+		} else if !store.IsNotFound(err) {
+			return err
+		}
+		body += fmt.Sprintf("# Added from “%s”\n\nBy %s.\n\n%s", tc.task.Title, tc.member.Name, sections)
+		return o.saveNote(ctx, t, tc.ws, &g.ID, "plan", title, body, nil, &tc.member.ID)
+	})
+	if err != nil {
+		return err
+	}
+	o.reply(tc, fmt.Sprintf("Assigned %d tasks. Now call complete_task with a one-line summary.", len(in.Tasks)), false)
 	o.Kick(ctx, tc.ws.ID)
 	return nil
 }

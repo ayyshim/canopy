@@ -34,18 +34,23 @@ export function GoalRow({ g }: { g: GoalView }) {
   );
 }
 
-export function TaskRow({ t }: { t: TaskView }) {
+export function TaskRow({ t, nested }: { t: TaskView; nested?: boolean }) {
   const b = useB();
+  const kids = nested ? [] : b.tasks.filter((x) => x.parent_task_id === t.id);
   const openSide = useUI((s) => s.openSide);
   const m = visibleMember(b, t.member_id);
   const need = signalsForTask(b, t.id).length > 0;
   return (
-    <button className="trow" onClick={() => openSide({ type: "task", id: t.id })}>
-      <span className={`dot ${t.status === "done" ? "done" : need ? "need" : t.status === "doing" ? "working" : ""}`} />
-      <span className="spacer" style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.title}</span>
-      <span className="hint">{m?.name ?? ""}</span>
-      <span className="meter"><i style={{ width: `${t.status === "done" ? 100 : t.progress}%` }} /></span>
-    </button>
+    <>
+      <button className="trow" onClick={() => openSide({ type: "task", id: t.id })}>
+        <span className={`dot ${t.status === "done" ? "done" : need ? "need" : t.status === "doing" ? "working" : ""}`} />
+        <span className="spacer" style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.title}</span>
+        {t.kind === "triage" && <span className="pill">Request</span>}
+        <span className="hint">{m?.name ?? ""}</span>
+        <span className="meter"><i style={{ width: `${t.status === "done" ? 100 : t.progress}%` }} /></span>
+      </button>
+      {kids.map((k) => <div key={k.id} style={{ paddingLeft: 16 }}><TaskRow t={k} nested /></div>)}
+    </>
   );
 }
 
