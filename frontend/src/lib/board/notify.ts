@@ -15,8 +15,9 @@ export function notificationKind(type: string): string {
 }
 
 /** useDesktopNotifications shows a desktop notification for each new thing that needs you
- * while this tab is in the background, if you turned them on. */
-export function useDesktopNotifications(me: Me) {
+ * while this tab is in the background, if you turned them on. With push on for this device
+ * the push notification does that job, so nothing shows twice. */
+export function useDesktopNotifications(me: Me, pushOn = false) {
   useEffect(() => {
     let seen: Set<string> | null = null;
     return useBoard.subscribe((state) => {
@@ -30,7 +31,7 @@ export function useDesktopNotifications(me: Me) {
         if (seen.has(s.id)) continue;
         seen.add(s.id);
         const want = me.user.notifications?.[notificationKind(s.type)]?.desktop ?? true;
-        if (!want || !document.hidden || typeof Notification === "undefined" || Notification.permission !== "granted") continue;
+        if (pushOn || !want || !document.hidden || typeof Notification === "undefined" || Notification.permission !== "granted") continue;
         const name = visibleMember(b, s.member_id)?.name ?? "An agent";
         const n = new Notification(title(s, name), { body: body(s), tag: s.id });
         n.onclick = () => {
@@ -41,7 +42,7 @@ export function useDesktopNotifications(me: Me) {
         };
       }
     });
-  }, [me]);
+  }, [me, pushOn]);
 }
 
 function title(s: SignalView, name: string): string {
