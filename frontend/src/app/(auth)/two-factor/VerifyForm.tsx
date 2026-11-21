@@ -19,6 +19,7 @@ export function VerifyForm() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     api<{ next: "enroll" | "verify" | "" }>("GET", "/auth/two-factor").then(
@@ -27,7 +28,7 @@ export function VerifyForm() {
         if (s.next === "") return hardNavigate(next ?? landingPath(await api<Me>("GET", "/me")));
         setReady(true);
       },
-      () => router.replace("/login"),
+      (err) => (err instanceof ApiError && err.status === 401 ? router.replace(unauthorizedPath(err)) : setFailed(true)),
     );
   }, [router, next]);
 
@@ -59,6 +60,15 @@ export function VerifyForm() {
     }
   }
 
+  if (failed) {
+    return (
+      <div className="authcard">
+        <h1>We couldn’t check your sign-in</h1>
+        <p className="lead">Wait a moment and try again.</p>
+        <button className="btn btn-primary wide" onClick={() => location.reload()}>Try again</button>
+      </div>
+    );
+  }
   if (!ready) return <p className="sr-only" role="status">Loading…</p>;
 
   const errId = id + "-error";
