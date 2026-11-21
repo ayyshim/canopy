@@ -69,6 +69,8 @@ func (o *Orch) onToolCall(ctx context.Context, rn db.Runner, c protocol.ToolCall
 		handle = o.toolCompleteTask
 	case protocol.ToolSubmitPlan:
 		handle = o.toolSubmitPlan
+	case protocol.ToolAssignTasks:
+		handle = o.toolAssignTasks
 	case protocol.ToolAnswerQuestion:
 		handle = o.toolAnswerQuestion
 	case protocol.ToolOwnerChange:
@@ -438,6 +440,8 @@ func (o *Orch) toolReportProgress(ctx context.Context, tc *toolCtx) error {
 func (o *Orch) toolCompleteTask(ctx context.Context, tc *toolCtx) error {
 	var in struct {
 		Summary string `json:"summary"`
+		// For a triage task that needs no work: why.
+		NoWorkReason string `json:"no_work_reason"`
 		// Filled in by the runner after it merged the task's branch into the goal's branch.
 		Git      []protocol.RepoResult `json:"git"`
 		GitError string                `json:"git_error"`
@@ -477,6 +481,15 @@ func (o *Orch) toolCompleteTask(ctx context.Context, tc *toolCtx) error {
 			}
 			if g.Status == "planning" {
 				return toolError("Call submit_plan with your plan first.")
+			}
+		}
+		if task.Kind == "triage" && task.GoalID != nil && strings.TrimSpace(in.NoWorkReason) == "" {
+			goalTasks, err := t.Q.ListGoalTasks(ctx, task.GoalID)
+			if err != nil {
+				return err
+			}
+			if !slices.ContainsFunc(goalTasks, func(x db.Task) bool { return x.ParentTaskID != nil && *x.ParentTaskID == task.ID }) {
+				return toolError("Call assign_tasks to hand this to your staff first. If no work is needed, call complete_task again with no_work_reason.")
 			}
 		}
 		steps := core.TaskSteps(task)

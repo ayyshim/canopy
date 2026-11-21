@@ -14,6 +14,7 @@ import (
 	"canopy/hub/internal/blob"
 	"canopy/hub/internal/core"
 	"canopy/hub/internal/domain"
+	"canopy/hub/internal/store"
 	"canopy/hub/internal/store/db"
 )
 
@@ -301,6 +302,62 @@ func (o *Orch) createPlanTasks(ctx context.Context, t *core.Tx, tc *toolCtx, st 
 		doc.WriteString("\n")
 	}
 	return doc.String(), nil
+}
+
+// toolAssignTasks lets a manager hand a triage task's work to staff as new tasks on the goal.
+func (o *Orch) toolAssignTasks(ctx context.Context, tc *toolCtx) error {
+	var in struct {
+		Tasks []planTask `json:"tasks"`
+	}
+	if err := decode(tc.call.Args, &in); err != nil {
+		return err
+	}
+	if tc.member.Kind != "manager" || tc.task == nil || tc.task.Kind != "triage" || tc.task.GoalID == nil {
+		return toolError("Only a manager working on a triage task can assign tasks.")
+	}
+	var g db.Goal
+	var sections string
+	err := o.Core.Tx(ctx, func(t *core.Tx) error {
+		q := t.Q
+		if err := q.LockWorkspace(ctx, tc.ws.ID); err != nil {
+			return err
+		}
+		st, err := o.load(ctx, q, tc.ws.ID)
+		if err != nil {
+			return err
+		}
+		if g, err = q.GetGoal(ctx, *tc.task.GoalID); err != nil {
+			return err
+		}
+		if g.Status == "planning" || g.Draft {
+			return toolError("This goal has no plan yet.")
+		}
+		if problems := validatePlan(in.Tasks, st.dirs); len(problems) > 0 {
+			return toolError("The tasks need changes:\n- " + strings.Join(problems, "\n- ") + "\nFix these and call assign_tasks again.")
+		}
+		if sections, err = o.createPlanTasks(ctx, t, tc, st, g, in.Tasks, &tc.task.ID); err != nil {
+			return err
+		}
+		if err := core.GoalEvent(ctx, t, tc.ws, g, "tasks_assigned", fmt.Sprintf("Assigned %d tasks from “%s”", len(in.Tasks), tc.task.Title),
+			map[string]any{"task_id": tc.task.ID}); err != nil {
+			return err
+		}
+		title := "Plan: " + g.Title
+		body := "# " + title + "\n\n"
+		if n, err := q.GoalNote(ctx, db.GoalNoteParams{GoalID: &g.ID, Kind: "plan"}); err == nil {
+			body = strings.TrimRight(n.Body, "\n") + "\n\n"
+		} else if !store.IsNotFound(err) {
+			return err
+		}
+		body += fmt.Sprintf("# Added from “%s”\n\nBy %s.\n\n%s", tc.task.Title, tc.member.Name, sections)
+		return o.saveNote(ctx, t, tc.ws, &g.ID, "plan", title, body, nil, &tc.member.ID)
+	})
+	if err != nil {
+		return err
+	}
+	o.reply(tc, fmt.Sprintf("Assigned %d tasks. Now call complete_task with a one-line summary.", len(in.Tasks)), false)
+	o.Kick(ctx, tc.ws.ID)
+	return nil
 }
 
 func nonNilSteps(s []core.Step) []core.Step {

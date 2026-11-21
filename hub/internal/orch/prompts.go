@@ -45,6 +45,7 @@ func systemPrompt(st *wsState, m db.Member, mounts []protocol.Mount, notes []db.
 	b.WriteString("- write_note(title, body, kind): record a decision or something the next person should know.\n")
 	if m.Kind == "manager" {
 		b.WriteString("- submit_plan(tasks): for plan tasks, your structured plan.\n")
+		b.WriteString("- assign_tasks(tasks): for triage tasks, hand the work to staff. Same task shape as submit_plan.\n")
 		b.WriteString("- answer_question(signal_id, answer): when people ask you to decide a staff member's question.\n")
 		b.WriteString("- assign_skill(member, skill, remove): give one of your staff a skill from the workspace skill library.\n")
 		b.WriteString("- propose_staff(name, role, instructions, reason, skills): draft a new staff member for an admin to approve. Do this only when your team truly lacks someone for the work; check your current staff first. Skills: first search the web (WebSearch, WebFetch) for a fitting skill markdown file and pass its text with source_url; if none fits, write a short one yourself. You are told when an admin approves or rejects it; do not repeat a rejected draft.\n")
@@ -197,7 +198,7 @@ func taskPrompt(st *wsState, m db.Member, t db.Task, comments []db.Comment, moun
 		b.WriteString("\nAnother person asked for this change in a folder its owner controls. The owner approved it.\n")
 	}
 	if t.Kind == "triage" {
-		b.WriteString("\nA person gave you this as a note or request. Do not do the work yourself: analyze it and assign it to the right staff.\n")
+		b.WriteString("\nA person gave you this as a note or request. Do not do the work yourself: analyze it and call assign_tasks to hand it to the right staff, then complete_task. If no work is needed, call complete_task with no_work_reason.\n")
 	}
 	if t.Description != "" {
 		fmt.Fprintf(&b, "\n%s\n", t.Description)
