@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"canopy/hub/internal/authz"
+	"canopy/hub/internal/core"
 	"canopy/hub/internal/httpx"
 	"canopy/hub/internal/store/db"
 )
@@ -31,7 +32,7 @@ func (s *Server) periodFor(r *http.Request, org db.Organization) period {
 	if err != nil {
 		loc = time.UTC
 	}
-	start := WeekStart(s.Now(), org.Timezone)
+	start := core.WeekStart(s.Now(), org.Timezone)
 	p := period{from: start, to: start.AddDate(0, 0, 7), loc: loc, label: "this_week"}
 	if r.URL.Query().Get("week") == "last" {
 		p = period{from: start.AddDate(0, 0, -7), to: start, loc: loc, label: "last_week"}
