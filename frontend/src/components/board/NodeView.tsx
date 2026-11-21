@@ -1,6 +1,7 @@
 "use client";
 
 import { UsageBadge } from "../ui";
+import { useCatalog, skillLabel } from "@/lib/catalog";
 import { resolveSignal } from "@/lib/board/actions";
 import {
   account, blockReason, chatLocked, blockedOnPerson, computer, fmtTokens, goalProgress, goalRepos, isAdmin, memberStatus, needsMe, payload,
@@ -9,7 +10,6 @@ import {
 import type { Node } from "@/lib/board/layout";
 import { useUI } from "@/lib/board/ui";
 import { skillNames } from "@/lib/skills";
-import { SKILL_LABEL } from "@/lib/types";
 import { useB, useBoardCtx } from "./context";
 import { Avatar, KIND_LABEL } from "./icons";
 import { SignalCard } from "./SignalCard";
@@ -17,6 +17,7 @@ import { OutputThumb } from "./OutputThumb";
 
 /** NodeView draws one card on the tree. */
 export function NodeView({ n }: { n: Node }) {
+  useCatalog();
   const b = useB();
   const { me } = useBoardCtx();
   const ui = useUI();
@@ -176,7 +177,7 @@ export function NodeView({ n }: { n: Node }) {
           <Avatar name={m.name} color={m.avatar_color} />
           <span style={{ minWidth: 0 }}>
             <span className="nm">{m.name}{m.kind === "manager" ? <span className="tag">MANAGER</span> : !m.reports_to ? <span className="tag ind">INDEPENDENT</span> : null}{m.isolated && <span className="tag ind" title="Isolated: only its creator can chat, managers can’t borrow it" aria-label="Isolated">🔒</span>}</span>
-            <span className="md" title={skillNames(b.member_skills?.[m.id], b.skills ?? []).join(", ") || undefined}>{m.kind === "staff" && m.skill ? SKILL_LABEL[m.skill] + ", " : ""}{m.model}{(b.member_skills?.[m.id]?.length ?? 0) > 0 ? ` · ${b.member_skills[m.id].length} skill${b.member_skills[m.id].length === 1 ? "" : "s"}` : ""}</span>
+            <span className="md" title={skillNames(b.member_skills?.[m.id], b.skills ?? []).join(", ") || undefined}>{m.kind === "staff" && m.skill ? skillLabel(m.skill) + ", " : ""}{m.model}{(b.member_skills?.[m.id]?.length ?? 0) > 0 ? ` · ${b.member_skills[m.id].length} skill${b.member_skills[m.id].length === 1 ? "" : "s"}` : ""}</span>
             <span className={`stat${warn ? " warn" : s.k === "error" ? " err" : ""}`}><span className={`dot ${s.k}`} />{s.t}</span>
           </span>
           {unread > 0 && <span className="ubadge" aria-label={`${unread} new in chat`}>{unread}</span>}

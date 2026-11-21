@@ -1,5 +1,6 @@
 "use client";
 
+import { useCatalog, skillLabel } from "@/lib/catalog";
 import { useEffect, useState } from "react";
 import { loadActivity, loadTask, postComment } from "@/lib/board/actions";
 import {
@@ -8,7 +9,6 @@ import {
 } from "@/lib/board/derive";
 import { useBoard } from "@/lib/board/store";
 import { useUI } from "@/lib/board/ui";
-import { SKILL_LABEL } from "@/lib/types";
 import { useB, useBoardCtx } from "../context";
 import { Avatar } from "../icons";
 import { RunsOn, SignalBox, StatusPill, TaskRow, shortTitle } from "./bits";
@@ -19,6 +19,7 @@ import { UsageTab } from "./UsageTab";
 import { OutputThumb } from "../OutputThumb";
 
 export function TaskPanel({ id }: { id: string }) {
+  useCatalog();
   const b = useB();
   const { wsId } = useBoardCtx();
   const ui = useUI();
@@ -97,7 +98,7 @@ export function TaskPanel({ id }: { id: string }) {
             <button className="trow" onClick={() => ui.openChat(m.id)}>
               <Avatar name={m.name} color={m.avatar_color} size={28} />
               <span className="spacer"><b>{m.name}</b><br />
-                <span className="hint">{m.kind === "manager" ? "Manager" : SKILL_LABEL[m.skill ?? ""]}{t.borrowed && g ? ", helping " + (visibleMember(b, g.manager_id)?.name ?? "a manager") : ""}, {memberStatus(b, m).t}</span>
+                <span className="hint">{m.kind === "manager" ? "Manager" : skillLabel(m.skill ?? "")}{t.borrowed && g ? ", helping " + (visibleMember(b, g.manager_id)?.name ?? "a manager") : ""}, {memberStatus(b, m).t}</span>
               </span>
               <span className="pill">Chat</span>
             </button>

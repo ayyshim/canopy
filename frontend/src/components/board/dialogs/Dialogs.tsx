@@ -1,10 +1,11 @@
 "use client";
 
+import { useCatalog, skillLabel } from "@/lib/catalog";
 import { useEffect, useState } from "react";
 import { resolveSignal } from "@/lib/board/actions";
 import { account, computer, fmtTokens, payload, personName, visibleMember } from "@/lib/board/derive";
 import { useUI } from "@/lib/board/ui";
-import { SKILL_LABEL, isHidden, type MemberView } from "@/lib/types";
+import { isHidden, type MemberView } from "@/lib/types";
 import { useB } from "../context";
 import { goalLabel } from "../panels/bits";
 import { AccessDialog } from "./AccessDialog";
@@ -41,6 +42,7 @@ export function Dialogs() {
 }
 
 function SummaryDialog() {
+  useCatalog();
   const b = useB();
   const ui = useUI();
   const done = b.tasks.filter((t) => t.status === "done").length;
@@ -85,7 +87,7 @@ function SummaryDialog() {
       <ul className="list">
         {per.map((x) => (
           <li key={x.m.id}>
-            <span className="spacer">{x.m.name}, {x.m.kind === "manager" ? "Manager" : SKILL_LABEL[x.m.skill ?? ""]}<br /><span className="hint">{x.m.model}, billed to whoever gave the work</span></span>
+            <span className="spacer">{x.m.name}, {x.m.kind === "manager" ? "Manager" : skillLabel(x.m.skill ?? "")}<br /><span className="hint">{x.m.model}, billed to whoever gave the work</span></span>
             <b className="tnum">{fmtTokens(x.tok)} tokens</b><span className="hint tnum" style={{ width: 40, textAlign: "right" }}>{Math.round((x.tok / total) * 100)}%</span>
           </li>
         ))}

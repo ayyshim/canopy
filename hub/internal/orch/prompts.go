@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"canopy/hub/internal/core"
+	"canopy/hub/internal/domain"
 	"canopy/hub/internal/store/db"
 	"canopy/shared/protocol"
 )
@@ -27,6 +28,9 @@ func systemPrompt(st *wsState, m db.Member, mounts []protocol.Mount, notes []db.
 	skill := ""
 	if m.Skill != nil {
 		skill = " Your skill: " + *m.Skill + "."
+		if base := domain.BaseRole(*m.Skill); base != "" && base != *m.Skill {
+			skill = " Your skill: " + domain.SkillLabel(*m.Skill) + " (" + *m.Skill + ", works like a " + base + ")."
+		}
 	}
 	fmt.Fprintf(&b, "You are %s, %s in the Canopy workspace %q.%s\n", m.Name, role, st.ws.Name, skill)
 	if st.ws.About != "" {
@@ -133,7 +137,8 @@ func planPrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Note)
 	}
 	b.WriteString(attachmentsLine(taskAttachments(st, t)))
 	b.WriteString("\nPlan this goal. Call read_notes first if earlier plans or decisions could help.\n")
-	b.WriteString("Then call submit_plan with tasks. Each task: key (short id), title, skill (developer, reviewer, researcher, designer or writer), steps (3–6 short steps), depends_on (keys), directories it needs ({path, mode: read or read_write}).\n")
+	b.WriteString("Then call submit_plan with tasks. Each task: key (short id), title, skill (a key from the list below: a base role or a subcategory; staff match by exact key first, then by base role), steps (3–6 short steps), depends_on (keys), directories it needs ({path, mode: read or read_write}).\n")
+	b.WriteString("\nSkill keys you can use (plus the base roles developer, reviewer, researcher, designer, writer):\n" + domain.CatalogSummary())
 	writeTeam(&b, st, m)
 	b.WriteString("\nWorkspace directories:\n")
 	for _, d := range st.dirs {
@@ -194,7 +199,8 @@ func triagePrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Not
 		b.WriteString("- none yet\n")
 	}
 	b.WriteString("\nRead the request, the goal, its plan note and the finished tasks. Then split the request into tasks for your staff and call assign_tasks. ")
-	b.WriteString("Each task: key (short id), title, skill (developer, reviewer, researcher, designer or writer), steps (3–6 short steps), depends_on (keys), directories it needs ({path, mode: read or read_write}).\n")
+	b.WriteString("Each task: key (short id), title, skill (a key from the list below: a base role or a subcategory; staff match by exact key first, then by base role), steps (3–6 short steps), depends_on (keys), directories it needs ({path, mode: read or read_write}).\n")
+	b.WriteString("\nSkill keys you can use (plus the base roles developer, reviewer, researcher, designer, writer):\n" + domain.CatalogSummary())
 	b.WriteString("Do NOT edit code, write files or do the work yourself. Your job is only to hand it to staff.\n")
 	writeTeam(&b, st, m)
 	b.WriteString("\nAfter assign_tasks succeeds, call complete_task with a one-line summary of who got what. If the request needs no work, call complete_task with no_work_reason.\n")

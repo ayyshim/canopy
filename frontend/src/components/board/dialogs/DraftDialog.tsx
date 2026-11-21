@@ -1,11 +1,12 @@
 "use client";
 
+import { GoodAtPicker } from "@/components/GoodAtPicker";
 import { useState } from "react";
 import { approveDraft, pendingDrafts, rejectDraft } from "@/lib/board/proposals";
 import { useBoard } from "@/lib/board/store";
 import { useUI } from "@/lib/board/ui";
 import { isAdmin, visibleMember } from "@/lib/board/derive";
-import { SKILL_LABEL, type StaffProposalView } from "@/lib/types";
+import { type StaffProposalView } from "@/lib/types";
 import { useB, useBoardCtx } from "../context";
 import { Markdown } from "../panels/bits";
 
@@ -62,10 +63,8 @@ function DraftForm({ p, nav }: { p: StaffProposalView; nav: { at: number; total:
         <div className="pgrid">
           <label className="field"><span>Name</span>
             <input className="input" value={name} onChange={(e) => setName(e.target.value)} readOnly={!editable} /></label>
-          <label className="field"><span>Role</span>
-            <select className="input" value={role} onChange={(e) => setRole(e.target.value)} disabled={!editable}>
-              {Object.entries(SKILL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select></label>
+          <div className="field"><span>Good at</span>
+            <GoodAtPicker value={role} onChange={setRole} disabled={!editable} /></div>
         </div>
       )}
       {isNew && <p className="hint">Reports to {manager}.</p>}

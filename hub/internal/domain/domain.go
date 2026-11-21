@@ -14,17 +14,6 @@ const (
 	ReadWrite = "read_write"
 )
 
-var Skills = []string{"developer", "reviewer", "researcher", "designer", "writer"}
-
-func ValidSkill(s string) bool {
-	for _, k := range Skills {
-		if k == s {
-			return true
-		}
-	}
-	return false
-}
-
 // CLIs Canopy can drive, with their models (most capable first). v1 drives Claude Code only.
 type CLIModel struct {
 	ID    string `json:"id"`
@@ -164,7 +153,8 @@ func normalize(s string) string {
 
 // Suggest returns the fallback directory suggestions for a skill (SPEC "Suggestion rules").
 // limit, when non-nil, is the manager's access: suggestions are clamped to it.
-func Suggest(skill string, dirs []Dir, workspaceName string, limit []Grant) []Grant {
+func Suggest(skillKey string, dirs []Dir, workspaceName string, limit []Grant) []Grant {
+	skill := BaseRole(skillKey)
 	var out []Grant
 	add := func(d Dir, mode, reason string) {
 		out = append(out, Grant{DirectoryID: d.ID, Mode: mode, Reason: reason})

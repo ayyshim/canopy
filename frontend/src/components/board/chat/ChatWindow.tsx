@@ -1,11 +1,12 @@
 "use client";
 
+import { useCatalog, skillLabel } from "@/lib/catalog";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { loadActivity, loadChat, markChatRead, sendChat } from "@/lib/board/actions";
 import { chatLocked, clock, computer, computerFor, fmtTokens, memberStatus, visibleMember } from "@/lib/board/derive";
 import { useBoard } from "@/lib/board/store";
 import { useUI, type ChatWin } from "@/lib/board/ui";
-import { isHidden, SKILL_LABEL, type ChatMessageView, type MemberView } from "@/lib/types";
+import { isHidden, type ChatMessageView, type MemberView } from "@/lib/types";
 import { useB, useBoardCtx } from "../context";
 import { Avatar } from "../icons";
 import { ChatSettings } from "./ChatSettings";
@@ -24,10 +25,11 @@ function greeting(b: ReturnType<typeof useB>, m: MemberView): string {
     return `Hi, I’m ${m.name}. Give me a goal and I’ll plan it with ${staff.length ? staff.join(" and ") : "independent staff"}. ${goals.length ? `Right now I’m on “${goals[0].title}”.` : "I’m free right now."}`;
   }
   const boss = m.reports_to ? visibleMember(b, m.reports_to)?.name : undefined;
-  return `Hi, I’m ${m.name}, ${boss ? `a ${SKILL_LABEL[m.skill ?? ""]?.toLowerCase()} on ${boss}’s staff` : `independent ${SKILL_LABEL[m.skill ?? ""]?.toLowerCase()}`}. ${t ? `I’m working on “${t.title}”.` : "I’m waiting for a task."}`;
+  return `Hi, I’m ${m.name}, ${boss ? `a ${skillLabel(m.skill ?? "")?.toLowerCase()} on ${boss}’s staff` : `independent ${skillLabel(m.skill ?? "")?.toLowerCase()}`}. ${t ? `I’m working on “${t.title}”.` : "I’m waiting for a task."}`;
 }
 
 export function ChatWindow({ win, index }: { win: ChatWin; index: number }) {
+  useCatalog();
   const b = useB();
   const { wsId, me, send } = useBoardCtx();
   const ui = useUI();
@@ -125,7 +127,7 @@ export function ChatWindow({ win, index }: { win: ChatWin; index: number }) {
         <Avatar name={m.name} color={m.avatar_color} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <b>{m.name}</b>
-          <div className="sub">{m.kind === "manager" ? "Manager" : SKILL_LABEL[m.skill ?? ""]}{boss ? ", works for " + boss.name : m.kind === "staff" ? ", independent" : ""}</div>
+          <div className="sub">{m.kind === "manager" ? "Manager" : skillLabel(m.skill ?? "")}{boss ? ", works for " + boss.name : m.kind === "staff" ? ", independent" : ""}</div>
           <div className="stat" style={{ marginTop: 2 }}><span className={`dot ${st.k}`} /> {st.t}</div>
         </div>
         <button className="mine" aria-expanded={jump} onClick={() => setJump(!jump)} title="Jump to a message you sent"><ListIcon /><b>{mine.length}</b></button>
@@ -272,6 +274,7 @@ function Thread({ m, msgs, typing, jump, mine, greet }: { m: MemberView; msgs: C
 
 /** MemberList is the left column of the full-screen chat. */
 function MemberList({ current }: { current: string }) {
+  useCatalog();
   const b = useB();
   const ui = useUI();
   const ms = b.members.filter((x) => !isHidden(x)) as MemberView[];
@@ -282,7 +285,7 @@ function MemberList({ current }: { current: string }) {
       <li key={x.id}>
         <button aria-current={x.id === current} onClick={() => { if (x.id !== current) { ui.closeChat(current); ui.openChat(x.id, { full: true }); } }}>
           <Avatar name={x.name} color={x.avatar_color} size={28} />
-          <span style={{ minWidth: 0 }}><span className="nm">{x.name}</span><span className="rl"><span className={`dot ${st.k}`} style={{ marginRight: 5 }} />{x.kind === "manager" ? "Manager" : SKILL_LABEL[x.skill ?? ""]}</span></span>
+          <span style={{ minWidth: 0 }}><span className="nm">{x.name}</span><span className="rl"><span className={`dot ${st.k}`} style={{ marginRight: 5 }} />{x.kind === "manager" ? "Manager" : skillLabel(x.skill ?? "")}</span></span>
           {un > 0 && <span className="ub">{un}</span>}
         </button>
       </li>

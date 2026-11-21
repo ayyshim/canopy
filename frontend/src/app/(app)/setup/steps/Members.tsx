@@ -1,5 +1,7 @@
 "use client";
 
+import { baseRole, useCatalog, skillLabel } from "@/lib/catalog";
+import { GoodAtPicker } from "@/components/GoodAtPicker";
 import { useState } from "react";
 import { Avatar } from "@/components/board/icons";
 import { Markdown } from "@/components/board/panels/bits";
@@ -7,7 +9,6 @@ import { SkillPicker } from "@/components/skills/Skills";
 import { defaultInstructions } from "@/components/board/chat/ChatSettings";
 import { newKey, type PickedDir, type SetupMember, type SetupPayload } from "@/lib/setup/state";
 import { clamp, suggest } from "@/lib/setup/suggest";
-import { SKILL_LABEL } from "@/lib/types";
 import type { StepProps } from "../Setup";
 import { MembersChat, type ChatMember } from "./MembersChat";
 
@@ -49,6 +50,7 @@ export function tidyGrants(p: SetupPayload, dirs: PickedDir[]): SetupPayload {
 }
 
 export function Members({ p, set, dirs, errors, orgId, computer }: StepProps) {
+  useCatalog();
   const [mode, setMode] = useState<"hand" | "chat">("hand");
   const managers = p.members.filter((m) => m.kind === "manager");
   const independent = p.members.filter((m) => m.kind === "staff" && !m.reports_to_key);
@@ -84,7 +86,7 @@ export function Members({ p, set, dirs, errors, orgId, computer }: StepProps) {
       <Avatar name={m.name || "?"} color={m.kind === "manager" ? "#14322A" : "#0E9AA7"} />
       <span style={{ minWidth: 0 }}>
         <span className="nm">{m.name || "Needs a name"}{m.kind === "manager" ? <span className="tag">MANAGER</span> : null}</span>
-        <span className="md">{m.kind === "manager" ? "Takes goals and leads staff" : SKILL_LABEL[m.skill] ?? "Staff"}{m.skill_keys.length > 0 ? ` · ${m.skill_keys.length} skill${m.skill_keys.length === 1 ? "" : "s"}` : ""}</span>
+        <span className="md">{m.kind === "manager" ? "Takes goals and leads staff" : skillLabel(m.skill) ?? "Staff"}{m.skill_keys.length > 0 ? ` · ${m.skill_keys.length} skill${m.skill_keys.length === 1 ? "" : "s"}` : ""}</span>
       </span>
     </button>
   );
@@ -156,10 +158,8 @@ function Row({ m, p, update, remove, canRemove, error }: RowProps) {
         <input className="input" value={m.name} aria-invalid={!!error} onChange={(e) => update(m.key, { name: e.target.value })} placeholder={m.kind === "manager" ? "Atlas" : "Pike"} /></label>
       {m.kind === "staff" && (
         <>
-          <label className="field"><span className="lbl">Good at</span>
-            <select className="input" value={m.skill} onChange={(e) => update(m.key, { skill: e.target.value, instructions: m.instructions === defaultInstructions("staff", m.skill) ? defaultInstructions("staff", e.target.value) : m.instructions })}>
-              {Object.entries(SKILL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select></label>
+          <div className="field"><span className="lbl">Good at</span>
+            <GoodAtPicker value={m.skill} onChange={(v) => update(m.key, { skill: v, instructions: m.instructions === defaultInstructions("staff", m.skill) ? defaultInstructions("staff", v) : m.instructions })} /></div>
           <label className="field"><span className="lbl">Reports to</span>
             <select className="input" value={m.reports_to_key} onChange={(e) => update(m.key, { reports_to_key: e.target.value, ...(e.target.value ? { isolated: false } : {}) })}>
               <option value="">Anyone</option>
@@ -199,7 +199,7 @@ function Access({ m, p, dirs, update }: { m: SetupMember; p: SetupPayload; dirs:
   const boss = m.reports_to_key ? p.members.find((x) => x.key === m.reports_to_key) : undefined;
   const pool = dirs.filter((d) => !boss || boss.all_directories || boss.grants.some((g) => g.directory_key === d.key));
   const by = boss ? boss.name || "Their manager" : "Canopy";
-  const writes = ["developer", "designer", "writer"].includes(m.skill);
+  const writes = ["developer", "designer", "writer"].includes(baseRole(m.skill));
   return (
     <div className="accrow">
       <span className="k">Can use</span>
@@ -221,7 +221,7 @@ function Access({ m, p, dirs, update }: { m: SetupMember; p: SetupPayload; dirs:
           <button type="button" className="linkbtn" onClick={() => update(m.key, { grants_by: "suggested" })}>Let {by} choose again</button>
         </>
       ) : <span className="pill info">Chosen by {by}</span>}
-      <span className="why">{m.grants_by === "you" ? `Only the ticked folders are shared with ${m.name || "this person"}.` : `${m.name || "This person"} ${WHY[m.skill] ?? "gets only what is needed"}. Everything else stays hidden.`}</span>
+      <span className="why">{m.grants_by === "you" ? `Only the ticked folders are shared with ${m.name || "this person"}.` : `${m.name || "This person"} ${WHY[baseRole(m.skill)] ?? "gets only what is needed"}. Everything else stays hidden.`}</span>
     </div>
   );
 }
