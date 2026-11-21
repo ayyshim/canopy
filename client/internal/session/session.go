@@ -438,6 +438,25 @@ func (s *Session) cliSessionID() string {
 	return s.cliSID
 }
 
+// outputName is p's slash path under dir, or just its file name when it is elsewhere.
+func outputName(dir, p string) string {
+	if n, ok := outputs.Name(dir, p); ok {
+		return n
+	}
+	return filepath.Base(p)
+}
+
+// submitName keeps the folder path for files inside the current task's outputs folder.
+func (s *Session) submitName(p string) string {
+	s.mu.Lock()
+	t := s.outTask
+	s.mu.Unlock()
+	if t == nil {
+		return filepath.Base(p)
+	}
+	return outputName(filepath.Join(s.workDir(), "outputs", t.String()), p)
+}
+
 // watchOutputs reports files saved to the task's outputs folder.
 func (s *Session) watchOutputs(taskID uuid.UUID) {
 	s.mu.Lock()
@@ -459,7 +478,7 @@ func (s *Session) watchOutputs(taskID uuid.UUID) {
 			slog.Warn("upload output", "file", p, "err", err)
 			return
 		}
-		s.m.send(protocol.TFileWritten, protocol.FileWritten{SessionID: s.id, TaskID: &taskID, Path: p, Name: filepath.Base(p), Size: size,
+		s.m.send(protocol.TFileWritten, protocol.FileWritten{SessionID: s.id, TaskID: &taskID, Path: p, Name: outputName(dir, p), Size: size,
 			SHA256: sha, Mime: blobs.MimeOf(p), BlobKey: blobs.Key(sha)})
 	})
 	if err != nil {
@@ -756,7 +775,7 @@ func (s *Session) prepareOutput(raw json.RawMessage) json.RawMessage {
 		}
 		return fail("Couldn’t upload the file: " + err.Error())
 	}
-	in["name"], in["sha256"], in["size"], in["mime"], in["blob_key"] = filepath.Base(path), sha, size, blobs.MimeOf(path), blobs.Key(sha)
+	in["name"], in["sha256"], in["size"], in["mime"], in["blob_key"] = s.submitName(path), sha, size, blobs.MimeOf(path), blobs.Key(sha)
 	b, _ := json.Marshal(in)
 	return b
 }
