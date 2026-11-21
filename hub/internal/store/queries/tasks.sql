@@ -52,3 +52,6 @@ UPDATE tasks SET nudges = 0 WHERE id = $1;
 
 -- name: SetTaskDirs :one
 UPDATE tasks SET required_dirs = $2 WHERE id = $1 RETURNING *;
+
+-- name: GetTaskByNumber :one
+SELECT * FROM tasks WHERE workspace_id = $1 AND number = $2;

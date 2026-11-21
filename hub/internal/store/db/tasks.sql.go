@@ -152,6 +152,50 @@ func (q *Queries) GetTask(ctx context.Context, id uuid.UUID) (Task, error) {
 	return i, err
 }
 
+const getTaskByNumber = `-- name: GetTaskByNumber :one
+SELECT id, workspace_id, goal_id, member_id, kind, title, description, skill, status, progress, depends_on, steps, current_step, required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, summary, plan_key, started_at, finished_at, created_at, updated_at, nudges, number FROM tasks WHERE workspace_id = $1 AND number = $2
+`
+
+type GetTaskByNumberParams struct {
+	WorkspaceID uuid.UUID
+	Number      int32
+}
+
+func (q *Queries) GetTaskByNumber(ctx context.Context, arg GetTaskByNumberParams) (Task, error) {
+	row := q.db.QueryRow(ctx, getTaskByNumber, arg.WorkspaceID, arg.Number)
+	var i Task
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.GoalID,
+		&i.MemberID,
+		&i.Kind,
+		&i.Title,
+		&i.Description,
+		&i.Skill,
+		&i.Status,
+		&i.Progress,
+		&i.DependsOn,
+		&i.Steps,
+		&i.CurrentStep,
+		&i.RequiredDirs,
+		&i.Borrowed,
+		&i.AttributedUserID,
+		&i.CreatedBy,
+		&i.CreatedByMember,
+		&i.ParentTaskID,
+		&i.Summary,
+		&i.PlanKey,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Nudges,
+		&i.Number,
+	)
+	return i, err
+}
+
 const getTaskForUpdate = `-- name: GetTaskForUpdate :one
 SELECT id, workspace_id, goal_id, member_id, kind, title, description, skill, status, progress, depends_on, steps, current_step, required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, summary, plan_key, started_at, finished_at, created_at, updated_at, nudges, number FROM tasks WHERE id = $1 FOR UPDATE
 `

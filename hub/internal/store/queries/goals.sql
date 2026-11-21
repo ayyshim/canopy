@@ -76,3 +76,6 @@ RETURNING *;
 
 -- name: ListGoalsMovedSince :many
 SELECT * FROM goals WHERE workspace_id = $1 AND updated_at >= $2 ORDER BY updated_at DESC LIMIT 20;
+
+-- name: GetGoalByNumber :one
+SELECT * FROM goals WHERE workspace_id = $1 AND number = $2;

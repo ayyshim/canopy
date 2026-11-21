@@ -88,6 +88,34 @@ func (q *Queries) GetNote(ctx context.Context, id uuid.UUID) (Note, error) {
 	return i, err
 }
 
+const getNoteByNumber = `-- name: GetNoteByNumber :one
+SELECT id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number FROM notes WHERE workspace_id = $1 AND number = $2
+`
+
+type GetNoteByNumberParams struct {
+	WorkspaceID uuid.UUID
+	Number      int32
+}
+
+func (q *Queries) GetNoteByNumber(ctx context.Context, arg GetNoteByNumberParams) (Note, error) {
+	row := q.db.QueryRow(ctx, getNoteByNumber, arg.WorkspaceID, arg.Number)
+	var i Note
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.GoalID,
+		&i.Kind,
+		&i.Title,
+		&i.Body,
+		&i.AuthorUserID,
+		&i.AuthorMemberID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Number,
+	)
+	return i, err
+}
+
 const goalNote = `-- name: GoalNote :one
 SELECT id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number FROM notes WHERE goal_id = $1 AND kind = $2 ORDER BY created_at DESC LIMIT 1
 `

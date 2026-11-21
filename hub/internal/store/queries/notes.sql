@@ -19,3 +19,6 @@ DELETE FROM notes WHERE id = $1;
 
 -- name: GoalNote :one
 SELECT * FROM notes WHERE goal_id = $1 AND kind = $2 ORDER BY created_at DESC LIMIT 1;
+
+-- name: GetNoteByNumber :one
+SELECT * FROM notes WHERE workspace_id = $1 AND number = $2;

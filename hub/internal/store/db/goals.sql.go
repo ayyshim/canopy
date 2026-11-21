@@ -137,6 +137,46 @@ func (q *Queries) GetGoal(ctx context.Context, id uuid.UUID) (Goal, error) {
 	return i, err
 }
 
+const getGoalByNumber = `-- name: GetGoalByNumber :one
+SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, number FROM goals WHERE workspace_id = $1 AND number = $2
+`
+
+type GetGoalByNumberParams struct {
+	WorkspaceID uuid.UUID
+	Number      int32
+}
+
+func (q *Queries) GetGoalByNumber(ctx context.Context, arg GetGoalByNumberParams) (Goal, error) {
+	row := q.db.QueryRow(ctx, getGoalByNumber, arg.WorkspaceID, arg.Number)
+	var i Goal
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.ManagerID,
+		&i.Title,
+		&i.DoneWhen,
+		&i.Color,
+		&i.Status,
+		&i.Summary,
+		&i.CreatedBy,
+		&i.PlannedAt,
+		&i.FinishedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RunnerID,
+		&i.Base,
+		&i.Branch,
+		&i.Snapshot,
+		&i.Shipped,
+		&i.ShowTasks,
+		&i.DoneBy,
+		&i.ReadyAt,
+		&i.Description,
+		&i.Number,
+	)
+	return i, err
+}
+
 const giveDraftGoal = `-- name: GiveDraftGoal :one
 UPDATE goals SET status = 'planning', created_at = now() WHERE id = $1 AND status = 'draft'
 RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, number
