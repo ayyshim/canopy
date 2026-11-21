@@ -43,9 +43,9 @@ func (q *Queries) AddNoteRevision(ctx context.Context, arg AddNoteRevisionParams
 
 const createNote = `-- name: CreateNote :one
 INSERT INTO notes (id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, number,
-  visibility, color, board_x, board_y)
+  visibility, color, board_x, board_y, job_id)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, next_item_number($2, 'note'),
-  coalesce($9, 'shared'), coalesce($10, 'yellow'), $11, $12)
+  coalesce($9, 'shared'), coalesce($10, 'yellow'), $11, $12, $13)
 RETURNING id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number, visibility, color, board_x, board_y, edited_by_user_id, edited_by_member_id, job_id
 `
 
@@ -62,6 +62,7 @@ type CreateNoteParams struct {
 	Color          interface{}
 	BoardX         *float64
 	BoardY         *float64
+	JobID          *uuid.UUID
 }
 
 func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, error) {
@@ -78,6 +79,7 @@ func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, e
 		arg.Color,
 		arg.BoardX,
 		arg.BoardY,
+		arg.JobID,
 	)
 	var i Note
 	err := row.Scan(

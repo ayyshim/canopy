@@ -47,6 +47,9 @@ func (e *Engine) now() time.Time {
 	if e.Now != nil {
 		return e.Now()
 	}
+	if e.Core != nil && e.Core.Now != nil {
+		return e.Core.Now()
+	}
 	return time.Now()
 }
 

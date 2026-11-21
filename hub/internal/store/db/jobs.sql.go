@@ -698,9 +698,13 @@ UPDATE jobs SET title = coalesce($1, title), brief = coalesce($2, brief),
   token_cap_per_run = CASE WHEN $18::boolean THEN $19 ELSE token_cap_per_run END,
   token_cap_per_month = CASE WHEN $18::boolean THEN $20 ELSE token_cap_per_month END,
   notify = coalesce($21, notify),
-  memory_note_id = coalesce($22, memory_note_id),
-  consecutive_failures = coalesce($23, consecutive_failures)
-WHERE id = $24 RETURNING id, workspace_id, title, kind, status, pause_reason, brief, owner_user_id, manager_id, assignee_member_id, runner_id, cron, timezone, next_run_at, last_run_at, missed_policy, catchup_window_secs, run_timeout_secs, token_cap_per_run, token_cap_per_month, notify, ends_at, max_runs, required_dirs, memory_note_id, consecutive_failures, created_by, created_at, updated_at
+  ends_at = CASE WHEN $22::boolean THEN $23 ELSE ends_at END,
+  max_runs = CASE WHEN $22::boolean THEN $24 ELSE max_runs END,
+  required_dirs = coalesce($25, required_dirs),
+  manager_id = coalesce($26, manager_id),
+  memory_note_id = coalesce($27, memory_note_id),
+  consecutive_failures = coalesce($28, consecutive_failures)
+WHERE id = $29 RETURNING id, workspace_id, title, kind, status, pause_reason, brief, owner_user_id, manager_id, assignee_member_id, runner_id, cron, timezone, next_run_at, last_run_at, missed_policy, catchup_window_secs, run_timeout_secs, token_cap_per_run, token_cap_per_month, notify, ends_at, max_runs, required_dirs, memory_note_id, consecutive_failures, created_by, created_at, updated_at
 `
 
 type UpdateJobParams struct {
@@ -725,6 +729,11 @@ type UpdateJobParams struct {
 	TokenCapPerRun      *int64
 	TokenCapPerMonth    *int64
 	Notify              *string
+	SetEnds             bool
+	EndsAt              *time.Time
+	MaxRuns             *int32
+	RequiredDirs        []byte
+	ManagerID           *uuid.UUID
 	MemoryNoteID        *uuid.UUID
 	ConsecutiveFailures *int32
 	ID                  uuid.UUID
@@ -753,6 +762,11 @@ func (q *Queries) UpdateJob(ctx context.Context, arg UpdateJobParams) (Job, erro
 		arg.TokenCapPerRun,
 		arg.TokenCapPerMonth,
 		arg.Notify,
+		arg.SetEnds,
+		arg.EndsAt,
+		arg.MaxRuns,
+		arg.RequiredDirs,
+		arg.ManagerID,
 		arg.MemoryNoteID,
 		arg.ConsecutiveFailures,
 		arg.ID,

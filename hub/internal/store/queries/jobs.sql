@@ -26,6 +26,10 @@ UPDATE jobs SET title = coalesce(sqlc.narg(title), title), brief = coalesce(sqlc
   token_cap_per_run = CASE WHEN sqlc.arg(set_caps)::boolean THEN sqlc.narg(token_cap_per_run) ELSE token_cap_per_run END,
   token_cap_per_month = CASE WHEN sqlc.arg(set_caps)::boolean THEN sqlc.narg(token_cap_per_month) ELSE token_cap_per_month END,
   notify = coalesce(sqlc.narg(notify), notify),
+  ends_at = CASE WHEN sqlc.arg(set_ends)::boolean THEN sqlc.narg(ends_at) ELSE ends_at END,
+  max_runs = CASE WHEN sqlc.arg(set_ends)::boolean THEN sqlc.narg(max_runs) ELSE max_runs END,
+  required_dirs = coalesce(sqlc.narg(required_dirs), required_dirs),
+  manager_id = coalesce(sqlc.narg(manager_id), manager_id),
   memory_note_id = coalesce(sqlc.narg(memory_note_id), memory_note_id),
   consecutive_failures = coalesce(sqlc.narg(consecutive_failures), consecutive_failures)
 WHERE id = sqlc.arg(id) RETURNING *;
