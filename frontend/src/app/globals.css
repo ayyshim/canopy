@@ -867,3 +867,18 @@ body.on-board.tray-open .toasts{bottom:314px}
 .stage.fs-overlay{position:fixed;inset:0;z-index:90;background:var(--stage)}
 .stage:fullscreen{background:var(--stage)}
 @media (max-width:640px){.ptools .pname{display:none}.ptools>button{padding:0 9px}.pstage{padding:0 0 0}.pframe{border-radius:0}}
+
+/* IDs and references */
+.idtag{display:inline-block;font-size:10.5px;font-weight:600;line-height:1.35;padding:0 5px;border-radius:5px;background:var(--soft);color:var(--muted);border:1px solid var(--edge);letter-spacing:.01em;white-space:nowrap;vertical-align:1px}
+.node .idtag{margin-right:5px}
+.reflink{display:inline;padding:0 4px;border:1px solid color-mix(in srgb,var(--link) 35%,transparent);border-radius:5px;background:color-mix(in srgb,var(--link) 9%,transparent);color:var(--link);font-size:.9em;font-weight:600;cursor:pointer;text-decoration:none}
+.reflink:hover{background:color-mix(in srgb,var(--link) 18%,transparent)}
+.reflink:focus-visible{outline:2px solid var(--link);outline-offset:1px}
+.bub .reflink{color:inherit;border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.18)}
+.refpick{position:absolute;z-index:60;min-width:240px;max-width:min(380px,calc(100vw - 24px));max-height:240px;overflow:auto;background:var(--card);border:1px solid var(--edge);border-radius:10px;box-shadow:var(--shadow);padding:4px;color:var(--ink)}
+.refpick button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0;background:none;color:inherit;padding:6px 8px;border-radius:7px;font:inherit;font-size:13px;cursor:pointer}
+.refpick button[aria-selected=true],.refpick button:hover{background:var(--soft)}
+.refpick .rt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.refpick .rs{font-size:11px;color:var(--muted)}
+.refpick .none{padding:8px;font-size:13px;color:var(--muted)}
+.refwrap{position:relative}

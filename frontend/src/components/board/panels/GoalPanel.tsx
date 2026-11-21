@@ -1,5 +1,6 @@
 "use client";
 
+import { IdTag, CopyId } from "../IdTag";
 import { useState } from "react";
 import { markGoalDone, shipGoal, showGoalTasks } from "@/lib/board/actions";
 import {
@@ -82,7 +83,7 @@ function GivenGoalPanel({ g }: { g: GoalView }) {
       ]} />}>
         <div className="row" style={{ alignItems: "flex-start" }}>
           <span className="gdot" style={{ background: g.color, width: 14, height: 14, marginTop: 4 }} />
-          <div style={{ minWidth: 0 }}><span className="tag">Goal</span><h2>{g.title}</h2></div>
+          <div style={{ minWidth: 0 }}><span className="row" style={{ gap: 6 }}><span className="tag">Goal</span><IdTag kind="goal" number={g.number} /><CopyId kind="goal" number={g.number} /></span><h2>{g.title}</h2></div>
         </div>
       </PanelHead>
       <PanelBody>

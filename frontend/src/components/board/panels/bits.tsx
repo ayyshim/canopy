@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useBoard } from "@/lib/board/store";
+import { itemOf, refOfHref, remarkRefs } from "@/lib/refs";
 import { moveGoal, resolveSignal } from "@/lib/board/actions";
 import {
   computer, directory, firstName, goalRepos, isAdmin, payload, personName, signalsForTask, task as findTask, visibleMember, whyWaiting,
@@ -11,6 +13,7 @@ import { useUI } from "@/lib/board/ui";
 import type { Board, GoalView, SignalView, TaskView } from "@/lib/types";
 import { useB, useBoardCtx } from "../context";
 import { Avatar } from "../icons";
+import { RefLink } from "../IdTag";
 import { UsageBadge } from "../../ui";
 
 export const shortTitle = (s: string) => (s.length > 34 ? s.slice(0, 32) + "…" : s);
@@ -219,15 +222,19 @@ export type MdLinks = {
 
 /** Markdown renders GitHub-style Markdown. Raw HTML is not rendered and only safe URLs are linked. */
 export function Markdown({ text, className = "mdprev", links }: { text: string; className?: string; links?: MdLinks }) {
+  const board = useBoard((s) => s.board);
+  const refPlugin = useMemo(() => remarkRefs((r) => !!itemOf(board, r)), [board]);
   const src = String(text || "").replace(/\r/g, "");
   if (!src.trim()) return <div className={className}><p className="hint">Nothing written yet.</p></div>;
   return (
     <div className={className}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, refPlugin]}
         components={{
           a: ({ href, children }) => {
             if (!href) return <>{children}</>;
+            const ref = refOfHref(href);
+            if (ref) return <RefLink refr={ref} text={String(children)} />;
             if (links?.relative(href)) {
               return (
                 <a href={href} onClick={(e) => { e.preventDefault(); links.open(href); }} title={`Open ${href}`}>{children}</a>

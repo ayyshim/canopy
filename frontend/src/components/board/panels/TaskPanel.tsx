@@ -1,5 +1,6 @@
 "use client";
 
+import { IdTag, CopyId } from "../IdTag";
 import { useCatalog, skillLabel } from "@/lib/catalog";
 import { useEffect, useState } from "react";
 import { loadActivity, loadTask, postComment } from "@/lib/board/actions";
@@ -67,7 +68,7 @@ export function TaskPanel({ id }: { id: string }) {
         { id: "outputs", label: "Outputs", count: outs.length },
         { id: "discussion", label: "Discussion", count: comments?.length || undefined },
         { id: "usage", label: "Usage" },
-      ]} />}><span className="tag">Task</span><h2>{t.title}</h2></PanelHead>
+      ]} />}><span className="row" style={{ gap: 6 }}><span className="tag">Task</span><IdTag kind="task" number={t.number} /><CopyId kind="task" number={t.number} /></span><h2>{t.title}</h2></PanelHead>
       <PanelBody>
         <TabPanel id="overview" value={tab} idBase="task"><div className="stack">
         <div className="row wrap">

@@ -1,5 +1,6 @@
 "use client";
 
+import { CopyId, IdTag } from "../IdTag";
 import { useState } from "react";
 import { deleteNote, saveNote } from "@/lib/board/actions";
 import { ago, isAdmin, personName, visibleMember } from "@/lib/board/derive";
@@ -27,7 +28,7 @@ export function NotesPanel({ id }: { id: string }) {
         {b.notes.map((n) => (
           <button className="trow" key={n.id} onClick={() => ui.openSide({ type: "notes", id: n.id })}>
             <span className={`pill ${n.kind === "decision" ? "goal" : n.kind === "summary" ? "ok" : ""}`}>{KIND[n.kind]}</span>
-            <span className="spacer">{n.title}</span><span className="hint">{ago(n.updated_at)}</span>
+            <IdTag kind="note" number={n.number} /><span className="spacer">{n.title}</span><span className="hint">{ago(n.updated_at)}</span>
           </button>
         ))}
         {!b.notes.length && <p className="hint">No notes yet.</p>}
@@ -45,7 +46,7 @@ function NoteView({ note, edit }: { note: NoteView; edit: () => void }) {
   const mine = note.author_user_id === me || isAdmin(b);
   return (
     <>
-      <PanelHead><span className="tag">{KIND[note.kind]}</span><h2>{note.title}</h2></PanelHead>
+      <PanelHead><span className="row" style={{ gap: 6 }}><span className="tag">{KIND[note.kind]}</span><IdTag kind="note" number={note.number} /><CopyId kind="note" number={note.number} /></span><h2>{note.title}</h2></PanelHead>
       <PanelBody>
         <span className="hint">By {author ?? "an agent"}, {ago(note.updated_at)}</span>
         <Markdown text={note.body} />

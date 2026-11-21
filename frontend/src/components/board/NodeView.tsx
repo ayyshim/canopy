@@ -1,5 +1,6 @@
 "use client";
 
+import { IdTag } from "./IdTag";
 import { UsageBadge } from "../ui";
 import { useCatalog, skillLabel } from "@/lib/catalog";
 import { resolveSignal } from "@/lib/board/actions";
@@ -75,7 +76,7 @@ export function NodeView({ n }: { n: Node }) {
       return (
         <div className={`node goal${g.status === "done" ? " done" : g.status === "ready" ? " ready" : g.status === "draft" ? " draft" : ""}${sel ? " sel" : ""}${focusGoal && !sel ? " dim" : ""}${glow}`}
           style={style} role="button" tabIndex={0} onClick={open} onKeyDown={keyOpen(open)}>
-          <span className="gt"><span className="gdot" style={{ background: g.color }} /><span>{g.title}</span></span>
+          <span className="gt"><span className="gdot" style={{ background: g.color }} /><span><IdTag kind="goal" number={g.number} />{g.title}</span></span>
           <span className="gb">
             <span className="gm"><i style={{ background: mColor }}>{mName.slice(0, 1)}</i>{mName}</span>
             <span className="tr"><i style={{ width: `${goalProgress(b, g)}%`, background: g.color }} /></span>
@@ -243,7 +244,7 @@ export function NodeView({ n }: { n: Node }) {
       return (
         <div className={`node task ${t.status}${red ? " blocked" : ""}${dimFor(t.id)}${sel ? " sel" : ""}${glow}`} style={{ ...style, ["--gc" as string]: g?.color ?? "transparent" }}
           role="button" tabIndex={0} onClick={openTask} onKeyDown={keyOpen(openTask)} aria-label={`Task ${t.title}`}>
-          <span className="tt">{t.title}</span><span className="ft">{ft}<UsageBadge usage={t.usage} compact /></span>
+          <span className="tt"><IdTag kind="task" number={t.number} />{t.title}</span><span className="ft">{ft}<UsageBadge usage={t.usage} compact /></span>
           {q && <span className="pin" aria-label="Open question">?</span>}
         </div>
       );
