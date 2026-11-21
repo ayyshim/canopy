@@ -128,7 +128,12 @@ func (f *dcFixture) send(t *testing.T, n notify.Note) error {
 		t.Fatal(err)
 	}
 	rows, _ := f.e.store.ListNotifications(f.ctx, f.ws.ID)
-	return f.ch.Send(f.ctx, rows[len(rows)-1])
+	row := rows[len(rows)-1]
+	err := f.ch.Send(f.ctx, row)
+	// Keep the shared test database clear for the dispatcher test.
+	_ = f.e.store.MarkDiscordSent(f.ctx, row.ID)
+	_ = f.e.store.MarkPushSent(f.ctx, row.ID)
+	return err
 }
 
 func (f *dcFixture) addOutput(t *testing.T, name, mimeType, body string) uuid.UUID {

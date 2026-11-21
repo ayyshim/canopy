@@ -399,3 +399,11 @@ the API only returns a masked URL, and only `discord.com`, `ptb.`, `canary.` and
 are accepted, so the hub can't be aimed at other hosts. The webhook is stored in the database in plain text
 because the hub must send with it; it is not a provider key. Git problems have no signal of their own yet; only
 agent errors reach the `errors` kind.
+
+## Discord channel
+
+`notify.DiscordChannel` sends each outbox row to its workspace's webhook. Username and embed title are the row title; images from outputs (png, jpg, gif, webp, up to 8 MB) are attached and the first becomes the embed image, other outputs link to the viewer (`?output=`). The role is pinged only for `questions`. In forum mode a goal's first message creates a thread and its id is kept in `goals.discord_thread_id`; if that thread is gone a new one is made.
+
+A 401/404 from Discord turns Discord off for the workspace (the webhook is cleared, other settings stay) and opens one `error` signal for its admins. Other rejected messages are not retried; the error shows in `discord_last_error`. The test endpoint sends a real message with a generated sample image and ignores the kind filters.
+
+The avatar is the workspace logo, served without login at `/api/v1/public/workspaces/{id}/logo` and only while Discord is on for that workspace. It is sent only when PUBLIC_URL is an https address that is not local. Members have no picture, so the workspace logo is used for all of them.
