@@ -1,6 +1,7 @@
 package orch
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -8,6 +9,7 @@ import (
 
 	"canopy/hub/internal/core"
 	"canopy/hub/internal/domain"
+	"canopy/hub/internal/jobs"
 	"canopy/hub/internal/store/db"
 	"canopy/shared/protocol"
 )
@@ -414,4 +416,26 @@ func handoff(st *wsState, k sessKey, notes []db.Note) string {
 		}
 	}
 	return b.String() + "\n"
+}
+
+// jobPrompt adds the job tools for a session working on a job goal.
+func jobPrompt(ctx context.Context, q *db.Queries, st *wsState, goalID *uuid.UUID) string {
+	if goalID == nil || st.goal[*goalID].JobRunID == nil {
+		return ""
+	}
+	job, _, ok, err := jobs.GoalRun(ctx, q, *goalID)
+	if err != nil || !ok {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("\nThis is a scheduled job run. Nobody watches it, so do not ask questions; make sensible choices. Job tools:\n")
+	if job.Kind == "continuous" {
+		b.WriteString("- job_memory_read(): the brief, summary and full run log of this job.\n")
+		b.WriteString("- job_run_read(n): one earlier run by number, with its summary and output names.\n")
+		b.WriteString("- job_run_report(title, summary, result, new_memory): before complete_task. result is ok, attention (a person should look) or nothing_to_do. new_memory is the full rewritten summary, at most 5,000 characters; it is saved only if this run succeeds.\n")
+	} else {
+		b.WriteString("- job_run_report(title, summary, result): before complete_task. result is ok, attention (a person should look) or nothing_to_do. This job has no memory.\n")
+	}
+	b.WriteString("Always call job_run_report, then complete_task.\n")
+	return b.String()
 }

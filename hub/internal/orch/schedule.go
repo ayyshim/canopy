@@ -339,7 +339,7 @@ func (o *Orch) deliver(ctx context.Context, t *core.Tx, st *wsState, runner uuid
 		return err
 	}
 	msg := protocol.StartSession{SessionID: s.ID, WorkspaceID: st.ws.ID, MemberID: m.ID, MemberName: m.Name, CLI: m.Cli, Model: m.Model,
-		Resume: resume, AppendSystemPrompt: systemPrompt(st, m, mounts, notes), Work: work, Mounts: mounts, Turn: &turn,
+		Resume: resume, AppendSystemPrompt: systemPrompt(st, m, mounts, notes) + jobPrompt(ctx, q, st, k.goalID()), Work: work, Mounts: mounts, Turn: &turn,
 		UseAPIKey: o.useKey(st, runner, m.Cli)}
 	t.AfterCommit(func() { o.send(runner, protocol.TStartSession, msg) })
 	return nil
