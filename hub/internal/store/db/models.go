@@ -216,6 +216,7 @@ type Goal struct {
 	HandoverApprovedAt *time.Time
 	Number             int32
 	DiscordThreadID    string
+	JobRunID           *uuid.UUID
 }
 
 type GoalEvent struct {
@@ -289,6 +290,60 @@ type ItemCounter struct {
 	WorkspaceID uuid.UUID
 	Kind        string
 	Last        int32
+}
+
+type Job struct {
+	ID                  uuid.UUID
+	WorkspaceID         uuid.UUID
+	Title               string
+	Kind                string
+	Status              string
+	PauseReason         string
+	Brief               string
+	OwnerUserID         *uuid.UUID
+	ManagerID           *uuid.UUID
+	AssigneeMemberID    *uuid.UUID
+	RunnerID            *uuid.UUID
+	Cron                string
+	Timezone            string
+	NextRunAt           *time.Time
+	LastRunAt           *time.Time
+	MissedPolicy        string
+	CatchupWindowSecs   int32
+	RunTimeoutSecs      int32
+	TokenCapPerRun      *int64
+	TokenCapPerMonth    *int64
+	Notify              string
+	EndsAt              *time.Time
+	MaxRuns             *int32
+	RequiredDirs        []byte
+	MemoryNoteID        *uuid.UUID
+	ConsecutiveFailures int32
+	CreatedBy           *uuid.UUID
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+}
+
+type JobRun struct {
+	ID            uuid.UUID
+	JobID         uuid.UUID
+	Number        int32
+	ScheduledFor  time.Time
+	Trigger       string
+	Status        string
+	SkipReason    string
+	Attempt       int32
+	GoalID        *uuid.UUID
+	StartedAt     *time.Time
+	FinishedAt    *time.Time
+	Tokens        int64
+	Result        string
+	Title         string
+	Summary       string
+	Error         string
+	PendingMemory *string
+	MemoryAfter   *string
+	CreatedAt     time.Time
 }
 
 type LogLine struct {
@@ -387,6 +442,7 @@ type Note struct {
 	BoardY           *float64
 	EditedByUserID   *uuid.UUID
 	EditedByMemberID *uuid.UUID
+	JobID            *uuid.UUID
 }
 
 type NoteRevision struct {
