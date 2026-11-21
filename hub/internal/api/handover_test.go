@@ -25,6 +25,7 @@ type handoverEnv struct {
 	rn      db.Runner
 	blobs   blob.Dir
 	ws      string
+	orgID   string
 	wsID    uuid.UUID
 	goal    uuid.UUID
 	riley   uuid.UUID
@@ -37,7 +38,7 @@ func newHandoverEnv(t *testing.T, auto bool) *handoverEnv {
 	owner, me := e.signup("Handover Co")
 	org := currentOrg(me)
 	ws, d := e.createWorkspace(owner, org, setupPayload())
-	h := &handoverEnv{t: t, e: e, owner: owner, ws: ws, wsID: uuid.MustParse(ws)}
+	h := &handoverEnv{t: t, e: e, owner: owner, ws: ws, orgID: org, wsID: uuid.MustParse(ws)}
 	h.riley, h.dev = uuid.MustParse(str(members(d)["Riley"]["id"])), uuid.MustParse(str(members(d)["Dev"]["id"]))
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
@@ -205,6 +206,15 @@ func TestHandoverBriefBeforeReady(t *testing.T) {
 	}
 
 	// Changes go back to the manager, who resubmits; then the person approves.
+	// Another member of the workspace can't see or answer the brief.
+	bob, _ := h.e.joinOrg(h.owner, h.orgID, "Bob")
+	if r := bob.do("POST", "/api/v1/signals/"+sig.ID.String()+"/resolve", map[string]any{"action": "approve"}); r.Status != http.StatusNotFound {
+		t.Errorf("another member approved the brief: %d %v", r.Status, r.Body)
+	}
+	if h.goalNow().HandoverApprovedAt != nil {
+		t.Fatal("brief approved by someone else")
+	}
+
 	h.resolve(sig, map[string]any{"action": "changes", "note": "Say how to check it."})
 	sig = h.submit(task, "# Brief\n\nSecond draft, with how to check.")
 	if g := h.goalNow(); g.Status != "active" || g.HandoverApprovedAt != nil {

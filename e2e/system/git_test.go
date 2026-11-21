@@ -108,6 +108,21 @@ func TestGoalBranchShipsAsPullRequest(t *testing.T) {
 	}
 
 	// Merging into feat/export-ui is refused while Riley has uncommitted work there.
+	// The approved brief is the goal's summary and its "Summary:" note, and is what ships as the PR body.
+	var summary, noteBody string
+	for _, g := range list(b["goals"]) {
+		if str(m(g)["id"]) == goal {
+			summary = str(m(g)["summary"])
+		}
+	}
+	for _, n := range list(b["notes"]) {
+		if str(m(n)["kind"]) == "summary" {
+			noteBody = str(m(n)["body"])
+		}
+	}
+	if !strings.HasPrefix(summary, "# Handover") || summary != noteBody {
+		t.Errorf("summary should be the approved brief: %q (note %q)", summary, noteBody)
+	}
 	res := owner.do("POST", "/api/v1/goals/"+goal+"/ship", map[string]any{"action": "merge"}, 200)
 	if str(res["status"]) != "dirty" {
 		t.Fatalf("merge with uncommitted work: %v", res)
