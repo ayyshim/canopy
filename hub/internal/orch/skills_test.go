@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"canopy/hub/internal/domain"
 	"canopy/hub/internal/store/db"
 )
 
@@ -51,5 +52,21 @@ func TestSystemPromptInjectsSkills(t *testing.T) {
 	}
 	if mp := systemPrompt(st, mgr, nil, nil); !strings.Contains(mp, "assign_skill") || strings.Contains(mp, "Skill: Go style") {
 		t.Errorf("manager prompt:\n%s", mp)
+	}
+}
+
+func TestSystemPromptIncludesGuide(t *testing.T) {
+	skill := "technology.backend"
+	staff := db.Member{ID: uuid.New(), Name: "Dev", Kind: "staff", Skill: &skill, Instructions: "Be kind."}
+	st := &wsState{ws: db.Workspace{Name: "Payments"}, member: map[uuid.UUID]db.Member{staff.ID: staff}}
+	p := systemPrompt(st, staff, nil, nil)
+	guide := domain.SkillGuide("developer")
+	i, j := strings.Index(p, "How you work as Developer:\n"+guide), strings.Index(p, "Instructions from your admins")
+	if i < 0 || j < i {
+		t.Errorf("guide missing or after admin instructions:\n%s", p)
+	}
+	none := db.Member{ID: uuid.New(), Name: "Pat", Kind: "staff"}
+	if p := systemPrompt(st, none, nil, nil); strings.Contains(p, "How you work as") {
+		t.Error("member without a skill got a guide")
 	}
 }
