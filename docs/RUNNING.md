@@ -316,6 +316,7 @@ Other environment variables:
 | `RUNNER_HOSTS` | | Extra names for the runner certificate, comma separated |
 | `COOKIE_SECURE` | `true` (`false` on plain localhost) | Set `false` only for plain http that isn’t localhost |
 | `TRUST_PROXY` | `false` | `true` behind a proxy that sets `X-Forwarded-For` |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | made on first start and kept in the database | Web push keys; set both to use your own (keep them when moving hubs, or every device must turn push on again) |
 | `AUTH_RATE_LIMIT` | `10` | Sign-in attempts per minute per address |
 | `DEFAULT_SESSION_LIMIT` | `2000000` | Token limit per session for new organizations |
 | `DEFAULT_WEEKLY_LIMIT` | `20000000` | Weekly token limit for new organizations |
@@ -392,6 +393,16 @@ make release   # the two release binaries for every platform, in dist/
 To re-record the board GIF in the README, run `scripts/record-board.sh`. It starts its own Postgres,
 hub, web app and client (with `CANOPY_CLAUDE_BIN` set to fakeclaude), plays a goal with
 `[tasks:3] [ask] [slow:2]`, and writes `docs/assets/board.gif`. It needs docker, go, node, pnpm and ffmpeg.
+
+## Web push
+
+The hub sends push notifications to the web app, including buttons (Allow, Deny, Approve) that answer
+without opening Canopy. It makes its VAPID keys on first start. Browsers only allow push on **https** or
+`http://localhost`, so a hub reached by plain http on another address can't use it. On iPhone and iPad
+the app must be added to the Home Screen first, and notification buttons don't show there.
+Each person turns push on per device, and can pause it with `snooze_until` on `PATCH /api/v1/me`.
+On a real hub the hub accepts only the push services browsers use (Google, Mozilla, Apple, Microsoft);
+with `COOKIE_SECURE=false` it takes any address, for local testing.
 
 ## Prototype pages
 

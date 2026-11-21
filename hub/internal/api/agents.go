@@ -476,48 +476,56 @@ func (s *Server) handleResolveSignal(w http.ResponseWriter, r *http.Request) err
 	if err != nil {
 		return err
 	}
-	ctx := r.Context()
-	uid := identity(r).UserID
-	sig, err := s.Store.GetSignal(ctx, signalID)
-	if store.IsNotFound(err) {
-		return httpx.ErrNotFound
-	} else if err != nil {
+	var in orch.Resolution
+	if err := httpx.Decode(r, &in); err != nil {
 		return err
 	}
-	view, err := s.loadWSView(ctx, sig.WorkspaceID, uid)
+	out, err := s.resolveSignalAs(r.Context(), identity(r).UserID, signalID, in)
 	if err != nil {
 		return err
 	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"signal": core.ToSignal(out)})
+	return nil
+}
+
+// resolveSignalAs answers a signal for a person after the same checks the board uses:
+// they must see it, and only a directory's owner decides owner changes and sync conflicts.
+func (s *Server) resolveSignalAs(ctx context.Context, uid, signalID uuid.UUID, in orch.Resolution) (db.Signal, error) {
+	sig, err := s.Store.GetSignal(ctx, signalID)
+	if store.IsNotFound(err) {
+		return db.Signal{}, httpx.ErrNotFound
+	} else if err != nil {
+		return db.Signal{}, err
+	}
+	view, err := s.loadWSView(ctx, sig.WorkspaceID, uid)
+	if err != nil {
+		return db.Signal{}, err
+	}
 	if !view.seesSignal(sig) {
-		return httpx.ErrNotFound
+		return db.Signal{}, httpx.ErrNotFound
 	}
 	if sig.Type == "owner_change" || sig.Type == "sync_conflict" {
 		var p map[string]any
 		_ = json.Unmarshal(sig.Payload, &p)
 		if fmt.Sprint(p["owner_user_id"]) != uid.String() {
-			return httpx.NewError(http.StatusForbidden, "forbidden", "Only the directory’s owner can decide this.")
+			return db.Signal{}, httpx.NewError(http.StatusForbidden, "forbidden", "Only the directory’s owner can decide this.")
 		}
 	}
-	var in orch.Resolution
-	if err := httpx.Decode(r, &in); err != nil {
-		return err
-	}
 	if s.Resolver == nil {
-		return httpx.NewError(http.StatusServiceUnavailable, "unavailable", "Agents aren’t running on this hub.")
+		return db.Signal{}, httpx.NewError(http.StatusServiceUnavailable, "unavailable", "Agents aren’t running on this hub.")
 	}
 	out, err := s.Resolver.Resolve(ctx, signalID, &uid, in)
 	switch {
 	case errors.Is(err, orch.ErrSignalClosed):
-		return httpx.NewError(http.StatusConflict, "already_resolved", err.Error())
+		return db.Signal{}, httpx.NewError(http.StatusConflict, "already_resolved", err.Error())
 	case errors.Is(err, orch.ErrBadAction):
-		return httpx.Validation{"action": err.Error()}.Err()
+		return db.Signal{}, httpx.Validation{"action": err.Error()}.Err()
 	case errors.Is(err, orch.ErrNoteRequired):
-		return httpx.Validation{"note": err.Error()}.Err()
+		return db.Signal{}, httpx.Validation{"note": err.Error()}.Err()
 	case err != nil:
-		return err
+		return db.Signal{}, err
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"signal": core.ToSignal(out)})
-	return nil
+	return out, nil
 }
 
 // handleMemberActivity is the chat window's Activity tab: sessions and the live log.

@@ -15,7 +15,9 @@ type Config struct {
 	Addr        string // listen address, e.g. ":8080"
 	DatabaseURL string
 	RedisURL    string // optional; enables shared rate limiting
-	PublicURL   string // browser-facing origin, used in email links and OAuth redirects
+	// VAPIDPublic and VAPIDPrivate override the web push keys kept in the database.
+	VAPIDPublic, VAPIDPrivate string
+	PublicURL                 string // browser-facing origin, used in email links and OAuth redirects
 
 	CookieSecure bool // false only for plain-http local development
 	TrustProxy   bool // read client IP from X-Forwarded-For (behind Caddy)
@@ -52,10 +54,11 @@ func FromEnv() (Config, error) {
 		RedisURL:    os.Getenv("REDIS_URL"),
 		PublicURL:   env("PUBLIC_URL", "http://localhost:8000"),
 		SMTPAddr:    os.Getenv("SMTP_ADDR"),
-		SMTPFrom:    env("SMTP_FROM", "Canopy <no-reply@canopy.local>"),
-		SetupToken:  os.Getenv("HUB_SETUP_TOKEN"),
-		SessionTTL:  30 * 24 * time.Hour,
-		ResetTTL:    30 * time.Minute,
+		VAPIDPublic: os.Getenv("VAPID_PUBLIC_KEY"), VAPIDPrivate: os.Getenv("VAPID_PRIVATE_KEY"),
+		SMTPFrom:   env("SMTP_FROM", "Canopy <no-reply@canopy.local>"),
+		SetupToken: os.Getenv("HUB_SETUP_TOKEN"),
+		SessionTTL: 30 * 24 * time.Hour,
+		ResetTTL:   30 * time.Minute,
 	}
 	c.RunnerAddr = env("RUNNER_ADDR", ":8443")
 	c.RunnerURL = os.Getenv("RUNNER_URL")

@@ -407,3 +407,22 @@ agent errors reach the `errors` kind.
 A 401/404 from Discord turns Discord off for the workspace (the webhook is cleared, other settings stay) and opens one `error` signal for its admins. Other rejected messages are not retried; the error shows in `discord_last_error`. The test endpoint sends a real message with a generated sample image and ignores the kind filters.
 
 The avatar is the workspace logo, served without login at `/api/v1/public/workspaces/{id}/logo` and only while Discord is on for that workspace. It is sent only when PUBLIC_URL is an https address that is not local. Members have no picture, so the workspace logo is used for all of them.
+
+## Web push and one-tap actions
+
+The hub keeps one VAPID key pair in `vapid_keys`, made on first start like the CA (`VAPID_PUBLIC_KEY` and
+`VAPID_PRIVATE_KEY` override it). A browser endpoint is unique and belongs to one person; subscribing again
+from the same browser under another account moves it, and only the owner can delete it. The hub posts to the
+endpoint a browser gives it, so on a real hub (`COOKIE_SECURE=true`) only known push services are accepted,
+which stops it being used to reach internal addresses. A 404 or 410 from the push service removes the
+subscription; other failures retry through the dispatcher, and a row counts as sent when any device took it.
+Snooze (`users.snooze_until`) skips push only; email and Discord are unchanged.
+
+Buttons carry a random token, stored as a hash, bound to one person, one signal and a list of actions, valid
+for 24 hours and used once. `POST /notifications/act` skips the CSRF header (a service worker has none) but
+needs the person's session cookie and the token. It then runs the board's own checks (the person must see the
+signal; only a directory's owner decides owner changes) and calls `Resolve`. A refused attempt doesn't use the
+token up. Only safe actions get buttons: allow or deny, grant or deny, approve, and a question's suggested
+answer (picked on the hub, never sent by the client). "Always allow" and "ask for changes" stay in the app.
+`GET /me` has `waiting` (open things that notify the person) for the app badge; resolved cards already reach
+open tabs as `signal.resolved` with the signal id.
