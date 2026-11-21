@@ -159,6 +159,38 @@ func (q *Queries) ClearWorkspaceDiscord(ctx context.Context, id uuid.UUID) (Work
 	return i, err
 }
 
+const countAgentNotificationsForMember = `-- name: CountAgentNotificationsForMember :one
+SELECT count(*) FROM notification_outbox WHERE member_id = $1 AND media @> '{"agent": true}' AND created_at > $2
+`
+
+type CountAgentNotificationsForMemberParams struct {
+	MemberID  *uuid.UUID
+	CreatedAt time.Time
+}
+
+func (q *Queries) CountAgentNotificationsForMember(ctx context.Context, arg CountAgentNotificationsForMemberParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countAgentNotificationsForMember, arg.MemberID, arg.CreatedAt)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countAgentNotificationsForTask = `-- name: CountAgentNotificationsForTask :one
+SELECT count(*) FROM notification_outbox WHERE task_id = $1 AND media @> '{"agent": true}' AND created_at > $2
+`
+
+type CountAgentNotificationsForTaskParams struct {
+	TaskID    *uuid.UUID
+	CreatedAt time.Time
+}
+
+func (q *Queries) CountAgentNotificationsForTask(ctx context.Context, arg CountAgentNotificationsForTaskParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countAgentNotificationsForTask, arg.TaskID, arg.CreatedAt)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteOldNotifications = `-- name: DeleteOldNotifications :execrows
 DELETE FROM notification_outbox WHERE created_at < $1
 `

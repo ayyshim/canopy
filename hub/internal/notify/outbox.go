@@ -25,6 +25,10 @@ type Media struct {
 	Links     []Link      `json:"links"`
 	// Test marks the sample message from the settings page; it skips the kind filter.
 	Test bool `json:"test,omitempty"`
+	// Agent marks a message an agent chose to send with the notify tool (counted for limits).
+	Agent bool `json:"agent,omitempty"`
+	// Level is the agent's own label: info, milestone or needs_attention.
+	Level string `json:"level,omitempty"`
 }
 
 // Note is one notification to queue.
