@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Avatar } from "@/components/board/icons";
 import { Field } from "@/components/Field";
 import { Section } from "@/components/PageShell";
+import { PushDevice } from "@/components/PushDevice";
 import { api, ApiError, hardNavigate, ROLE_LABEL, type Me } from "@/lib/api";
 import { useMe } from "@/lib/me";
 import { setTheme, useTheme, type Theme } from "@/lib/theme";
@@ -109,6 +110,7 @@ export function Account() {
           </tbody>
         </table>
         {prefMsg && <span className="err" role="status">{prefMsg}</span>}
+        <PushDevice />
         <span className="hint">Desktop notifications show while Canopy is open in a background tab. Emails go out when something has waited two minutes. The daily summary arrives each morning with goals that moved, decisions waiting and your usage.</span>
       </Section>
       <Section title="Password" sub="Changing it signs you out everywhere else.">
