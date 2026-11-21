@@ -828,3 +828,15 @@ body.on-board.tray-open .toasts{bottom:314px}
 .stage.fs-overlay{position:fixed;inset:0;z-index:90;background:var(--stage)}
 .stage:fullscreen{background:var(--stage)}
 @media (max-width:640px){.ptools .pname{display:none}.ptools>button{padding:0 9px}.pstage{padding:0 0 0}.pframe{border-radius:0}}
+
+/* Two-step sign-in */
+.code-input{font-size:var(--t-xl);letter-spacing:.35em;text-align:center}
+.code-input::placeholder{letter-spacing:.35em;color:var(--faint)}
+.authcard .steps{margin:0;padding-left:var(--sp-5);display:flex;flex-direction:column;gap:var(--sp-4);font-size:var(--t-md);line-height:var(--lh-md)}
+.authcard .steps li{display:flex;flex-direction:column;gap:var(--sp-2)}
+.authcard .qr{align-self:center;background:#fff;padding:var(--sp-2);border-radius:var(--r-md);border:1px solid var(--edge);max-width:100%;height:auto}
+.authcard .copybox code{white-space:normal;overflow-wrap:anywhere}
+.recovery-codes{list-style:none;margin:0;padding:var(--sp-3);display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2) var(--sp-4);border-radius:var(--r-md);background:var(--surface-2);border:1px solid var(--edge);font-size:var(--t-md)}
+.check-row{display:flex;gap:var(--sp-2);align-items:center;min-height:44px;font-size:var(--t-md)}
+.check-row input{accent-color:var(--green);width:20px;height:20px;margin:0}
+.authcard .linkbtn{min-height:32px}

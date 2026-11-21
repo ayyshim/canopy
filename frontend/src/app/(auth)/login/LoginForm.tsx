@@ -11,6 +11,7 @@ import { pendingStep, twoFactorPath, type TwoFactorPending } from "@/lib/twoFact
 const OAUTH_ERRORS: Record<string, string> = {
   oauth_failed: "We couldn’t sign you in with that provider. Try again.",
   oauth_unverified: "Verify your email with that provider first, then try again.",
+  too_many_codes: "Too many wrong codes, so we signed you out. Sign in again to try once more.",
   oauth_no_account: "No Canopy account uses that email yet. Create an organization to get started.",
 };
 
