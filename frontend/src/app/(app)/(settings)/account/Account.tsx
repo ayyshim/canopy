@@ -12,7 +12,7 @@ import { useMe } from "@/lib/me";
 import { TwoStepSection } from "./TwoStepSection";
 import { setTheme, useTheme, type Theme } from "@/lib/theme";
 
-const PREFS: [string, string][] = [["questions", "Questions and approvals"], ["progress", "Progress updates"], ["errors", "Errors"], ["goal_ready", "Goal ready"], ["daily", "Daily summary"]];
+const PREFS: [string, string][] = [["questions", "Questions and approvals"], ["progress", "Progress updates"], ["errors", "Errors"], ["goal_ready", "Goal ready"], ["jobs", "Scheduled jobs"], ["daily", "Daily summary"]];
 
 /** /account: profile, theme, notifications, password, organizations. */
 export function Account() {

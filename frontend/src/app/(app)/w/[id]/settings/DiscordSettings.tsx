@@ -6,7 +6,7 @@ import { api, ApiError } from "@/lib/api";
 
 type Discord = { configured: boolean; webhook: string; kinds: Record<string, boolean>; role_id: string; forum: boolean; last_ok_at: string | null; last_error: string };
 
-const KINDS: [string, string][] = [["questions", "Questions and approvals"], ["progress", "Progress updates"], ["goal_ready", "Goal ready or done"], ["errors", "Errors"]];
+const KINDS: [string, string][] = [["questions", "Questions and approvals"], ["progress", "Progress updates"], ["goal_ready", "Goal ready or done"], ["errors", "Errors"], ["jobs", "Scheduled jobs"]];
 
 const when = (iso: string) => new Date(iso).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
 
