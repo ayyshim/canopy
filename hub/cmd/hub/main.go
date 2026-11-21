@@ -457,7 +457,14 @@ func serve(args []string) error {
 	app.Download, app.Install = web.Download(), web.InstallScript(cfg.PublicURL)
 	go orchestrator.Run(ctx)
 	go notify.New(st, mailer, cfg.PublicURL).Run(ctx)
-	go notify.NewDispatcher(st).Run(ctx)
+	vapid, err := notify.LoadVAPID(ctx, st, cfg.VAPIDPublic, cfg.VAPIDPrivate)
+	if err != nil {
+		return err
+	}
+	app.VAPID, app.Push = vapid, notify.NewPushChannel(st, vapid, cfg.PublicURL)
+	dispatcher := notify.NewDispatcher(st)
+	dispatcher.Push = app.Push
+	go dispatcher.Run(ctx)
 	go func() {
 		t := time.NewTicker(30 * time.Second)
 		defer t.Stop()

@@ -48,6 +48,7 @@ func (d *Dispatcher) Run(ctx context.Context) {
 		d.Pass(ctx)
 		if d.Now().Sub(cleaned) > time.Hour {
 			cleaned = d.Now()
+			_ = d.Store.Queries.DeleteExpiredPushActionTokens(ctx, d.Now())
 			if _, err := d.Store.Queries.DeleteOldNotifications(ctx, d.Now().Add(-keepFor)); err != nil {
 				slog.WarnContext(ctx, "delete old notifications", "err", err)
 			}
