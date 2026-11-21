@@ -119,14 +119,14 @@ export function SetupForm() {
         <h1>Set up two-step sign-in</h1>
         <p className="lead">Everyone on Canopy signs in with a code from an authenticator app, as well as a password.</p>
       </div>
-      <ol className="steps">
+      <ol className="tf-steps">
         <li>
           <b>Scan this code</b> with an authenticator app such as 1Password, Google Authenticator or Authy.
           {/* The QR code is a data: URL made by the hub, so next/image adds nothing. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className="qr" src={setup.qr_png} width={200} height={200} alt="QR code for your authenticator app" />
-          <span className="hint">Can’t scan it? Enter this key in your app instead.</span>
-          <div className="copybox">
+          <span className="hint" style={{ display: "block" }}>Can’t scan it? Enter this key in your app instead.</span>
+          <div className="keybox">
             <code className="mono" aria-label="Setup key">{setup.secret}</code>
             <CopyButton text={setup.secret} />
           </div>
