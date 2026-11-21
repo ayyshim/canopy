@@ -49,3 +49,15 @@ export function unauthorizedPath(err: { code: string; next?: string }): string {
   if (err.code === "two_factor_required" && (err.next === "enroll" || err.next === "verify")) return twoFactorPath(err.next);
   return "/login";
 }
+
+export const LOW_RECOVERY_CODES = 2;
+
+export function lowOnRecoveryCodes(left: number): boolean {
+  return left <= LOW_RECOVERY_CODES;
+}
+
+/** The hint shown when few recovery codes remain. */
+export function recoveryHint(left: number): string {
+  if (left <= 0) return "You have no recovery codes left. Get new ones so you can sign in if you lose your phone.";
+  return `You have ${left} recovery ${left === 1 ? "code" : "codes"} left. Get new ones so you can sign in if you lose your phone.`;
+}

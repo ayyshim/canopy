@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cleanCode, cleanRecoveryCode, isCodeComplete, pendingStep, recoveryCodesText, unauthorizedPath, safeNext, twoFactorPath } from "./twoFactor.ts";
+import { cleanCode, cleanRecoveryCode, isCodeComplete, lowOnRecoveryCodes, pendingStep, recoveryCodesText, recoveryHint, unauthorizedPath, safeNext, twoFactorPath } from "./twoFactor.ts";
 
 test("cleanCode keeps digits and stops at six", () => {
   assert.equal(cleanCode("123 456"), "123456");
@@ -46,4 +46,16 @@ test("unauthorizedPath follows the two-factor 401", () => {
   assert.equal(unauthorizedPath({ code: "two_factor_required", next: "enroll" }), "/two-factor/setup");
   assert.equal(unauthorizedPath({ code: "two_factor_required", next: "verify" }), "/two-factor");
   assert.equal(unauthorizedPath({ code: "unauthorized" }), "/login");
+});
+
+test("lowOnRecoveryCodes flags two or fewer", () => {
+  assert.equal(lowOnRecoveryCodes(3), false);
+  assert.equal(lowOnRecoveryCodes(2), true);
+  assert.equal(lowOnRecoveryCodes(0), true);
+});
+
+test("recoveryHint uses plain words", () => {
+  assert.match(recoveryHint(1), /1 recovery code left/);
+  assert.match(recoveryHint(2), /2 recovery codes left/);
+  assert.match(recoveryHint(0), /no recovery codes left/);
 });

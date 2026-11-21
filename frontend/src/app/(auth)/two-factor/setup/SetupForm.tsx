@@ -4,12 +4,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { CodeInput } from "@/components/CodeInput";
 import { CopyButton } from "@/components/CopyButton";
+import { RecoveryCodes } from "@/components/RecoveryCodes";
 import { focusFirstInvalid } from "@/components/Field";
 import { logOut } from "@/components/LogoutButton";
 import { api, ApiError, hardNavigate, landingPath, type Me } from "@/lib/api";
 import {
   isCodeComplete,
-  recoveryCodesText,
   safeNext,
   twoFactorPath,
   type TwoFactorEnabled,
@@ -65,15 +65,6 @@ export function SetupForm() {
     }
   }
 
-  function download(codes: string[]) {
-    const url = URL.createObjectURL(new Blob([recoveryCodesText(codes)], { type: "text/plain" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "canopy-recovery-codes.txt";
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   if (failed) {
     return (
       <div className="authcard">
@@ -84,7 +75,6 @@ export function SetupForm() {
     );
   }
   if (done) {
-    const all = done.codes.join("\n");
     return (
       <div className="authcard">
         <div className="stack-sm">
@@ -93,13 +83,7 @@ export function SetupForm() {
             If you lose your phone, each of these codes lets you sign in once. We show them only now, so keep them somewhere safe.
           </p>
         </div>
-        <ul className="recovery-codes mono" aria-label="Recovery codes">
-          {done.codes.map((c) => <li key={c}>{c}</li>)}
-        </ul>
-        <div className="row">
-          <CopyButton text={all} label="Copy codes" />
-          <button type="button" className="btn btn-sm" onClick={() => download(done.codes)}>Download</button>
-        </div>
+        <RecoveryCodes codes={done.codes} />
         <label className="check-row">
           <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} />
           <span>I saved these codes</span>
