@@ -364,6 +364,7 @@ const (
 	ToolReadBoard      = "read_board"
 	ToolGetAttachments = "get_attachments"
 	ToolAttachFile     = "attach_file"
+	ToolNotify         = "notify"
 )
 
 // ---- Directory mirror (DECISIONS: Directories) ----

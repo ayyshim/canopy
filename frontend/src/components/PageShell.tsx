@@ -84,6 +84,7 @@ export function PageShell({ title, children, workspace }: { title: string; child
               {link(`/w/${ws.id}/settings?tab=members`, "Members")}
               {link(`/w/${ws.id}/settings?tab=skills`, "Skills")}
               {link(`/w/${ws.id}/settings?tab=access`, "Access")}
+              {link(`/w/${ws.id}/settings?tab=notifications`, "Notifications")}
               {orgAdmin && link(`/w/${ws.id}/settings?tab=danger`, "Danger zone")}
             </>
           )}

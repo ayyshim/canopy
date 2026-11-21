@@ -55,6 +55,8 @@ var Defs = []Def{
 		`{"type":"object","properties":{"member":{"type":"string","description":"name of a staff member who reports to you"},"instructions":{"type":"string"},"reason":{"type":"string"}},"required":["member","instructions"]}`},
 	{protocol.ToolGetAttachments, "Download the files attached to your goal and its tasks (images, documents, data) into ./attachments. Returns their paths.",
 		`{"type":"object","properties":{"name":{"type":"string","description":"only this file; leave out for all"}}}`},
+	{protocol.ToolNotify, "Send a short message to the people on this goal, on their phone and in Discord. Only for real milestones (a first working build, a screenshot worth seeing, an artifact you published) or when you are blocked by something outside Canopy. Not for routine steps, and not for what ask_question, submit_output and complete_task already notify about. Limits: 5 per task per hour, 20 per day.",
+		`{"type":"object","properties":{"message":{"type":"string","description":"one or two plain sentences"},"level":{"type":"string","enum":["info","milestone","needs_attention"],"description":"needs_attention is for being blocked; it counts as an error notice"},"files":{"type":"array","items":{"type":"string"},"description":"names of outputs from this task or goal to attach"},"links":{"type":"array","items":{"type":"string"},"description":"https links, such as a published artifact"}},"required":["message"]}`},
 	{protocol.ToolAttachFile, "Attach a file to your goal (default) or your task, so people and other agents on the goal can use it.",
 		`{"type":"object","properties":{"path":{"type":"string"},"to":{"type":"string","enum":["goal","task"]}},"required":["path"]}`},
 }

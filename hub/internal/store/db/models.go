@@ -213,6 +213,7 @@ type Goal struct {
 	HandoverApprovedBy *uuid.UUID
 	HandoverApprovedAt *time.Time
 	Number             int32
+	DiscordThreadID    string
 }
 
 type GoalEvent struct {
@@ -398,6 +399,32 @@ type NoteRevision struct {
 	CreatedAt        time.Time
 }
 
+type NotificationOutbox struct {
+	ID               uuid.UUID
+	OrgID            uuid.UUID
+	WorkspaceID      uuid.UUID
+	MemberID         *uuid.UUID
+	Kind             string
+	Title            string
+	Body             string
+	Link             string
+	SignalID         *uuid.UUID
+	TaskID           *uuid.UUID
+	GoalID           *uuid.UUID
+	ForUserID        *uuid.UUID
+	Recipients       []uuid.UUID
+	Media            []byte
+	DiscordSentAt    *time.Time
+	DiscordAttempts  int32
+	DiscordLastError string
+	DiscordNextAt    time.Time
+	PushSentAt       *time.Time
+	PushAttempts     int32
+	PushLastError    string
+	PushNextAt       time.Time
+	CreatedAt        time.Time
+}
+
 type Organization struct {
 	ID                  uuid.UUID
 	Name                string
@@ -470,6 +497,26 @@ type PendingWrite struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	AppliedAt   *time.Time
+}
+
+type PushActionToken struct {
+	TokenHash []byte
+	UserID    uuid.UUID
+	SignalID  uuid.UUID
+	Actions   []string
+	ExpiresAt time.Time
+	CreatedAt time.Time
+}
+
+type PushSubscription struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	Endpoint  string
+	P256dh    string
+	Auth      string
+	UserAgent string
+	CreatedAt time.Time
+	LastOkAt  *time.Time
 }
 
 type QueuedWork struct {
@@ -673,6 +720,7 @@ type User struct {
 	IsHubAdmin    bool
 	Notifications []byte
 	DailySentOn   pgtype.Date
+	SnoozeUntil   *time.Time
 }
 
 type UserIdentity struct {
@@ -685,16 +733,29 @@ type UserIdentity struct {
 	UpdatedAt time.Time
 }
 
+type VapidKey struct {
+	ID         bool
+	PublicKey  string
+	PrivateKey string
+	CreatedAt  time.Time
+}
+
 type Workspace struct {
-	ID             uuid.UUID
-	OrgID          uuid.UUID
-	Name           string
-	About          string
-	CreatedBy      *uuid.UUID
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	GoalCompletion string
-	LogoKey        *string
+	ID               uuid.UUID
+	OrgID            uuid.UUID
+	Name             string
+	About            string
+	CreatedBy        *uuid.UUID
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	GoalCompletion   string
+	LogoKey          *string
+	DiscordWebhook   string
+	DiscordKinds     []byte
+	DiscordRoleID    string
+	DiscordForum     bool
+	DiscordLastOkAt  *time.Time
+	DiscordLastError string
 }
 
 type WorkspaceAccess struct {

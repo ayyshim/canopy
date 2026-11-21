@@ -447,3 +447,59 @@ per-browser setting. A finished goal's tasks are hidden only by its `show_tasks`
 
 Attachment fields are drop zones: files can be dropped or pasted, up to 25 MB each and 20 per drop (`lib/files.ts`).
 Chat has no file attachments yet, so it has no drop zone. A dropped file outside a zone is ignored, not opened.
+
+## Notification outbox and workspace Discord
+
+Notifications are rows in `notification_outbox`, written by `notify.Enqueue` in the same transaction as the
+change that causes them, so a rolled-back change sends nothing. Signals that need a person queue a row where
+`signal.opened` is emitted; plans, finished tasks, done goals and staff drafts queue their own. Kinds reuse the
+account rows (`questions`, `progress`, `goal_ready`, `errors`); `progress` is new and off by default. Each
+row stores its recipients, picked with the same authz check as email, so a push can never reach someone who
+can't see the work.
+
+A `Dispatcher` sends each row once per channel (Discord, push). It claims rows with `FOR UPDATE SKIP LOCKED`,
+retries up to 5 times with doubling backoff, keeps the last error and deletes rows after 30 days. Channels
+must keep webhook URLs out of the errors they return. Push in `Pref` follows the desktop choice until set.
+
+Each workspace has one Discord webhook. Only workspace and org admins can read or change it (others get 404),
+the API only returns a masked URL, and only `discord.com`, `ptb.`, `canary.` and `discordapp.com` webhook URLs
+are accepted, so the hub can't be aimed at other hosts. The webhook is stored in the database in plain text
+because the hub must send with it; it is not a provider key. Git problems have no signal of their own yet; only
+agent errors reach the `errors` kind.
+
+## Discord channel
+
+`notify.DiscordChannel` sends each outbox row to its workspace's webhook. Username and embed title are the row title; images from outputs (png, jpg, gif, webp, up to 8 MB) are attached and the first becomes the embed image, other outputs link to the viewer (`?output=`). The role is pinged only for `questions`. In forum mode a goal's first message creates a thread and its id is kept in `goals.discord_thread_id`; if that thread is gone a new one is made.
+
+A 401/404 from Discord turns Discord off for the workspace (the webhook is cleared, other settings stay) and opens one `error` signal for its admins. Other rejected messages are not retried; the error shows in `discord_last_error`. The test endpoint sends a real message with a generated sample image and ignores the kind filters.
+
+The avatar is the workspace logo, served without login at `/api/v1/public/workspaces/{id}/logo` and only while Discord is on for that workspace. It is sent only when PUBLIC_URL is an https address that is not local. Members have no picture, so the workspace logo is used for all of them.
+
+## Web push and one-tap actions
+
+The hub keeps one VAPID key pair in `vapid_keys`, made on first start like the CA (`VAPID_PUBLIC_KEY` and
+`VAPID_PRIVATE_KEY` override it). A browser endpoint is unique and belongs to one person; subscribing again
+from the same browser under another account moves it, and only the owner can delete it. The hub posts to the
+endpoint a browser gives it, so on a real hub (`COOKIE_SECURE=true`) only known push services are accepted,
+which stops it being used to reach internal addresses. A 404 or 410 from the push service removes the
+subscription; other failures retry through the dispatcher, and a row counts as sent when any device took it.
+Snooze (`users.snooze_until`) skips push only; email and Discord are unchanged.
+
+Buttons carry a random token, stored as a hash, bound to one person, one signal and a list of actions, valid
+for 24 hours and used once. `POST /notifications/act` skips the CSRF header (a service worker has none) but
+needs the person's session cookie and the token. It then runs the board's own checks (the person must see the
+signal; only a directory's owner decides owner changes) and calls `Resolve`. A refused attempt doesn't use the
+token up. Only safe actions get buttons: allow or deny, grant or deny, approve, and a question's suggested
+answer (picked on the hub, never sent by the client). "Always allow" and "ask for changes" stay in the app.
+`GET /me` has `waiting` (open things that notify the person) for the app badge; resolved cards already reach
+open tabs as `signal.resolved` with the signal id.
+
+## Agents send their own notifications
+
+Managers and staff have a `notify(message, level, files, links)` tool for real milestones and for being blocked
+outside Canopy. It queues a `progress` row (`needs_attention` uses `errors`) titled like every other
+notification, for the goal's person, and marks the row `media.agent` so it can be counted. Limits are 5 per
+task per hour and 20 per member per day; past them the agent is told to use `complete_task` or `ask_question`.
+Files are output names and must belong to the same task or another task on the same goal, so an agent can't
+attach another goal's work. Links must be https. The prompt says not to use it for routine steps or for what
+questions, outputs and task completion already send.

@@ -14,6 +14,7 @@ import (
 
 	"canopy/hub/internal/blob"
 	"canopy/hub/internal/core"
+	"canopy/hub/internal/notify"
 	"canopy/hub/internal/store"
 	"canopy/hub/internal/store/db"
 	"canopy/shared/protocol"
@@ -175,7 +176,13 @@ func emitSignal(ctx context.Context, t *core.Tx, ws db.Workspace, s db.Signal, t
 	} else if core.PersonalSignal(s.Type) {
 		e.AdminOnly = true // a shared computer's limits are for admins
 	}
-	return t.Emit(ctx, e, core.ToSignal(s))
+	if err := t.Emit(ctx, e, core.ToSignal(s)); err != nil {
+		return err
+	}
+	if typ == "signal.opened" {
+		return notify.EnqueueSignal(ctx, t, ws, s)
+	}
+	return nil
 }
 
 // log adds a line to a member's activity.

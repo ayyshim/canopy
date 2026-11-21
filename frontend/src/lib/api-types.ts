@@ -1815,12 +1815,18 @@ export interface components {
             is_hub_admin: boolean;
             providers: string[];
             notifications: components["schemas"]["NotificationPrefs"];
+            /**
+             * Format: date-time
+             * @description Push is paused until then; null when not paused
+             */
+            snooze_until?: string | null;
         };
         NotificationPref: {
             desktop: boolean;
             email: boolean;
+            push: boolean;
         };
-        /** @description Keys are questions, errors, goal_ready and daily. */
+        /** @description Keys are questions, progress, errors, goal_ready and daily. */
         NotificationPrefs: {
             [key: string]: components["schemas"]["NotificationPref"];
         };
@@ -1923,6 +1929,8 @@ export interface components {
             };
         };
         Me: {
+            /** @description Open things that need this person, for the app badge */
+            waiting: number;
             user: components["schemas"]["User"];
             organizations: components["schemas"]["OrgSummary"][];
             /**
@@ -1939,6 +1947,11 @@ export interface components {
             current_password?: string;
             new_password?: string;
             notifications?: components["schemas"]["NotificationPrefs"];
+            /**
+             * Format: date-time
+             * @description A time pauses push; null resumes it; leave it out to keep it
+             */
+            snooze_until?: string | null;
         };
         Organization: {
             /** Format: uuid */

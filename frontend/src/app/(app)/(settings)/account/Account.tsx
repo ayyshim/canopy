@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useState } from "react";
 import { Avatar } from "@/components/board/icons";
 import { Field } from "@/components/Field";
+import { PauseNotifications } from "@/components/PauseNotifications";
 import { Section } from "@/components/PageShell";
+import { PushDevice } from "@/components/PushDevice";
 import { api, ApiError, hardNavigate, ROLE_LABEL, type Me } from "@/lib/api";
 import { useMe } from "@/lib/me";
 import { setTheme, useTheme, type Theme } from "@/lib/theme";
 
-const PREFS: [string, string][] = [["questions", "Questions and approvals"], ["errors", "Errors"], ["goal_ready", "Goal ready"], ["daily", "Daily summary"]];
+const PREFS: [string, string][] = [["questions", "Questions and approvals"], ["progress", "Progress updates"], ["errors", "Errors"], ["goal_ready", "Goal ready"], ["daily", "Daily summary"]];
 
 /** /account: profile, theme, notifications, password, organizations. */
 export function Account() {
@@ -48,7 +50,7 @@ export function Account() {
     }
   }
 
-  async function setPref(key: string, channel: "desktop" | "email", on: boolean) {
+  async function setPref(key: string, channel: "desktop" | "push" | "email", on: boolean) {
     setPrefMsg("");
     try {
       setMe(await api<Me>("PATCH", "/me", { notifications: { [key]: { ...prefs[key], [channel]: on } } }));
@@ -92,14 +94,14 @@ export function Account() {
       </Section>
       <Section title="Notifications" sub="When something needs you and you’re not on the board.">
         <table className="table" style={{ maxWidth: 520 }}>
-          <thead><tr><th /><th>Desktop</th><th>Email</th></tr></thead>
+          <thead><tr><th /><th>Desktop</th><th>Push</th><th>Email</th></tr></thead>
           <tbody>
             {PREFS.map(([k, label]) => (
               <tr key={k}>
                 <td>{label}</td>
-                {(["desktop", "email"] as const).map((c) => (
+                {(["desktop", "push", "email"] as const).map((c) => (
                   <td key={c}>
-                    {k === "daily" && c === "desktop" ? <span className="muted" aria-label="Not available">—</span> : (
+                    {k === "daily" && c !== "email" ? <span className="muted" aria-label="Not available">—</span> : (
                       <label className="toggle"><input type="checkbox" checked={prefs[k]?.[c] ?? false} onChange={(e) => setPref(k, c, e.target.checked)} /> <span className="sr">{label} by {c}</span></label>
                     )}
                   </td>
@@ -109,7 +111,11 @@ export function Account() {
           </tbody>
         </table>
         {prefMsg && <span className="err" role="status">{prefMsg}</span>}
-        <span className="hint">Desktop notifications show while Canopy is open in a background tab. Emails go out when something has waited two minutes. The daily summary arrives each morning with goals that moved, decisions waiting and your usage.</span>
+        <PushDevice />
+        <span className="hint">Desktop notifications show while Canopy is open in a background tab. Push reaches you when Canopy is closed, on each device where you turn it on. Progress updates are off until you choose them. Emails go out when something has waited two minutes. The daily summary arrives each morning with goals that moved, decisions waiting and your usage.</span>
+      </Section>
+      <Section title="Pause notifications" sub="Stops push for a while. Email and Discord carry on.">
+        <PauseNotifications />
       </Section>
       <Section title="Password" sub="Changing it signs you out everywhere else.">
         <form className="row wrap" style={{ alignItems: "flex-end" }} onSubmit={savePassword} noValidate>

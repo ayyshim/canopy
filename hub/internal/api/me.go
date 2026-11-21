@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
@@ -33,6 +34,19 @@ type patchMeRequest struct {
 	CurrentPassword *string      `json:"current_password"`
 	NewPassword     *string      `json:"new_password"`
 	Notifications   notify.Prefs `json:"notifications"`
+	// SnoozeUntil pauses push: a time sets it, null clears it, leaving it out changes nothing.
+	SnoozeUntil optionalTime `json:"snooze_until"`
+}
+
+// optionalTime tells a missing field from an explicit null.
+type optionalTime struct {
+	Set   bool
+	Value *time.Time
+}
+
+func (o *optionalTime) UnmarshalJSON(b []byte) error {
+	o.Set = true
+	return json.Unmarshal(b, &o.Value)
 }
 
 // handlePatchMe updates the profile, switches the current organization and changes the
@@ -59,6 +73,9 @@ func (s *Server) handlePatchMe(w http.ResponseWriter, r *http.Request) error {
 	}
 	if req.NewPassword != nil {
 		checkPassword(v, "new_password", *req.NewPassword)
+	}
+	if t := req.SnoozeUntil.Value; t != nil && t.After(s.now().Add(31*24*time.Hour)) {
+		v.Add("snooze_until", "Pause for at most 30 days.")
 	}
 	for k := range req.Notifications {
 		if !slices.Contains(notify.Kinds, k) {
@@ -115,6 +132,11 @@ func (s *Server) handlePatchMe(w http.ResponseWriter, r *http.Request) error {
 			maps.Copy(prefs, req.Notifications)
 			raw, _ := json.Marshal(prefs)
 			if err := q.SetUserNotifications(ctx, db.SetUserNotificationsParams{ID: id.UserID, Notifications: raw}); err != nil {
+				return err
+			}
+		}
+		if req.SnoozeUntil.Set {
+			if err := q.SetUserSnooze(ctx, db.SetUserSnoozeParams{ID: id.UserID, SnoozeUntil: req.SnoozeUntil.Value}); err != nil {
 				return err
 			}
 		}

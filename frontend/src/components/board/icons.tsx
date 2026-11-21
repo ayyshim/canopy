@@ -34,6 +34,12 @@ export const LogoutIcon = () => (
   </svg>
 );
 
+export const BellIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+    <path d="M4.5 12.5V8a4.5 4.5 0 0 1 9 0v4.5l1.2 1.5H3.3l1.2-1.5ZM7.4 15.8a1.7 1.7 0 0 0 3.2 0" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 export const DotsIcon = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
     <circle cx="4" cy="9" r="1.6" fill="currentColor" />

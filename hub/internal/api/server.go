@@ -17,6 +17,7 @@ import (
 	"canopy/hub/internal/core"
 	"canopy/hub/internal/httpx"
 	"canopy/hub/internal/mail"
+	"canopy/hub/internal/notify"
 	"canopy/hub/internal/pki"
 	"canopy/hub/internal/realtime"
 	"canopy/hub/internal/skills"
@@ -48,7 +49,10 @@ type Server struct {
 	PKI      *pki.CA
 	Blobs    blob.Store
 	Resolver Resolver
-	Mirror   any
+	// Push sends web push; VAPID is the hub's key pair. Nil Push turns the push routes off.
+	Push   *notify.PushChannel
+	VAPID  notify.VAPID
+	Mirror any
 	// Skills fetches library skills from GitHub; nil uses the defaults. Tests point it at a stub.
 	Skills  *skills.Fetcher
 	Version string
@@ -129,6 +133,7 @@ func (s *Server) setupRoutes(r chi.Router) {
 		r.With(auth.RateLimit(s.Limiter, "invite", s.Cfg.AuthRateLimit, s.Cfg.TrustProxy)).
 			Post("/invites/{token}/accept", httpx.Handler(s.handleAcceptInvite))
 		r.Get("/auth/oauth/{provider}/callback", s.handleOAuthCallback)
+		r.Get("/public/workspaces/{wsID}/logo", httpx.Handler(s.handlePublicWorkspaceLogo))
 		r.Get("/preview/{token}/*", httpx.Handler(s.handlePreviewFile))
 		r.Post("/auth/logout", httpx.Handler(s.handleLogout))
 
@@ -145,6 +150,11 @@ func (s *Server) setupRoutes(r chi.Router) {
 			r.Use(auth.RequireUser)
 			r.Get("/me", httpx.Handler(s.handleGetMe))
 			r.Patch("/me", httpx.Handler(s.handlePatchMe))
+			r.Get("/push/key", httpx.Handler(s.handlePushKey))
+			r.Post("/push/subscriptions", httpx.Handler(s.handlePushSubscribe))
+			r.Delete("/push/subscriptions", httpx.Handler(s.handlePushUnsubscribe))
+			r.Post("/push/test", httpx.Handler(s.handlePushTest))
+			r.Post("/notifications/act", httpx.Handler(s.handleNotificationAct))
 			r.Post("/orgs", httpx.Handler(s.handleCreateOrg))
 			r.Get("/orgs/{orgID}", httpx.Handler(s.handleGetOrg))
 			r.Patch("/orgs/{orgID}", httpx.Handler(s.handlePatchOrg))

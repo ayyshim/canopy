@@ -8,6 +8,7 @@ import (
 
 	"canopy/hub/internal/core"
 	"canopy/hub/internal/domain"
+	"canopy/hub/internal/notify"
 	"canopy/hub/internal/skills"
 	"canopy/hub/internal/store/db"
 	"canopy/shared/protocol"
@@ -165,7 +166,14 @@ func (o *Orch) draft(ctx context.Context, tc *toolCtx, p db.CreateStaffProposalP
 		if err != nil {
 			return err
 		}
-		return t.Emit(ctx, core.WS(tc.ws.OrgID, tc.ws.ID, "staff_proposal.updated"), map[string]any{"proposal": core.ToStaffProposal(row)})
+		if err := t.Emit(ctx, core.WS(tc.ws.OrgID, tc.ws.ID, "staff_proposal.updated"), map[string]any{"proposal": core.ToStaffProposal(row)}); err != nil {
+			return err
+		}
+		body := tc.member.Name + " drafted a new staff member, " + row.Name + ", for your approval."
+		if row.Kind == "update" {
+			body = tc.member.Name + " wants to change the instructions for " + row.Name + "."
+		}
+		return notify.Enqueue(ctx, t, tc.ws, notify.Note{Kind: "questions", MemberID: &tc.member.ID, Body: body})
 	})
 }
 

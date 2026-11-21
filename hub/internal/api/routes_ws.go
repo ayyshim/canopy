@@ -41,6 +41,10 @@ func (s *Server) workspaceRoutes(r chi.Router) {
 	r.Get("/workspaces/{wsID}", httpx.Handler(s.handleGetWorkspace))
 	r.Get("/workspaces/{wsID}/board", httpx.Handler(s.handleBoard))
 	r.Patch("/workspaces/{wsID}", httpx.Handler(s.handlePatchWorkspace))
+	r.Get("/workspaces/{wsID}/discord", httpx.Handler(s.handleGetDiscord))
+	r.Put("/workspaces/{wsID}/discord", httpx.Handler(s.handlePutDiscord))
+	r.Delete("/workspaces/{wsID}/discord", httpx.Handler(s.handleDeleteDiscord))
+	r.Post("/workspaces/{wsID}/discord/test", httpx.Handler(s.handleTestDiscord))
 	r.Delete("/workspaces/{wsID}", httpx.Handler(s.handleDeleteWorkspace))
 	r.Post("/workspaces/{wsID}/restart-sessions", httpx.Handler(s.handleRestartSessions))
 

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { LogoMark } from "@/components/LogoMark";
+import { PauseNotifications, usePausedLabel } from "@/components/PauseNotifications";
 import { api, currentOrg, hardNavigate, initials, isOrgAdmin } from "@/lib/api";
 import { isAdmin, needsMe, payload, plural, unseen } from "@/lib/board/derive";
 import { pendingDrafts, useStaffDrafts } from "@/lib/board/proposals";
@@ -15,7 +16,7 @@ import type { WorkspaceSummary } from "@/lib/types";
 import { camera } from "@/lib/board/camera";
 import { centerSpot } from "@/lib/stickies";
 import { useB, useBoardCtx } from "./context";
-import { Avatar, Brand, Chevron, DotsIcon, GridIcon, LogoutIcon } from "./icons";
+import { Avatar, BellIcon, Brand, Chevron, DotsIcon, GridIcon, LogoutIcon } from "./icons";
 
 type ClaudeUsage = components["schemas"]["ClaudeComputerUsage"];
 type ClaudeWindow = components["schemas"]["ClaudeWindow"];
@@ -64,6 +65,7 @@ export function TopBar() {
   const presence = useBoard((s) => s.presence);
   const ui = useUI();
   const menu = useMenu();
+  const paused = usePausedLabel();
   const org = currentOrg(meState);
   const orgAdmin = isOrgAdmin(org?.role);
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
@@ -218,6 +220,21 @@ export function TopBar() {
                 })}
               </div>
             )}
+          </div>
+        )}
+      </div>
+      <div className="mw">
+        <button className="icon-btn" onClick={() => menu.toggle("bell")} aria-haspopup="dialog" aria-expanded={menu.open === "bell"}
+          aria-label={paused ? `Notifications. ${paused}` : "Notifications"}>
+          <BellIcon />{paused && <span className="bell-dot" aria-hidden="true" />}
+        </button>
+        {menu.open === "bell" && (
+          <div className="menu bell-menu" style={{ right: 0, padding: 14 }} role="dialog" aria-label="Pause notifications">
+            <b>Pause notifications</b>
+            <p className="hint" style={{ margin: "4px 0 10px" }}>Stops push for a while. Email and Discord carry on.</p>
+            <PauseNotifications onDone={menu.close} />
+            <hr />
+            <Link className="linkbtn" href="/account" onClick={menu.close}>Notification settings</Link>
           </div>
         )}
       </div>

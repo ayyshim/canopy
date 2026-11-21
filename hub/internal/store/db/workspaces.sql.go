@@ -26,7 +26,7 @@ func (q *Queries) CountOrgWorkspaces(ctx context.Context, orgID uuid.UUID) (int6
 const createWorkspace = `-- name: CreateWorkspace :one
 INSERT INTO workspaces (id, org_id, name, about, created_by)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, org_id, name, about, created_by, created_at, updated_at, goal_completion, logo_key
+RETURNING id, org_id, name, about, created_by, created_at, updated_at, goal_completion, logo_key, discord_webhook, discord_kinds, discord_role_id, discord_forum, discord_last_ok_at, discord_last_error
 `
 
 type CreateWorkspaceParams struct {
@@ -56,6 +56,12 @@ func (q *Queries) CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams
 		&i.UpdatedAt,
 		&i.GoalCompletion,
 		&i.LogoKey,
+		&i.DiscordWebhook,
+		&i.DiscordKinds,
+		&i.DiscordRoleID,
+		&i.DiscordForum,
+		&i.DiscordLastOkAt,
+		&i.DiscordLastError,
 	)
 	return i, err
 }
@@ -84,7 +90,7 @@ func (q *Queries) DeleteWorkspaceAccess(ctx context.Context, arg DeleteWorkspace
 }
 
 const getWorkspace = `-- name: GetWorkspace :one
-SELECT id, org_id, name, about, created_by, created_at, updated_at, goal_completion, logo_key FROM workspaces WHERE id = $1
+SELECT id, org_id, name, about, created_by, created_at, updated_at, goal_completion, logo_key, discord_webhook, discord_kinds, discord_role_id, discord_forum, discord_last_ok_at, discord_last_error FROM workspaces WHERE id = $1
 `
 
 func (q *Queries) GetWorkspace(ctx context.Context, id uuid.UUID) (Workspace, error) {
@@ -100,6 +106,12 @@ func (q *Queries) GetWorkspace(ctx context.Context, id uuid.UUID) (Workspace, er
 		&i.UpdatedAt,
 		&i.GoalCompletion,
 		&i.LogoKey,
+		&i.DiscordWebhook,
+		&i.DiscordKinds,
+		&i.DiscordRoleID,
+		&i.DiscordForum,
+		&i.DiscordLastOkAt,
+		&i.DiscordLastError,
 	)
 	return i, err
 }
@@ -130,7 +142,7 @@ func (q *Queries) GetWorkspaceAccess(ctx context.Context, arg GetWorkspaceAccess
 }
 
 const listOrgWorkspaces = `-- name: ListOrgWorkspaces :many
-SELECT id, org_id, name, about, created_by, created_at, updated_at, goal_completion, logo_key FROM workspaces WHERE org_id = $1 ORDER BY name, id
+SELECT id, org_id, name, about, created_by, created_at, updated_at, goal_completion, logo_key, discord_webhook, discord_kinds, discord_role_id, discord_forum, discord_last_ok_at, discord_last_error FROM workspaces WHERE org_id = $1 ORDER BY name, id
 `
 
 func (q *Queries) ListOrgWorkspaces(ctx context.Context, orgID uuid.UUID) ([]Workspace, error) {
@@ -152,6 +164,12 @@ func (q *Queries) ListOrgWorkspaces(ctx context.Context, orgID uuid.UUID) ([]Wor
 			&i.UpdatedAt,
 			&i.GoalCompletion,
 			&i.LogoKey,
+			&i.DiscordWebhook,
+			&i.DiscordKinds,
+			&i.DiscordRoleID,
+			&i.DiscordForum,
+			&i.DiscordLastOkAt,
+			&i.DiscordLastError,
 		); err != nil {
 			return nil, err
 		}
@@ -218,7 +236,7 @@ func (q *Queries) ListUserWorkspaceAccessInOrg(ctx context.Context, arg ListUser
 }
 
 const listUserWorkspaces = `-- name: ListUserWorkspaces :many
-SELECT w.id, w.org_id, w.name, w.about, w.created_by, w.created_at, w.updated_at, w.goal_completion, w.logo_key FROM workspaces w
+SELECT w.id, w.org_id, w.name, w.about, w.created_by, w.created_at, w.updated_at, w.goal_completion, w.logo_key, w.discord_webhook, w.discord_kinds, w.discord_role_id, w.discord_forum, w.discord_last_ok_at, w.discord_last_error FROM workspaces w
 JOIN workspace_access a ON a.workspace_id = w.id AND a.user_id = $2
 WHERE w.org_id = $1
 ORDER BY w.name, w.id
@@ -248,6 +266,12 @@ func (q *Queries) ListUserWorkspaces(ctx context.Context, arg ListUserWorkspaces
 			&i.UpdatedAt,
 			&i.GoalCompletion,
 			&i.LogoKey,
+			&i.DiscordWebhook,
+			&i.DiscordKinds,
+			&i.DiscordRoleID,
+			&i.DiscordForum,
+			&i.DiscordLastOkAt,
+			&i.DiscordLastError,
 		); err != nil {
 			return nil, err
 		}
@@ -313,7 +337,7 @@ func (q *Queries) ListWorkspaceAccess(ctx context.Context, workspaceID uuid.UUID
 }
 
 const setWorkspaceLogo = `-- name: SetWorkspaceLogo :one
-UPDATE workspaces SET logo_key = $1 WHERE id = $2 RETURNING id, org_id, name, about, created_by, created_at, updated_at, goal_completion, logo_key
+UPDATE workspaces SET logo_key = $1 WHERE id = $2 RETURNING id, org_id, name, about, created_by, created_at, updated_at, goal_completion, logo_key, discord_webhook, discord_kinds, discord_role_id, discord_forum, discord_last_ok_at, discord_last_error
 `
 
 type SetWorkspaceLogoParams struct {
@@ -334,6 +358,12 @@ func (q *Queries) SetWorkspaceLogo(ctx context.Context, arg SetWorkspaceLogoPara
 		&i.UpdatedAt,
 		&i.GoalCompletion,
 		&i.LogoKey,
+		&i.DiscordWebhook,
+		&i.DiscordKinds,
+		&i.DiscordRoleID,
+		&i.DiscordForum,
+		&i.DiscordLastOkAt,
+		&i.DiscordLastError,
 	)
 	return i, err
 }
@@ -344,7 +374,7 @@ SET name = coalesce($1, name),
     about = coalesce($2, about),
     goal_completion = coalesce($3, goal_completion)
 WHERE id = $4
-RETURNING id, org_id, name, about, created_by, created_at, updated_at, goal_completion, logo_key
+RETURNING id, org_id, name, about, created_by, created_at, updated_at, goal_completion, logo_key, discord_webhook, discord_kinds, discord_role_id, discord_forum, discord_last_ok_at, discord_last_error
 `
 
 type UpdateWorkspaceParams struct {
@@ -372,6 +402,12 @@ func (q *Queries) UpdateWorkspace(ctx context.Context, arg UpdateWorkspaceParams
 		&i.UpdatedAt,
 		&i.GoalCompletion,
 		&i.LogoKey,
+		&i.DiscordWebhook,
+		&i.DiscordKinds,
+		&i.DiscordRoleID,
+		&i.DiscordForum,
+		&i.DiscordLastOkAt,
+		&i.DiscordLastError,
 	)
 	return i, err
 }

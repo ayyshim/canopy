@@ -25,32 +25,44 @@ import (
 type Pref struct {
 	Desktop bool `json:"desktop"`
 	Email   bool `json:"email"`
+	Push    bool `json:"push"`
 }
 
 type Prefs map[string]Pref
 
 // Kinds are the rows people can turn on and off.
-var Kinds = []string{"questions", "errors", "goal_ready", "daily"}
+var Kinds = []string{"questions", "progress", "errors", "goal_ready", "daily"}
 
 // Defaults: everything that needs you is on; the daily summary is off until asked for.
 func Defaults() Prefs {
 	return Prefs{
-		"questions":  {Desktop: true, Email: true},
-		"errors":     {Desktop: true, Email: true},
-		"goal_ready": {Desktop: true, Email: true},
-		"daily":      {Desktop: false, Email: false},
+		"questions":  {Desktop: true, Email: true, Push: true},
+		"progress":   {},
+		"errors":     {Desktop: true, Email: true, Push: true},
+		"goal_ready": {Desktop: true, Email: true, Push: true},
+		"daily":      {},
 	}
 }
 
 // Parse reads stored choices on top of the defaults.
 func Parse(raw []byte) Prefs {
 	p := Defaults()
-	var saved Prefs
+	// Push follows the desktop choice until the person sets it.
+	var saved map[string]struct {
+		Desktop bool  `json:"desktop"`
+		Email   bool  `json:"email"`
+		Push    *bool `json:"push"`
+	}
 	if json.Unmarshal(raw, &saved) == nil {
 		for k, v := range saved {
-			if _, ok := p[k]; ok {
-				p[k] = v
+			if _, ok := p[k]; !ok {
+				continue
 			}
+			pref := Pref{Desktop: v.Desktop, Email: v.Email, Push: v.Desktop && k != "progress" && k != "daily"}
+			if v.Push != nil {
+				pref.Push = *v.Push
+			}
+			p[k] = pref
 		}
 	}
 	return p
@@ -59,7 +71,7 @@ func Parse(raw []byte) Prefs {
 // KindOf maps a signal type to its notification row ("" when it's never emailed).
 func KindOf(signalType string) string {
 	switch signalType {
-	case "question", "gate", "dir_access", "review", "owner_change", "sync_conflict", "usage_limit", "cap":
+	case "question", "gate", "dir_access", "review", "owner_change", "sync_conflict", "usage_limit", "cap", "staff_proposal":
 		return "questions"
 	case "error", "git":
 		return "errors"
@@ -128,8 +140,8 @@ func (n *Notifier) emailSignals(ctx context.Context) error {
 		if err != nil {
 			continue
 		}
-		subject, body := n.signalText(ctx, ws, sig)
-		for _, uid := range n.recipients(ctx, ws, sig) {
+		subject, body := SignalText(ctx, n.Store.Queries, ws, sig)
+		for _, uid := range Recipients(ctx, n.Store.Queries, ws, sig) {
 			u, err := q.GetUserByID(ctx, uid)
 			if err != nil || !Parse(u.Notifications)[kind].Email || sent[uid.String()+subject] {
 				continue
@@ -144,9 +156,8 @@ func (n *Notifier) emailSignals(ctx context.Context) error {
 	return nil
 }
 
-// recipients are the people a signal is for, limited to those who can still see it.
-func (n *Notifier) recipients(ctx context.Context, ws db.Workspace, sig db.Signal) []uuid.UUID {
-	q := n.Store.Queries
+// Recipients are the people a signal is for, limited to those who can still see it.
+func Recipients(ctx context.Context, q *db.Queries, ws db.Workspace, sig db.Signal) []uuid.UUID {
 	var want []uuid.UUID
 	var payload map[string]any
 	_ = json.Unmarshal(sig.Payload, &payload)
@@ -205,7 +216,7 @@ func (n *Notifier) recipients(ctx context.Context, ws db.Workspace, sig db.Signa
 	return out
 }
 
-func (n *Notifier) signalText(ctx context.Context, ws db.Workspace, sig db.Signal) (subject, body string) {
+func SignalText(ctx context.Context, q *db.Queries, ws db.Workspace, sig db.Signal) (subject, body string) {
 	var p map[string]any
 	_ = json.Unmarshal(sig.Payload, &p)
 	get := func(k string) string {
@@ -216,7 +227,7 @@ func (n *Notifier) signalText(ctx context.Context, ws db.Workspace, sig db.Signa
 	}
 	who := "An agent"
 	if sig.MemberID != nil {
-		if m, err := n.Store.GetMember(ctx, *sig.MemberID); err == nil && m.Name != "" {
+		if m, err := q.GetMember(ctx, *sig.MemberID); err == nil && m.Name != "" {
 			who = m.Name
 		}
 	}
@@ -320,10 +331,10 @@ func (n *Notifier) summary(ctx context.Context, userID uuid.UUID, since time.Tim
 			}
 			if open, err := q.ListOpenSignals(ctx, ws.ID); err == nil {
 				for _, sig := range open {
-					if KindOf(sig.Type) == "" || !slices.Contains(n.recipients(ctx, ws, sig), userID) {
+					if KindOf(sig.Type) == "" || !slices.Contains(Recipients(ctx, n.Store.Queries, ws, sig), userID) {
 						continue
 					}
-					subject, body := n.signalText(ctx, ws, sig)
+					subject, body := SignalText(ctx, n.Store.Queries, ws, sig)
 					line := "- " + subject
 					if sig.Type == "question" || sig.Type == "gate" {
 						// The question or command itself says more than the subject.

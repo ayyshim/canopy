@@ -492,13 +492,14 @@ components:
         is_hub_admin: { type: boolean }
         providers: { type: array, items: { type: string } }
         notifications: { $ref: "#/components/schemas/NotificationPrefs" }
+        snooze_until: { type: [string, "null"], format: date-time, description: "Push is paused until then; null when not paused" }
     NotificationPref:
       type: object
-      required: [desktop, email]
-      properties: { desktop: { type: boolean }, email: { type: boolean } }
+      required: [desktop, email, push]
+      properties: { desktop: { type: boolean }, email: { type: boolean }, push: { type: boolean } }
     NotificationPrefs:
       type: object
-      description: Keys are questions, errors, goal_ready and daily.
+      description: Keys are questions, progress, errors, goal_ready and daily.
       additionalProperties: { $ref: "#/components/schemas/NotificationPref" }
     OrgSummary:
       type: object
@@ -592,8 +593,9 @@ components:
           additionalProperties: { type: array, items: { type: string, format: uuid } }
     Me:
       type: object
-      required: [user, organizations, current_org_id]
+      required: [user, organizations, current_org_id, waiting]
       properties:
+        waiting: { type: integer, description: "Open things that need this person, for the app badge" }
         user: { $ref: "#/components/schemas/User" }
         organizations: { type: array, items: { $ref: "#/components/schemas/OrgSummary" } }
         current_org_id: { type: [string, "null"], format: uuid, description: "Null: the user has no organization and should create one" }
@@ -606,6 +608,7 @@ components:
         current_password: { type: string }
         new_password: { type: string }
         notifications: { $ref: "#/components/schemas/NotificationPrefs" }
+        snooze_until: { type: [string, "null"], format: date-time, description: "A time pauses push; null resumes it; leave it out to keep it" }
     Organization:
       type: object
       required: [id, name, slug, size, about, default_session_limit, default_weekly_limit, timezone, created_at]
