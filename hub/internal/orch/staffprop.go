@@ -67,7 +67,7 @@ func (o *Orch) toolProposeStaff(ctx context.Context, tc *toolCtx) error {
 	case name == "":
 		return toolError("Give the new staff member a name.")
 	case !domain.ValidSkill(in.Role):
-		return toolError("role must be one of: " + strings.Join(domain.Skills, ", ") + ".")
+		return toolError("role must be a skill key from the catalog (a base role like developer, or a subcategory like marketing.seo).")
 	case strings.TrimSpace(in.Instructions) == "":
 		return toolError("Write instructions for the new staff member.")
 	}

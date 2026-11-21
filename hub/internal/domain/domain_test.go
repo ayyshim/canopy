@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -90,5 +91,73 @@ func TestWithinLimitAndClamp(t *testing.T) {
 	pruned := Clamp([]Grant{{DirectoryID: code.ID, Mode: ReadWrite}, {DirectoryID: web.ID, Mode: Read}}, manager)
 	if len(pruned) != 1 || pruned[0].Mode != Read {
 		t.Errorf("clamp: %+v", pruned)
+	}
+}
+
+func TestCatalogIntegrity(t *testing.T) {
+	seen := map[string]bool{}
+	for _, c := range Catalog {
+		if len(c.Subs) < 4 && c.Key != "general" && c.Key != "science" {
+			t.Errorf("category %s has only %d subcategories", c.Key, len(c.Subs))
+		}
+		for _, s := range c.Subs {
+			if seen[s.Key] {
+				t.Errorf("duplicate key %s", s.Key)
+			}
+			seen[s.Key] = true
+			if s.Label == "" || s.Desc == "" {
+				t.Errorf("%s needs a label and description", s.Key)
+			}
+			if BaseRole(s.Key) != s.Base || !slices.Contains(BaseRoles, s.Base) {
+				t.Errorf("%s has bad base role %q", s.Key, s.Base)
+			}
+		}
+	}
+	for _, k := range BaseRoles {
+		if !ValidSkill(k) || BaseRole(k) != k {
+			t.Errorf("legacy key %s must stay valid and map to itself", k)
+		}
+	}
+	if ValidSkill("marketing") || ValidSkill("nope") || ValidSkill("") {
+		t.Error("categories and unknown keys are not skills")
+	}
+	if !ValidSkill("marketing.seo") {
+		t.Error("marketing.seo should be valid")
+	}
+}
+
+func TestSuggestUsesBaseRole(t *testing.T) {
+	code := Dir{ID: uuid.New(), Name: "app", Kind: "code"}
+	docs := Dir{ID: uuid.New(), Name: "docs", Kind: "docs"}
+	dirs := []Dir{code, docs}
+	got := Suggest("technology.backend", dirs, "app", nil)
+	if len(got) != 1 || got[0].DirectoryID != code.ID || got[0].Mode != ReadWrite {
+		t.Fatalf("backend dev: %+v", got)
+	}
+	got = Suggest("marketing.content", dirs, "app", nil)
+	if len(got) != 1 || got[0].DirectoryID != docs.ID {
+		t.Fatalf("writer: %+v", got)
+	}
+	if got := Suggest("unknown", dirs, "app", nil); len(got) != 0 {
+		t.Fatalf("unknown skill: %+v", got)
+	}
+}
+
+func TestSkillMatches(t *testing.T) {
+	cases := []struct {
+		have, want string
+		ok         bool
+	}{
+		{"marketing.seo", "marketing.seo", true},
+		{"marketing.seo", "researcher", true},
+		{"researcher", "marketing.seo", false},
+		{"marketing.seo", "marketing.content", false},
+		{"technology.backend", "researcher", false},
+		{"", "developer", false},
+	}
+	for _, c := range cases {
+		if SkillMatches(c.have, c.want) != c.ok {
+			t.Errorf("SkillMatches(%q,%q) != %v", c.have, c.want, c.ok)
+		}
 	}
 }

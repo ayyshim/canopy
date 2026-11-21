@@ -24,7 +24,7 @@ import (
 )
 
 func (s *Server) handleListCLIs(w http.ResponseWriter, _ *http.Request) error {
-	httpx.JSON(w, http.StatusOK, map[string]any{"clis": domain.CLIs, "skills": domain.Skills})
+	httpx.JSON(w, http.StatusOK, map[string]any{"clis": domain.CLIs, "skills": domain.BaseRoles, "catalog": domain.Catalog})
 	return nil
 }
 

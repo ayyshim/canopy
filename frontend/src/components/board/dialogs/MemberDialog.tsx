@@ -1,17 +1,20 @@
 "use client";
 
+import { useCatalog, skillDesc } from "@/lib/catalog";
+import { GoodAtPicker } from "@/components/GoodAtPicker";
 import { useState } from "react";
 import { SkillPicker } from "@/components/skills/Skills";
 import { api, ApiError } from "@/lib/api";
 import { managers, visibleMember } from "@/lib/board/derive";
 import { useUI } from "@/lib/board/ui";
-import { SKILL_DESC, SKILL_LABEL, type MemberView } from "@/lib/types";
+import { type MemberView } from "@/lib/types";
 import { useB, useBoardCtx } from "../context";
 import { defaultInstructions } from "../chat/ChatSettings";
 import { Markdown } from "../panels/bits";
 
 /** MemberDialog adds a manager or a staff member in plain words; model and instructions are tucked under Advanced. */
 export function MemberDialog({ mode, bossId }: { mode: "manager" | "staff" | "pool"; bossId?: string }) {
+  useCatalog();
   const b = useB();
   const { wsId } = useBoardCtx();
   const ui = useUI();
@@ -69,10 +72,8 @@ export function MemberDialog({ mode, bossId }: { mode: "manager" | "staff" | "po
       </label>
       {!isMgr && (
         <div className="pgrid">
-          <label className="field"><span>Good at</span>
-            <select className="input" value={skill} onChange={(e) => setSkill(e.target.value)}>
-              {Object.entries(SKILL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select></label>
+          <div className="field"><span>Good at</span>
+            <GoodAtPicker value={skill} onChange={setSkill} /></div>
           <label className="field"><span>Reports to</span>
             <select className="input" value={reports} onChange={(e) => setReports(e.target.value)}>
               <option value="">Anyone (shared staff)</option>
@@ -80,7 +81,7 @@ export function MemberDialog({ mode, bossId }: { mode: "manager" | "staff" | "po
             </select></label>
         </div>
       )}
-      {!isMgr && <p className="hint">{SKILL_DESC[skill]}.</p>}
+      {!isMgr && <p className="hint">{skillDesc(skill)}.</p>}
       {!isMgr && !reports && (
         <label className="field"><span><input type="checkbox" checked={isolated} onChange={(e) => setIsolated(e.target.checked)} /> Isolated</span>
           <span className="hint">Only you can chat with them. Managers can’t borrow them.</span></label>

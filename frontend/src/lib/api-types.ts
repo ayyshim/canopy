@@ -4,6 +4,47 @@
  */
 
 export interface paths {
+    "/clis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the CLIs Canopy can drive and the catalog of staff "good at" skills */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description CLIs, base roles and the categorized skill catalog */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            clis: Record<string, never>[];
+                            /** @description The base roles */
+                            skills: ("developer" | "reviewer" | "researcher" | "designer" | "writer")[];
+                            catalog: components["schemas"]["SkillCategory"][];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/csrf": {
         parameters: {
             query?: never;
@@ -1832,6 +1873,23 @@ export interface components {
             role?: "developer" | "reviewer" | "researcher" | "designer" | "writer";
             instructions?: string;
             skills?: components["schemas"]["DraftSkill"][];
+        };
+        SkillCategory: {
+            /** @example marketing */
+            key: string;
+            /** @example Marketing */
+            label: string;
+            subs: {
+                /** @example marketing.seo */
+                key: string;
+                label: string;
+                desc: string;
+                /**
+                 * @description Drives default folder access and planning
+                 * @enum {string}
+                 */
+                base: "developer" | "reviewer" | "researcher" | "designer" | "writer";
+            }[];
         };
         Skill: {
             /** Format: uuid */
