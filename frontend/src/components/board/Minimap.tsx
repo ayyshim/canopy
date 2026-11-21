@@ -5,7 +5,9 @@ import { camera } from "@/lib/board/camera";
 import type { Layout } from "@/lib/board/layout";
 import { useUI } from "@/lib/board/ui";
 import { stickyColor } from "@/lib/stickies";
-import { fitMap, mapBounds, mapToWorld, minimapDefault, viewRect, type Fit } from "@/lib/minimap";
+import { blockedOnPerson, memberStatus, task as findTask } from "@/lib/board/derive";
+import { fitMap, mapBounds, mapToWorld, minimapDefault, nodeLook, viewRect, type Fit, type Look, type LookIn } from "@/lib/minimap";
+import type { Board } from "@/lib/types";
 import { useB } from "./context";
 
 const W = 200, H = 130;
@@ -35,27 +37,34 @@ export function useMinimapOpen(): [boolean, () => void] {
   return [open, toggle];
 }
 
-type Rect = { x: number; y: number; w: number; h: number; c: string };
-const TOKEN: Record<string, string> = { member: "--muted", session: "--blue", out: "--violet", ask: "--amber", err: "--red", plain: "--line" };
+type Rect = { x: number; y: number; w: number; h: number; look: Look };
 
-/** One small rect per node, in tree coordinates. Colors are tokens or a goal's own color. */
-function rects(L: Layout, goalColor: Map<string, string>): Rect[] {
+/** One small rect per node, in tree coordinates, styled like the node on the board. */
+function rects(L: Layout, b: Board, goalColor: Map<string, string>): Rect[] {
   const out: Rect[] = [];
   for (const n of L.nodes) {
-    let c: string;
+    if (n.type === "addgoal" || n.type === "addm") continue;
+    const i: LookIn = { type: n.type };
     switch (n.type) {
-      case "addgoal": case "addm": continue;
-      case "goal": c = n.g.color; break;
-      case "task": c = (n.t.goal_id && goalColor.get(n.t.goal_id)) || TOKEN.plain; break;
-      case "member": case "pool": c = TOKEN.member; break;
-      case "session": c = TOKEN.session; break;
-      case "sticky": c = `--n-${stickyColor(n.note.color)}`; break;
-      case "fruit": case "more": c = TOKEN.out; break;
-      case "acct": c = TOKEN.ask; break;
-      case "sig": c = n.kind === "errc" ? TOKEN.err : TOKEN.ask; break;
-      default: c = TOKEN.plain;
+      case "goal": i.goalColor = n.g.color; i.goalStatus = n.g.status; break;
+      case "task": {
+        const t = n.t;
+        i.taskStatus = t.status; i.goalColor = (t.goal_id && goalColor.get(t.goal_id)) || undefined;
+        i.blocked = t.status === "waiting" && t.depends_on.some((d) => { const x = findTask(b, d); return !!x && x.status !== "done" && blockedOnPerson(b, x); });
+        break;
+      }
+      case "member": {
+        i.mgr = n.mgr;
+        const m = n.m && "name" in n.m ? n.m : null;
+        i.warn = !!m && memberStatus(b, m).k === "need";
+        break;
+      }
+      case "session": i.sessionStatus = n.s.status; i.goalColor = goalColor.get(n.s.goal_id ?? ""); break;
+      case "sticky": i.stickyColor = stickyColor(n.note.color); break;
+      case "fruit": i.outputStatus = n.o.status; break;
+      case "sig": i.sigKind = n.kind; break;
     }
-    out.push({ x: n.x, y: n.y, w: n.w, h: n.h, c });
+    out.push({ x: n.x, y: n.y, w: n.w, h: n.h, look: nodeLook(i) });
   }
   return out;
 }
@@ -67,7 +76,7 @@ export function Minimap({ L }: { L: Layout }) {
   const [clear, setClear] = useState(0); // px to move left so the details panel does not cover the map
   const ref = useRef<HTMLCanvasElement>(null);
   const goalColor = useMemo(() => new Map(b.goals.map((g) => [g.id, g.color])), [b.goals]);
-  const items = useMemo(() => rects(L, goalColor), [L, goalColor]);
+  const items = useMemo(() => rects(L, b, goalColor), [L, b, goalColor]);
   const bounds = useMemo(() => mapBounds(L.box), [L.box]);
   useLayoutEffect(() => {
     const measure = () => {
@@ -107,9 +116,22 @@ export function Minimap({ L }: { L: Layout }) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, W, H);
       for (const r of items) {
-        ctx.fillStyle = var_(r.c);
-        ctx.globalAlpha = 0.9;
-        ctx.fillRect(r.x * f.s + f.ox, r.y * f.s + f.oy, Math.max(r.w * f.s, 2), Math.max(r.h * f.s, 2));
+        const x = r.x * f.s + f.ox, y = r.y * f.s + f.oy, w = Math.max(r.w * f.s, 2), h = Math.max(r.h * f.s, 2), k = r.look;
+        ctx.globalAlpha = k.fade ? 0.6 : 1;
+        ctx.fillStyle = var_(k.fill);
+        ctx.fillRect(x, y, w, h);
+        if (k.edge && w > 3 && h > 3) {
+          ctx.strokeStyle = var_(k.edge);
+          ctx.lineWidth = 1;
+          ctx.setLineDash(k.dashed ? [2, 2] : []);
+          ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+          ctx.setLineDash([]);
+        }
+        if (k.accent) {
+          ctx.fillStyle = var_(k.accent);
+          const t = Math.min(Math.max(1.5, 4 * f.s), 3);
+          if (k.side === "top") ctx.fillRect(x, y, w, Math.min(t, h)); else ctx.fillRect(x, y, Math.min(t, w), h);
+        }
       }
       ctx.globalAlpha = 1;
       if (cam.w > 0) {
