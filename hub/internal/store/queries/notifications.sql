@@ -64,3 +64,13 @@ UPDATE workspaces
 SET discord_last_ok_at = CASE WHEN sqlc.arg(error)::text = '' THEN now() ELSE discord_last_ok_at END,
     discord_last_error = sqlc.arg(error)
 WHERE id = sqlc.arg(id);
+
+-- name: SetGoalDiscordThread :exec
+UPDATE goals SET discord_thread_id = $2 WHERE id = $1;
+
+-- Turns Discord off after the webhook was deleted; the settings stay.
+-- name: DisableWorkspaceDiscord :exec
+UPDATE workspaces SET discord_webhook = '', discord_last_error = sqlc.arg(error) WHERE id = sqlc.arg(id);
+
+-- name: OpenWorkspaceDiscordSignal :one
+SELECT * FROM signals WHERE workspace_id = $1 AND type = 'error' AND status = 'open' AND payload->>'source' = 'discord' LIMIT 1;
