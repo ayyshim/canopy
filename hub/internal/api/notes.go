@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"math"
 	"net/http"
@@ -218,6 +219,9 @@ func (s *Server) handlePatchNote(w http.ResponseWriter, r *http.Request) error {
 		return httpx.ErrForbidden
 	}
 	ctx := r.Context()
+	if err := s.guardJobMemory(ctx, n, in.Kind != nil || in.Body != nil || in.Title != nil); err != nil {
+		return err
+	}
 	prev := n
 	err = s.Core.Tx(ctx, func(t *core.Tx) error {
 		p := db.UpdateNoteParams{ID: n.ID, Visibility: in.Visibility, Color: in.Color}
@@ -249,12 +253,27 @@ func (s *Server) handlePatchNote(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// guardJobMemory keeps a job's memory note safe: it is kept with its job, and changes wait
+// until the job's run has finished.
+func (s *Server) guardJobMemory(ctx context.Context, n db.Note, changing bool) error {
+	if n.Kind != "job_memory" || n.JobID == nil || !changing {
+		return nil
+	}
+	if _, err := s.Store.RunningJobRun(ctx, *n.JobID); err == nil {
+		return httpx.NewError(http.StatusConflict, "run_in_progress", "A run is going. Edit the memory when it has finished.")
+	}
+	return nil
+}
+
 func (s *Server) handleDeleteNote(w http.ResponseWriter, r *http.Request) error {
 	view, n, err := s.loadNote(r)
 	if err != nil {
 		return err
 	}
 	ctx := r.Context()
+	if n.Kind == "job_memory" {
+		return httpx.NewError(http.StatusConflict, "job_memory", "This is a job’s memory. Delete the job instead.")
+	}
 	err = s.Core.Tx(ctx, func(t *core.Tx) error {
 		if err := t.Q.DeleteNote(ctx, n.ID); err != nil {
 			return err
