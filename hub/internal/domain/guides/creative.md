@@ -7,7 +7,7 @@
 ## creative.photography
 - Plan shots from the purpose: subject, angle, light, location and time of day.
 - Give a shot list with backups for bad weather.
-- Editing notes: exposure, colour and crop, with the aim for each.
+- Editing notes: exposure, color and crop, with the aim for each.
 - Ask a person about permissions for people and places.
 
 ## creative.events
@@ -17,7 +17,7 @@
 - Ask a person before booking, paying or sending invitations.
 
 ## creative.travel
-- Confirm dates, budget, travellers and interests first.
+- Confirm dates, budget, travelers and interests first.
 - Plan realistic days with travel times and rest. Note opening hours and entry rules.
 - Check sources and dates for prices and visas.
 - Ask a person before booking or paying for anything.
