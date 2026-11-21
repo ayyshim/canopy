@@ -457,6 +457,7 @@ func serve(args []string) error {
 	app.Download, app.Install = web.Download(), web.InstallScript(cfg.PublicURL)
 	go orchestrator.Run(ctx)
 	go notify.New(st, mailer, cfg.PublicURL).Run(ctx)
+	go notify.NewDispatcher(st).Run(ctx)
 	go func() {
 		t := time.NewTicker(30 * time.Second)
 		defer t.Stop()
