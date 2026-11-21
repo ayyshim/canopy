@@ -61,6 +61,7 @@ self.addEventListener("push", (event) => {
 
 async function runAction(data, action) {
   let text = "Couldn’t do that. Open Canopy to answer.";
+  let failed = true;
   try {
     const res = await fetch("/api/v1/notifications/act", {
       method: "POST",
@@ -70,6 +71,7 @@ async function runAction(data, action) {
     });
     if (res.ok) text = "Done";
     else if (res.status === 409) text = "Already answered";
+    failed = !res.ok && res.status !== 409;
   } catch {
     // offline: keep the default text
   }
@@ -79,8 +81,11 @@ async function runAction(data, action) {
     icon: ICON,
     badge: ICON,
     silent: true,
+    requireInteraction: failed,
     data: { url: data.url },
   });
+  // A failed answer stays until it is dismissed, so the question isn't lost.
+  if (failed) return;
   await new Promise((r) => setTimeout(r, RESULT_SHOWN_MS));
   const shown = await self.registration.getNotifications({ tag: data.tag });
   shown.forEach((n) => n.close());

@@ -112,6 +112,8 @@ test("a closed signal says Already answered, other failures say to open Canopy",
   const b = load({ fetchStatus: 403 });
   await b.fire("notificationclick", click("deny"));
   assert.match(b.shown.at(-1)?.opts.body, /Open Canopy/);
+  assert.equal(b.shown.at(-1)?.opts.requireInteraction, true);
+  assert.equal(b.closed.length, 0);
 });
 
 test("a plain click opens the deep link, or focuses an open tab", async () => {
