@@ -195,10 +195,17 @@ func (s *Server) handleGetGoal(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	urows, err := s.Store.UsageWorkForGoal(ctx, g.ID)
+	if err != nil {
+		return err
+	}
+	gu, tu := core.SumUsage(urows)
 	tv := []core.TaskView{}
 	for _, t := range tasks {
 		if view.seesMember(t.MemberID) {
-			tv = append(tv, core.ToTask(t))
+			x := core.ToTask(t)
+			x.Usage = usageOrZero(tu[t.ID])
+			tv = append(tv, x)
 		}
 	}
 	events, err := s.Store.ListGoalEvents(ctx, g.ID)
@@ -217,7 +224,9 @@ func (s *Server) handleGetGoal(w http.ResponseWriter, r *http.Request) error {
 	for _, x := range repos {
 		rv = append(rv, core.ToGoalRepo(x))
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"goal": core.ToGoal(g), "tasks": tv, "events": ev, "repos": rv})
+	gv := core.ToGoal(g)
+	gv.Usage = usageOrZero(gu[g.ID])
+	httpx.JSON(w, http.StatusOK, map[string]any{"goal": gv, "tasks": tv, "events": ev, "repos": rv})
 	return nil
 }
 
@@ -382,7 +391,14 @@ func (s *Server) handleGetTask(w http.ResponseWriter, r *http.Request) error {
 	for i := len(logs) - 1; i >= 0; i-- {
 		lv = append(lv, core.ToLog(logs[i]))
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"task": core.ToTask(t), "signals": sv, "comments": cv, "activity": lv})
+	urows, err := s.Store.UsageWorkForTask(ctx, t.ID)
+	if err != nil {
+		return err
+	}
+	_, tu := core.SumUsage(urows)
+	tvw := core.ToTask(t)
+	tvw.Usage = usageOrZero(tu[t.ID])
+	httpx.JSON(w, http.StatusOK, map[string]any{"task": tvw, "signals": sv, "comments": cv, "activity": lv})
 	return nil
 }
 
@@ -537,3 +553,11 @@ func (s *Server) handleMemberActivity(w http.ResponseWriter, r *http.Request) er
 }
 
 var _ = slices.Contains[[]string]
+
+// usageOrZero gives a task or goal with no recorded work empty totals instead of null.
+func usageOrZero(u *core.UsageTotals) *core.UsageTotals {
+	if u == nil {
+		return &core.UsageTotals{ByModel: []core.ModelUsage{}}
+	}
+	return u
+}

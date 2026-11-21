@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Canopy UI redo – prototype</title>
+<style>
+:root{
+  --t-xs:12px/16px;--t-sm:13px/18px;--t-md:14px/20px;--t-lg:16px/24px;--t-xl:20px/28px;--t-2xl:28px/34px;
+  --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:24px;--sp-6:32px;--sp-7:48px;
+  --r-sm:6px;--r-md:10px;--r-lg:14px;--r-full:999px;
+  --font:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --bg:#F6F7F9;--surface:#fff;--surface-2:#F1F3F6;--edge:#DDE1E7;
+  --ink:#14181F;--muted:#4A5462;--faint:#6B7584;
+  --accent:#16794F;--accent-ink:#fff;--accent-soft:#E3F3EB;
+  --warn:#B7791F;--bad:#C0392B;--info:#2563EB;--cost:#6E56CF;--cost-soft:#EEEAFB;
+  --shadow:0 12px 40px rgba(16,20,25,.16);
+}
+[data-theme=dark]{
+  --bg:#101419;--surface:#1A2028;--surface-2:#222934;--edge:#2C3440;
+  --ink:#E6EBF0;--muted:#A3AEBB;--faint:#8693A2;
+  --accent:#3FA877;--accent-ink:#08150E;--accent-soft:#17301F;
+  --warn:#E0A94B;--bad:#EE7B6E;--info:#6CA0FF;--cost:#9D86FF;--cost-soft:#27224A;
+  --shadow:0 12px 40px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box;margin:0}
+body{font:var(--t-md) var(--font);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
+h1{font:700 var(--t-2xl) var(--font)}h2{font:600 var(--t-xl) var(--font)}h3{font:600 var(--t-lg) var(--font)}
+.muted{color:var(--muted)}.faint{color:var(--faint)}.sm{font:var(--t-sm) var(--font)}.xs{font:500 var(--t-xs) var(--font)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.cost{color:var(--cost);font-family:var(--mono);font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* shell */
+.top{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--edge);display:flex;align-items:center;gap:var(--sp-4);padding:0 var(--sp-5);height:56px}
+.brand{font:700 var(--t-lg) var(--font);display:flex;align-items:center;gap:var(--sp-2);white-space:nowrap}
+.logo{width:24px;height:24px;border-radius:var(--r-sm);background:var(--accent)}
+.nav{display:flex;gap:var(--sp-1);overflow-x:auto;scrollbar-width:none;flex:1}
+.nav::-webkit-scrollbar,.tabs::-webkit-scrollbar{display:none}
+.nav button{padding:var(--sp-2) var(--sp-3);border-radius:var(--r-md);color:var(--muted);white-space:nowrap;min-height:36px}
+.nav button[aria-current=page]{background:var(--surface-2);color:var(--ink);font-weight:600}
+.icon-btn{width:36px;height:36px;border-radius:var(--r-md);display:grid;place-items:center;border:1px solid var(--edge);flex:none}
+main{max-width:1200px;margin:0 auto;padding:var(--sp-5)}
+.page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:var(--sp-4);margin-bottom:var(--sp-5);flex-wrap:wrap}
+.page-head p{margin-top:var(--sp-1)}
+
+/* primitives */
+.btn{min-height:36px;padding:0 var(--sp-4);border-radius:var(--r-md);border:1px solid var(--edge);background:var(--surface);font-weight:500;display:inline-flex;align-items:center;gap:var(--sp-2);justify-content:center}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.08)}
+.card{background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-lg);padding:var(--sp-4)}
+.card-head{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-3)}
+.stack{display:flex;flex-direction:column;gap:var(--sp-5)}
+.stack-sm{display:flex;flex-direction:column;gap:var(--sp-3)}
+.row-flex{display:flex;align-items:center;gap:var(--sp-2)}
+.grow{flex:1;min-width:0}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px var(--sp-2);border-radius:var(--r-full);background:var(--surface-2);font:500 var(--t-xs) var(--font);color:var(--muted);white-space:nowrap}
+.pill.usage{background:var(--cost-soft);color:var(--cost)}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--faint)}
+.dot.todo{background:var(--warn)}.dot.doing{background:var(--info)}.dot.done{background:var(--accent)}.dot.blocked{background:var(--bad)}
+.avatar{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font:600 var(--t-xs) var(--font);background:var(--surface-2);color:var(--muted);flex:none;border:1px solid var(--edge)}
+.avatar.ai{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.progress{height:6px;border-radius:var(--r-full);background:var(--surface-2);overflow:hidden}
+.progress i{display:block;height:100%;background:var(--accent);border-radius:inherit}
+.section-title{margin-bottom:var(--sp-1)}
+.empty{text-align:center;padding:var(--sp-6) var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-2);align-items:center}
+.empty .ico{width:40px;height:40px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;font-size:18px}
+
+/* tabs */
+.tabs{display:flex;gap:var(--sp-4);border-bottom:1px solid var(--edge);overflow-x:auto;scrollbar-width:none}
+.tabs button{height:40px;color:var(--muted);font-weight:500;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:6px}
+.tabs button[aria-selected=true]{color:var(--ink);border-color:var(--accent);font-weight:600}
+.tabs .count{font:500 var(--t-xs) var(--font);background:var(--surface-2);border-radius:var(--r-full);padding:0 6px}
+
+/* rows */
+.rows{display:flex;flex-direction:column}
+.item{display:flex;align-items:center;gap:var(--sp-3);min-height:44px;padding:var(--sp-2) var(--sp-3);border-radius:var(--r-md);cursor:pointer;width:100%;text-align:left}
+.item:hover{background:var(--surface-2)}
+.item .meta{display:flex;align-items:center;gap:var(--sp-3);color:var(--faint);font:var(--t-xs) var(--font)}
+.group-label{font:500 var(--t-xs) var(--font);color:var(--faint);text-transform:uppercase;letter-spacing:.04em;padding:var(--sp-3) var(--sp-3) var(--sp-1)}
+
+/* stat tiles */
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-3)}
+.tile{background:var(--surface-2);border-radius:var(--r-md);padding:var(--sp-3) var(--sp-4)}
+.tile .l{font:500 var(--t-xs) var(--font);color:var(--muted)}
+.tile .v{font:600 24px/28px var(--mono);font-variant-numeric:tabular-nums;margin-top:var(--sp-1)}
+.tile .s{font:var(--t-sm) var(--font);color:var(--muted);margin-top:2px}
+.tile.is-cost .v{color:var(--cost)}
+
+/* tables */
+table{width:100%;border-collapse:collapse}
+th{font:500 var(--t-xs) var(--font);color:var(--faint);text-align:right;padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--edge)}
+td{padding:var(--sp-3);border-bottom:1px solid var(--edge);text-align:right;font-family:var(--mono);font-size:13px}
+th:first-child,td:first-child{text-align:left;font-family:var(--font)}
+tr:last-child td{border-bottom:0}
+.share{display:inline-block;width:64px;height:6px;background:var(--surface-2);border-radius:var(--r-full);vertical-align:middle;margin-right:var(--sp-2);overflow:hidden}
+.share i{display:block;height:100%;background:var(--cost)}
+
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(10,14,20,.4);z-index:30;opacity:0;pointer-events:none;transition:opacity .2s}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;top:0;right:0;bottom:0;width:480px;max-width:100%;background:var(--surface);border-left:1px solid var(--edge);box-shadow:var(--shadow);z-index:40;display:flex;flex-direction:column;transform:translateX(105%);transition:transform .22s ease}
+.sheet.on{transform:none}
+.sheet-head{padding:var(--sp-4) var(--sp-5) 0}
+.sheet-head .top-row{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--sp-3);margin-bottom:var(--sp-3)}
+.sheet-body{flex:1;overflow:auto;padding:var(--sp-5)}
+.sheet-foot{padding:var(--sp-3) var(--sp-5);border-top:1px solid var(--edge);display:flex;gap:var(--sp-2)}
+.sheet-foot .btn{flex:1}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:var(--sp-3) var(--sp-4);align-items:center}
+.kv dt{color:var(--faint);font:var(--t-sm) var(--font)}.kv dd{margin:0}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:var(--sp-3)}
+.thumb{border:1px solid var(--edge);border-radius:var(--r-md);overflow:hidden}
+.thumb .img{aspect-ratio:4/3;background:linear-gradient(135deg,var(--accent-soft),var(--cost-soft))}
+.thumb div:last-child{padding:var(--sp-2) var(--sp-3);font:var(--t-sm) var(--font)}
+.timeline{display:flex;flex-direction:column}
+.tl{display:grid;grid-template-columns:56px 12px 1fr;gap:var(--sp-3);padding-bottom:var(--sp-4);position:relative}
+.tl .t{font:var(--t-xs) var(--font);color:var(--faint);text-align:right;padding-top:2px;font-family:var(--mono)}
+.tl .line{display:flex;flex-direction:column;align-items:center}
+.tl .line:after{content:"";flex:1;width:1px;background:var(--edge);margin-top:4px}
+.tl:last-child .line:after{display:none}
+.check{width:18px;height:18px;border-radius:var(--r-sm);border:1.5px solid var(--edge);display:grid;place-items:center;flex:none;font-size:12px}
+.check.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.comment{display:flex;gap:var(--sp-3)}
+.bubble{background:var(--surface-2);border-radius:var(--r-lg);padding:var(--sp-3) var(--sp-4)}
+textarea,input[type=text],select{font:inherit;color:inherit;background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-md);padding:var(--sp-2) var(--sp-3);width:100%;min-height:40px}
+textarea{resize:vertical;min-height:72px}
+
+/* chat */
+.chat-wrap{display:grid;grid-template-columns:260px 1fr;gap:var(--sp-4);min-height:620px}
+.chat-list{padding:var(--sp-2)}
+.chat-main{display:flex;flex-direction:column;padding:0;overflow:hidden}
+.chat-head{padding:var(--sp-4) var(--sp-5) 0}
+.chat-body{flex:1;overflow:auto;padding:var(--sp-5);display:flex;flex-direction:column;gap:var(--sp-4)}
+.msg{max-width:80%;padding:var(--sp-3) var(--sp-4);border-radius:var(--r-lg);background:var(--surface-2)}
+.msg.me{align-self:flex-end;background:var(--accent);color:var(--accent-ink)}
+.tool{font:var(--t-xs) var(--font);font-family:var(--mono);color:var(--muted);border:1px dashed var(--edge);border-radius:var(--r-md);padding:var(--sp-2) var(--sp-3);align-self:flex-start}
+.composer{display:flex;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4);border-top:1px solid var(--edge)}
+.back-chat{display:none}
+
+/* settings / forms */
+.settings{display:grid;gap:var(--sp-5)}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font:500 var(--t-sm) var(--font)}
+.toggle{width:40px;height:24px;border-radius:var(--r-full);background:var(--edge);position:relative;flex:none;transition:background .15s}
+.toggle:after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .15s}
+.toggle[aria-checked=true]{background:var(--accent)}.toggle[aria-checked=true]:after{transform:translateX(16px)}
+.seg{display:inline-flex;background:var(--surface-2);border-radius:var(--r-md);padding:2px}
+.seg button{padding:var(--sp-1) var(--sp-3);border-radius:var(--r-sm);color:var(--muted);min-height:32px}
+.seg button[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12);font-weight:600}
+.danger{border-color:color-mix(in srgb,var(--bad) 40%,var(--edge))}
+.btn.bad{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 40%,var(--edge))}
+
+/* onboarding */
+.onb{max-width:640px;margin:0 auto}
+.steps{display:flex;gap:6px;margin-bottom:var(--sp-5)}
+.steps i{flex:1;height:4px;border-radius:var(--r-full);background:var(--edge)}
+.steps i.on{background:var(--accent)}
+.choices{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--sp-3)}
+.choice{border:1px solid var(--edge);border-radius:var(--r-lg);padding:var(--sp-4);text-align:left;display:flex;flex-direction:column;gap:var(--sp-1)}
+.choice[aria-pressed=true]{border-color:var(--accent);background:var(--accent-soft)}
+
+.note{font:var(--t-xs) var(--font);color:var(--faint);margin-top:var(--sp-4)}
+
+.sheet .tiles{grid-template-columns:repeat(2,1fr)}
+/* canvas board */
+main.full{max-width:none;padding:0}
+.cv{position:relative;height:calc(100vh - 56px);height:calc(100dvh - 56px);overflow:hidden;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;background-color:var(--bg);background-image:radial-gradient(var(--edge) 1.5px,transparent 1.5px);background-size:24px 24px}
+.cv:active{cursor:grabbing}
+.world{position:absolute;left:0;top:0;transform-origin:0 0}
+.edges{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible;pointer-events:none}
+.edges path{fill:none;stroke:var(--faint);stroke-opacity:.5;stroke-width:1.5;stroke-linejoin:round}
+.node{position:absolute;background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-lg);padding:var(--sp-4);cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.08);transition:border-color .15s,box-shadow .15s}
+.node:hover{border-color:var(--accent)}
+.node.sel{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.node.drag{box-shadow:var(--shadow);z-index:3}
+.node.mgr,.node.goal{width:300px}
+.node.task{width:260px;padding:var(--sp-3)}
+.ttl{font:500 var(--t-sm) var(--font);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.node.sticky{width:200px;background:#FFF1A8;border-color:#E8D47A;color:#3a3200;font:var(--t-sm) var(--font);transform:rotate(-1.5deg);cursor:grab;min-height:90px}
+[data-theme=dark] .node.sticky{background:#4A4112;border-color:#6B5E1F;color:#F7EDB0}
+.float{position:absolute;z-index:5;top:var(--sp-4);display:flex;align-items:center;gap:var(--sp-3);background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-lg);padding:var(--sp-3) var(--sp-4);box-shadow:0 1px 3px rgba(0,0,0,.08);cursor:default}
+.float.tl{left:var(--sp-4);flex-direction:column;align-items:flex-start;gap:2px}
+.float.tr{right:var(--sp-4)}
+.tools{position:absolute;z-index:5;left:50%;bottom:var(--sp-4);transform:translateX(-50%);display:flex;align-items:center;gap:var(--sp-1);background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-lg);padding:var(--sp-1);box-shadow:var(--shadow);cursor:default;max-width:calc(100% - 24px);overflow-x:auto}
+.tools button{min-width:36px;height:36px;padding:0 var(--sp-3);border-radius:var(--r-md);white-space:nowrap;font-weight:500}
+.tools button:hover{background:var(--surface-2)}
+.tools i{width:1px;height:20px;background:var(--edge);margin:0 var(--sp-1)}
+.zl{min-width:48px;text-align:center;font-size:13px;color:var(--muted)}
+.mini{position:absolute;z-index:5;right:var(--sp-4);bottom:var(--sp-4);width:180px;height:120px;background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-md);overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.mini i{position:absolute;border-radius:2px;background:var(--edge)}
+.mini i.ms{background:#E8D47A}
+.mini i.mv{background:color-mix(in srgb,var(--accent) 12%,transparent);border:1.5px solid var(--accent);border-radius:3px}
+.hint{position:absolute;left:var(--sp-4);bottom:var(--sp-4);z-index:4;font:var(--t-xs) var(--font);color:var(--faint);pointer-events:none;max-width:30%}
+@media (max-width:900px){.hint{display:none}}
+@media (max-width:640px){.mini{display:none}.float.tl p{display:none}.float.tr .pill{display:none}.float{padding:var(--sp-2) var(--sp-3)}}
+@media (max-width:900px){
+  .tiles{grid-template-columns:repeat(2,1fr)}
+  .chat-wrap{grid-template-columns:1fr}
+  .chat-wrap.open .chat-list{display:none}
+  .chat-wrap:not(.open) .chat-main{display:none}
+  .back-chat{display:inline-flex}
+}
+@media (max-width:640px){
+  main{padding:var(--sp-4)}
+  .top{padding:0 var(--sp-3);gap:var(--sp-2)}
+  .brand span{display:none}
+  .sheet{width:100%;border-left:0}
+  .sheet-head{padding:var(--sp-3) var(--sp-4) 0}.sheet-body{padding:var(--sp-4)}.sheet-foot{padding:var(--sp-3) var(--sp-4)}
+  h1{font:700 22px/28px var(--font)}
+  .choices{grid-template-columns:1fr}
+  .kv{grid-template-columns:90px 1fr}
+  .msg{max-width:92%}
+  /* tables become stacked rows */
+  table.stack-m thead{display:none}
+  table.stack-m tr{display:grid;grid-template-columns:1fr 1fr;gap:0 var(--sp-3);padding:var(--sp-3) 0;border-bottom:1px solid var(--edge)}
+  table.stack-m td{border:0;padding:2px 0;text-align:left}
+  table.stack-m td:first-child{grid-column:1/-1;font-weight:600}
+  table.stack-m td[data-l]:before{content:attr(data-l) " ";color:var(--faint);font:var(--t-xs) var(--font);font-family:var(--font);display:block}
+  table.stack-m tr:last-child{border-bottom:0}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><div class="logo"></div><span>Canopy</span></div>
+  <nav class="nav" id="nav" aria-label="Screens"></nav>
+  <button class="icon-btn" id="theme" aria-label="Toggle theme" title="Toggle theme"></button>
+</header>
+<main id="main"></main>
+<div class="scrim" id="scrim"></div>
+<aside class="sheet" id="sheet" aria-label="Details"></aside>
+
+<script>
+/* ---------- data ---------- */
+const PRICE={ // $ per 1M tokens (list price, illustrative)
+  "Fable 5.1":{in:15,out:75,cache:1.5},
+  "Sonnet 5.5":{in:3,out:15,cache:0.3},
+  "Haiku 5.5":{in:1,out:5,cache:0.1}};
+const people={
+  mac:{n:"Big Mac",i:"BM",ai:1,role:"Manager"},
+  trevor:{n:"Trevor",i:"TR",ai:1,role:"Developer"},
+  riley:{n:"Riley",i:"RI",ai:1,role:"Designer"},
+  nora:{n:"Nora",i:"NO",ai:1,role:"QA"},
+  ashim:{n:"Ashim",i:"AU",role:"Owner"}};
+// u: [model, inTok, outTok, cacheTok]
+const tasks=[
+ {id:1,g:1,t:"Audit current UI and set design direction",s:"done",who:"trevor",u:[["Sonnet 5.5",182000,24000,610000]],steps:[["Run the app and capture screens",1],["Measure type, radius and spacing",1],["Write the design doc",1]],res:"Wrote docs/design/ui-redo.md and 17 screenshots."},
+ {id:2,g:1,t:"Build interactive prototype of the new UI",s:"doing",who:"trevor",u:[["Sonnet 5.5",96000,31000,420000],["Haiku 5.5",20000,4000,50000]],steps:[["Tokens, type scale and themes",1],["Board and sheets with tabs",1],["Chat, settings, onboarding",0],["Responsive pass",0]],res:""},
+ {id:3,g:1,t:"Review prototype with the team",s:"todo",who:"mac",u:[],steps:[["Collect feedback",0]],res:""},
+ {id:4,g:2,t:"Split manager inbox into notes and tasks",s:"doing",who:"mac",u:[["Fable 5.1",64000,9000,300000]],steps:[["Read current assignment flow",1],["Draft routing rules",0]],res:""},
+ {id:5,g:2,t:"Reassign requests to the right staff",s:"todo",who:"mac",u:[],steps:[["Add classifier step",0]],res:""},
+ {id:6,g:3,t:"Mobile breakpoints for board",s:"done",who:"riley",u:[["Sonnet 5.5",88000,12000,240000]],steps:[["Audit 390px layouts",1],["Snap scrolling columns",1]],res:"Board columns scroll sideways on phones."},
+ {id:7,g:3,t:"Fix tables on small screens",s:"blocked",who:"nora",u:[["Haiku 5.5",41000,6000,90000]],steps:[["Reproduce overflow",1],["Waiting on token work",0]],res:""},
+ {id:8,g:4,t:"Add Good-at tags for staff",s:"done",who:"trevor",u:[["Sonnet 5.5",52000,8000,150000]],steps:[["Schema",1],["UI",1]],res:"Tags show on staff cards."},
+ {id:9,g:5,t:"Independent staff subtype",s:"todo",who:"mac",u:[],steps:[["Scope the change",0]],res:""}
+];
+const goals=[
+ {id:1,t:"The whole UI looks chopped, redo it",s:"doing",desc:"Take inspiration from public design showcases. Descriptive yet minimal, with tabs for long sections and cost stats everywhere.",done:"Prototype approved and build started.",out:["Design doc","Board shot","Phone shot"],act:[["10:42","trevor","Saved prototype draft"],["10:31","trevor","Ran responsive check at 390px"],["10:05","mac","Assigned task to Trevor"],["09:40","ashim","Approved the design doc"]]},
+ {id:2,t:"Manager triages human requests",s:"doing",desc:"Tasks humans give the manager are notes or requests. The manager analyses them and reassigns to staff.",done:"Manager never executes human-given tasks itself.",out:["Routing plan"],act:[["11:02","mac","Drafted routing rules"],["09:12","ashim","Created goal"]]},
+ {id:3,t:"Make the platform responsive on mobile",s:"blocked",desc:"Every screen works at 390px with 44px tap targets.",done:"No horizontal overflow on any screen.",out:["Phone shots"],act:[["Yesterday","nora","Marked blocked on tables"],["Yesterday","riley","Finished board breakpoints"]]},
+ {id:4,t:"More Good-at tags for staff",s:"done",desc:"People can see what each staff member is good at.",done:"Tags visible on cards.",out:[],act:[["Mon","trevor","Merged change"]]},
+ {id:5,t:"New subtype of independent staff",s:"todo",desc:"A staff type that works without a manager.",done:"Spec agreed.",out:[],act:[]}
+];
+const label={todo:"To do",doing:"In progress",blocked:"Blocked",done:"Done"};
+
+/* ---------- helpers ---------- */
+const $=(s,r=document)=>r.querySelector(s);
+const cost=u=>(u[1]*PRICE[u[0]].in+u[2]*PRICE[u[0]].out+u[3]*PRICE[u[0]].cache)/1e6;
+const fmtT=n=>n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"k":""+n;
+const fmtC=c=>c===0?"–":c<0.01?"<$0.01":c>=1?"$"+c.toFixed(2):"$"+c.toFixed(2);
+const sum=us=>us.reduce((a,u)=>({in:a.in+u[1],out:a.out+u[2],cache:a.cache+u[3],cost:a.cost+cost(u)}),{in:0,out:0,cache:0,cost:0});
+const tUse=t=>sum(t.u);
+const gTasks=g=>tasks.filter(t=>t.g===g.id);
+const gUse=g=>sum(gTasks(g).flatMap(t=>t.u));
+const badge=s=>s.in+s.out===0?`<span class="pill usage">–</span>`:`<span class="pill usage">${fmtT(s.in+s.out)} tokens · ${fmtC(s.cost)}</span>`;
+const av=k=>`<span class="avatar ${people[k].ai?"ai":""}" title="${people[k].n}">${people[k].i}</span>`;
+const tile=(l,v,s,c)=>`<div class="tile ${c?"is-cost":""}"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s||""}</div></div>`;
+const tabs=(id,list,cur)=>`<div class="tabs" role="tablist" data-tabs="${id}">${list.map(([k,l,c])=>`<button role="tab" aria-selected="${k===cur}" data-tab="${k}">${l}${c!=null?`<span class="count">${c}</span>`:""}</button>`).join("")}</div>`;
+const empty=(ico,msg,btn)=>`<div class="empty"><div class="ico">${ico}</div><p class="muted">${msg}</p>${btn?`<button class="btn">${btn}</button>`:""}</div>`;
+const usageTiles=u=>`<div class="tiles">${tile("Estimated cost",fmtC(u.cost),"list price",1)}${tile("Tokens in",fmtT(u.in),"prompt")}${tile("Tokens out",fmtT(u.out),"generated")}${tile("Cache read",fmtT(u.cache),"reused")}</div>`;
+function modelTable(us){
+  const by={};us.forEach(u=>{(by[u[0]]??=[0,0,0,0]);by[u[0]][0]+=u[1];by[u[0]][1]+=u[2];by[u[0]][2]+=u[3];by[u[0]][3]+=cost(u)});
+  const rows=Object.entries(by);
+  if(!rows.length)return empty("$","No usage yet. Numbers appear once a task starts running.");
+  return `<table class="stack-m"><thead><tr><th>Model</th><th>In</th><th>Out</th><th>Cache</th><th>Cost</th></tr></thead><tbody>${rows.map(([m,v])=>`<tr><td>${m}</td><td data-l="In">${fmtT(v[0])}</td><td data-l="Out">${fmtT(v[1])}</td><td data-l="Cache">${fmtT(v[2])}</td><td data-l="Cost" class="cost">${fmtC(v[3])}</td></tr>`).join("")}</tbody></table>`;
+}
+const taskRow=t=>`<button class="item" data-task="${t.id}"><span class="dot ${t.s}"></span><span class="grow">${t.t}</span><span class="meta">${badge(tUse(t))}${av(t.who)}</span></button>`;
+
+/* ---------- state ---------- */
+const state={screen:"board",tab:{goal:"overview",task:"overview",chat:"chat",settings:"general",usage:"overview"},sheet:null,chat:"trevor",chatOpen:false,onb:0,onbChoice:{},toggles:{auto:true,notify:false,cost:true}};
+const screens=[["board","Board"],["chat","Chat"],["usage","Usage"],["settings","Settings"],["onboarding","Onboarding"]];
+
+/* ---------- screens ---------- */
+function board(){
+  const all=sum(tasks.flatMap(t=>t.u));
+  return `<div class="cv" id="cv"><div class="world" id="world"><svg class="edges" id="edges"></svg>${nodeKeys().map(nodeHTML).join("")}</div>
+  <div class="float tl"><h2>Goals</h2><p class="sm muted">What the team is working on, and what it costs.</p></div>
+  <div class="float tr"><span class="pill usage">This week ${fmtT(all.in+all.out)} tokens · ${fmtC(all.cost)}</span><button class="btn primary">Give a goal</button></div>
+  <div class="tools" role="toolbar" aria-label="Board tools"><button data-act="out" aria-label="Zoom out">−</button><span id="zl" class="zl mono">100%</span><button data-act="in" aria-label="Zoom in">+</button><i></i><button data-act="fit">Fit</button><button data-act="tidy">Tidy</button><button data-act="sticky">+ Note</button></div>
+  <div class="mini" id="mini" aria-hidden="true"></div>
+  <p class="hint">Drag the canvas to pan · pinch or Ctrl + scroll to zoom · drag cards to move · click to open</p></div>`;
+}
+/* ---------- canvas board ---------- */
+const view={x:24,y:100,z:innerWidth<640?.8:.85};
+const pos={};
+let stickies=[{k:"s1",t:"Keep tokens and cost on every card. – Ashim"},{k:"s2",t:"Mobbin blocked bots: check patterns by hand."}];
+const GAP=340;
+function initPos(){
+  if(pos.mgr)return;
+  goals.forEach((g,i)=>{pos["g"+g.id]=[i*GAP,200];gTasks(g).forEach((t,k)=>pos["t"+t.id]=[i*GAP+40,390+k*104])});
+  pos.mgr=[((goals.length-1)*GAP+300)/2-150,10];
+  pos.s1=[pos.mgr[0]+370,30];pos.s2=[pos.mgr[0]-250,50];
+}
+function tidy(){Object.keys(pos).forEach(k=>delete pos[k]);initPos()}
+const nodeKeys=()=>{initPos();return["mgr",...goals.map(g=>"g"+g.id),...tasks.map(t=>"t"+t.id),...stickies.map(s=>s.k)]};
+function nodeHTML(k){
+  const [x,y]=pos[k],st=`left:${x}px;top:${y}px`;
+  const sel=state.sheet&&((state.sheet.type==="goal"?"g":"t")+state.sheet.id)===k?" sel":"";
+  if(k==="mgr"){const all=sum(tasks.flatMap(t=>t.u));return `<div class="node mgr" data-node="mgr" style="${st}"><div class="row-flex">${av("mac")}<div class="grow"><b>Big Mac</b><div class="xs faint">Manager · sorts requests to staff</div></div></div><div style="margin-top:var(--sp-3)">${badge(all)}</div></div>`}
+  if(k[0]==="g"){const g=goals.find(x=>"g"+x.id===k),ts=gTasks(g),d=ts.filter(t=>t.s==="done").length,p=ts.length?Math.round(d/ts.length*100):0;
+    return `<div class="node goal${sel}" data-node="${k}" style="${st}"><div class="row-flex xs muted"><span class="dot ${g.s}"></span>${label[g.s]}<span class="grow"></span>${d}/${ts.length} tasks</div><h4 style="margin:var(--sp-2) 0 var(--sp-3);font:600 var(--t-md) var(--font)">${g.t}</h4><div class="progress"><i style="width:${p}%"></i></div><div style="margin-top:var(--sp-3)">${badge(gUse(g))}</div></div>`}
+  if(k[0]==="t"){const t=tasks.find(x=>"t"+x.id===k);
+    return `<div class="node task${sel}" data-node="${k}" style="${st}"><div class="row-flex"><span class="dot ${t.s}"></span><span class="grow ttl">${t.t}</span>${av(t.who)}</div><div style="margin-top:var(--sp-2)">${badge(tUse(t))}</div></div>`}
+  const n=stickies.find(s=>s.k===k);return `<div class="node sticky" data-node="${k}" style="${st}">${n.t}</div>`;
+}
+function drawEdges(root){
+  const r=k=>{const e=$(`[data-node="${k}"]`,root);return{x:pos[k][0],y:pos[k][1],w:e.offsetWidth,h:e.offsetHeight}};
+  const m=r("mgr");let d="";
+  goals.forEach(g=>{const a=r("g"+g.id),sx=m.x+m.w/2,sy=m.y+m.h,ex=a.x+a.w/2,my=sy+(a.y-sy)/2;
+    d+=`M${sx} ${sy}V${my}H${ex}V${a.y}`;
+    gTasks(g).forEach(t=>{const b=r("t"+t.id);d+=`M${a.x+20} ${a.y+a.h}V${b.y+b.h/2}H${b.x}`})});
+  $("#edges",root).innerHTML=`<path d="${d}"/>`;
+}
+function bbox(root){
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  nodeKeys().forEach(k=>{const e=$(`[data-node="${k}"]`,root);if(!e)return;const[x,y]=pos[k];x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x+e.offsetWidth);y1=Math.max(y1,y+e.offsetHeight)});
+  return{x:x0,y:y0,w:x1-x0,h:y1-y0};
+}
+function initCanvas(){
+  const cv=$("#cv");if(!cv)return;const world=$("#world");initPos();
+  const apply=()=>{
+    world.style.transform=`translate(${view.x}px,${view.y}px) scale(${view.z})`;
+    const g=24*view.z;cv.style.backgroundSize=`${g}px ${g}px`;cv.style.backgroundPosition=`${view.x}px ${view.y}px`;
+    $("#zl").textContent=Math.round(view.z*100)+"%";mini();
+  };
+  const mini=()=>{
+    const m=$("#mini"),b=bbox(cv),W=cv.clientWidth,H=cv.clientHeight,pad=60;
+    const vx=-view.x/view.z,vy=-view.y/view.z,vw=W/view.z,vh=H/view.z;
+    const x0=Math.min(b.x,vx)-pad,y0=Math.min(b.y,vy)-pad,x1=Math.max(b.x+b.w,vx+vw)+pad,y1=Math.max(b.y+b.h,vy+vh)+pad;
+    const s=Math.min(m.clientWidth/(x1-x0),m.clientHeight/(y1-y0));
+    const box=(x,y,w,h,c)=>`<i class="${c}" style="left:${(x-x0)*s}px;top:${(y-y0)*s}px;width:${w*s}px;height:${h*s}px"></i>`;
+    m.innerHTML=nodeKeys().map(k=>{const e=$(`[data-node="${k}"]`,cv);return box(pos[k][0],pos[k][1],e.offsetWidth,e.offsetHeight,k[0]==="s"?"ms":"mn")}).join("")+box(vx,vy,vw,vh,"mv");
+  };
+  const zoomAt=(cx,cy,f)=>{const z=Math.min(2,Math.max(.25,view.z*f)),k=z/view.z;view.x=cx-(cx-view.x)*k;view.y=cy-(cy-view.y)*k;view.z=z;apply()};
+  const fit=()=>{const b=bbox(cv),W=cv.clientWidth,H=cv.clientHeight;view.z=Math.min(1,(W-60)/b.w,(H-170)/b.h);view.x=(W-b.w*view.z)/2-b.x*view.z;view.y=90+(H-90-b.h*view.z)/2-b.y*view.z;apply()};
+  drawEdges(cv);apply();
+  const ptrs=new Map();let drag=null,moved=0,pinch=null;
+  const pts=()=>[...ptrs.values()];
+  cv.addEventListener("pointerdown",e=>{
+    if(e.target.closest(".tools,.float,.mini,button")||e.target.isContentEditable)return;
+    cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(ptrs.size===2){const[a,b]=pts();pinch={d:Math.hypot(a.x-b.x,a.y-b.y),z:view.z};drag=null;return}
+    drag={k:e.target.closest(".node")?.dataset.node||null,lx:e.clientX,ly:e.clientY};moved=0;
+  });
+  cv.addEventListener("pointermove",e=>{
+    if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pinch&&ptrs.size===2){const[a,b]=pts(),r=cv.getBoundingClientRect();zoomAt((a.x+b.x)/2-r.left,(a.y+b.y)/2-r.top,pinch.z*Math.hypot(a.x-b.x,a.y-b.y)/pinch.d/view.z);return}
+    if(!drag)return;
+    const dx=e.clientX-drag.lx,dy=e.clientY-drag.ly;drag.lx=e.clientX;drag.ly=e.clientY;moved+=Math.abs(dx)+Math.abs(dy);
+    if(drag.k){if(moved<4)return;const p=pos[drag.k];p[0]+=dx/view.z;p[1]+=dy/view.z;const el=$(`[data-node="${drag.k}"]`,cv);el.style.left=p[0]+"px";el.style.top=p[1]+"px";el.classList.add("drag");drawEdges(cv);mini()}
+    else{view.x+=dx;view.y+=dy;apply()}
+  });
+  const up=e=>{
+    if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=null;
+    if(drag&&moved<4&&drag.k&&e.type==="pointerup")openNode(drag.k);
+    if(!ptrs.size)drag=null;
+  };
+  cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);
+  cv.addEventListener("wheel",e=>{e.preventDefault();const r=cv.getBoundingClientRect();
+    if(e.ctrlKey||e.metaKey)zoomAt(e.clientX-r.left,e.clientY-r.top,Math.exp(-e.deltaY*.01));else{view.x-=e.deltaX;view.y-=e.deltaY;apply()}},{passive:false});
+  cv.addEventListener("dblclick",e=>{const n=e.target.closest(".sticky");if(!n)return;n.contentEditable="true";n.focus();
+    n.onblur=()=>{n.contentEditable="false";const s=stickies.find(x=>x.k===n.dataset.node);if(s)s.t=n.textContent};});
+  cv.addEventListener("click",e=>{
+    const a=e.target.closest("[data-act]")?.dataset.act;if(!a)return;
+    if(a==="in")zoomAt(cv.clientWidth/2,cv.clientHeight/2,1.2);
+    if(a==="out")zoomAt(cv.clientWidth/2,cv.clientHeight/2,1/1.2);
+    if(a==="fit")fit();
+    if(a==="tidy"){tidy();Object.keys(pos).forEach(k=>{const el=$(`[data-node="${k}"]`,cv);if(el){el.style.left=pos[k][0]+"px";el.style.top=pos[k][1]+"px"}});drawEdges(cv);apply()}
+    if(a==="sticky"){const k="s"+(Date.now());stickies.push({k,t:"New note. Double-click to edit."});
+      pos[k]=[(cv.clientWidth/2-view.x)/view.z-100,(cv.clientHeight/2-view.y)/view.z-40];
+      world.insertAdjacentHTML("beforeend",nodeHTML(k));mini()}
+  });
+}
+function openNode(k){
+  if(k==="mgr"){state.screen="chat";state.chat="mac";state.chatOpen=true}
+  else if(k[0]==="g")state.sheet={type:"goal",id:+k.slice(1)};
+  else if(k[0]==="t")state.sheet={type:"task",id:+k.slice(1)};
+  else return;
+  render();
+}
+function chatScreen(){
+  const m=people[state.chat],tab=state.tab.chat;
+  const staff=["mac","trevor","riley","nora"];
+  const su=sum(tasks.filter(t=>t.who===state.chat).flatMap(t=>t.u));
+  const body={
+   chat:`<div class="chat-body"><div class="msg">Hi Ashim, the prototype is about 70% done. Board and panels are in; chat and settings are next.</div><div class="msg me">Please keep the cost badges on every card.</div><div class="tool">read_file docs/design/ui-redo.md</div><div class="msg">Done. Every card shows tokens and an estimated cost.</div></div><div class="composer"><input type="text" placeholder="Message ${m.n}" aria-label="Message"><button class="btn primary">Send</button></div>`,
+   activity:`<div class="chat-body"><div class="timeline">${[["10:42","Saved prototype draft","Wrote docs/design/prototype.html"],["10:31","Ran responsive check","Resized to 390px, no overflow"],["10:12","Read design doc","docs/design/ui-redo.md"],["10:05","Started task","Build interactive prototype"]].map(a=>`<div class="tl"><span class="t">${a[0]}</span><span class="line"><span class="dot doing"></span></span><div><b>${a[1]}</b><div class="sm muted">${a[2]}</div></div></div>`).join("")}</div></div>`,
+   usage:`<div class="chat-body">${usageTiles(su)}<h3>By model</h3>${modelTable(tasks.filter(t=>t.who===state.chat).flatMap(t=>t.u))}</div>`,
+   settings:`<div class="chat-body"><div class="field"><label>Model</label><select><option>Sonnet 5.5</option><option>Fable 5.1</option><option>Haiku 5.5</option></select></div><div class="field"><label>Good at</label><div class="row-flex" style="flex-wrap:wrap"><span class="pill">React</span><span class="pill">Next.js</span><span class="pill">Testing</span><button class="pill">+ Add</button></div></div><div class="field"><label>Instructions</label><textarea>Keep commit messages simple.</textarea></div></div>`}[tab];
+  return `<div class="page-head"><div><h1>Chat</h1><p class="muted">Talk to your staff and see what they did.</p></div></div>
+  <div class="chat-wrap ${state.chatOpen?"open":""}"><div class="card chat-list rows">${staff.map(k=>`<button class="item" data-chat="${k}" ${k===state.chat?'style="background:var(--surface-2)"':""}>${av(k)}<span class="grow"><b>${people[k].n}</b><div class="xs faint">${people[k].role}</div></span></button>`).join("")}</div>
+  <div class="card chat-main"><div class="chat-head"><div class="row-flex" style="margin-bottom:var(--sp-3)"><button class="icon-btn back-chat" data-back aria-label="Back">←</button>${av(state.chat)}<div class="grow"><h3>${m.n}</h3><div class="xs faint">${m.role} · working</div></div>${badge(su)}</div>${tabs("chat",[["chat","Chat"],["activity","Activity"],["usage","Usage"],["settings","Settings"]],tab)}</div>${body}</div></div>`;
+}
+function usageScreen(){
+  const tab=state.tab.usage,all=sum(tasks.flatMap(t=>t.u));
+  const byGoal=goals.map(g=>[g,gUse(g)]).sort((a,b)=>b[1].cost-a[1].cost);
+  const mx=Math.max(...byGoal.map(x=>x[1].cost))||1;
+  const byP=["mac","trevor","riley","nora"].map(k=>[k,sum(tasks.filter(t=>t.who===k).flatMap(t=>t.u))]);
+  const body={
+   overview:`<div class="stack">${usageTiles(all)}<div class="card"><div class="card-head"><div><h3>Cost by model</h3><p class="sm muted">All goals, this week</p></div></div>${modelTable(tasks.flatMap(t=>t.u))}</div></div>`,
+   people:`<div class="card"><table class="stack-m"><thead><tr><th>Person</th><th>Tokens</th><th>Cost</th></tr></thead><tbody>${byP.map(([k,s])=>`<tr><td>${people[k].n}</td><td data-l="Tokens">${fmtT(s.in+s.out)}</td><td data-l="Cost" class="cost">${fmtC(s.cost)}</td></tr>`).join("")}</tbody></table></div>`,
+   goals:`<div class="card"><table class="stack-m"><thead><tr><th>Goal</th><th>Tokens</th><th>Cost</th></tr></thead><tbody>${byGoal.map(([g,s])=>`<tr><td><button data-goal="${g.id}" style="text-align:left">${g.t}</button></td><td data-l="Tokens">${fmtT(s.in+s.out)}</td><td data-l="Cost" class="cost"><span class="share"><i style="width:${s.cost/mx*100}%"></i></span>${fmtC(s.cost)}</td></tr>`).join("")}</tbody></table></div>`,
+   tasks:`<div class="card"><div class="rows">${[...tasks].sort((a,b)=>tUse(b).cost-tUse(a).cost).map(taskRow).join("")}</div></div>`}[tab];
+  return `<div class="page-head"><div><h1>Usage</h1><p class="muted">Tokens and estimated cost across the workspace.</p></div></div>${tabs("usage",[["overview","Overview"],["people","People"],["goals","Goals"],["tasks","Tasks"]],tab)}<div style="margin-top:var(--sp-5)">${body}</div>`;
+}
+function toggle(k,l,d){return `<div class="row-flex" style="justify-content:space-between;gap:var(--sp-4)"><div><div>${l}</div><div class="sm muted">${d}</div></div><button class="toggle" role="switch" aria-checked="${state.toggles[k]}" aria-label="${l}" data-toggle="${k}"></button></div>`}
+function settingsScreen(){
+  const tab=state.tab.settings;
+  const body={
+   general:`<div class="settings"><div class="card"><h3 class="section-title">Workspace</h3><p class="sm muted" style="margin-bottom:var(--sp-4)">Name and what the team works on.</p><div class="stack-sm"><div class="field"><label>Name</label><input type="text" value="Canopy"></div><div class="field"><label>Description</label><textarea>Will work on main Canopy</textarea></div></div></div><div class="card"><h3 class="section-title">Behaviour</h3><p class="sm muted" style="margin-bottom:var(--sp-4)">How goals finish.</p><div class="stack-sm">${toggle("auto","Auto-complete goals","Close a goal when every task is done.")}${toggle("cost","Show cost","Display estimated cost on cards.")}${toggle("notify","Email updates","Daily summary of finished work.")}</div></div></div>`,
+   dirs:`<div class="card"><div class="card-head"><div><h3>Directories</h3><p class="sm muted">Folders staff can read or edit.</p></div><button class="btn">Add directory</button></div><div class="rows"><div class="item"><span class="grow mono">./canopy</span><span class="pill">read and write</span></div><div class="item"><span class="grow mono">./docs</span><span class="pill">read</span></div></div></div>`,
+   members:`<div class="card"><div class="card-head"><div><h3>Members</h3><p class="sm muted">People and staff in this workspace.</p></div><button class="btn primary">Add staff</button></div><table class="stack-m"><thead><tr><th>Name</th><th>Role</th><th>Cost (week)</th></tr></thead><tbody>${Object.keys(people).map(k=>`<tr><td>${people[k].n}</td><td data-l="Role">${people[k].role}</td><td data-l="Cost" class="cost">${fmtC(sum(tasks.filter(t=>t.who===k).flatMap(t=>t.u)).cost)}</td></tr>`).join("")}</tbody></table></div>`,
+   skills:`<div class="card"><div class="card-head"><div><h3>Skills</h3><p class="sm muted">Reusable instructions for staff.</p></div></div>${empty("✦","No custom skills yet. Add one to share know-how across staff.","Add a skill")}</div>`,
+   danger:`<div class="card danger"><h3>Delete workspace</h3><p class="sm muted" style="margin:var(--sp-1) 0 var(--sp-4)">Removes all goals, tasks and history. This can’t be undone.</p><button class="btn bad">Delete workspace</button></div>`}[tab];
+  return `<div class="page-head"><div><h1>Settings</h1><p class="muted">Manage the workspace.</p></div></div>${tabs("settings",[["general","General"],["dirs","Directories"],["members","Members"],["skills","Skills"],["danger","Danger"]],tab)}<div style="margin-top:var(--sp-5)">${body}</div>`;
+}
+const onbSteps=[
+ {t:"Name your workspace",d:"This is where goals and staff live.",f:`<div class="field"><label>Workspace name</label><input type="text" value="Canopy"></div>`},
+ {t:"What will you work on?",d:"Pick the closest fit. You can change it later.",ch:["Software product","Research","Content and marketing","Something else"]},
+ {t:"Choose your first staff",d:"Staff do the work. A manager hands out tasks.",ch:["Manager","Developer","Designer","QA"],multi:1},
+ {t:"Give the first goal",d:"One sentence is enough.",f:`<div class="field"><label>Goal</label><textarea placeholder="Redo the UI so it feels consistent"></textarea></div><p class="sm muted" style="margin-top:var(--sp-3)">Cost per goal shows up on the board as soon as staff start.</p>`}];
+function onboarding(){
+  const s=onbSteps[state.onb],last=state.onb===onbSteps.length-1;
+  const sel=state.onbChoice[state.onb]||[];
+  return `<div class="onb"><div class="steps" aria-label="Step ${state.onb+1} of ${onbSteps.length}">${onbSteps.map((_,i)=>`<i class="${i<=state.onb?"on":""}"></i>`).join("")}</div><p class="xs faint">Step ${state.onb+1} of ${onbSteps.length}</p><h1 style="margin:var(--sp-1) 0">${s.t}</h1><p class="muted" style="margin-bottom:var(--sp-5)">${s.d}</p>${s.f||""}${s.ch?`<div class="choices">${s.ch.map(c=>`<button class="choice" data-choice="${c}" aria-pressed="${sel.includes(c)}"><b>${c}</b></button>`).join("")}</div>`:""}<div class="row-flex" style="justify-content:space-between;margin-top:var(--sp-6)"><button class="btn" data-onb="-1" ${state.onb?"":"disabled style='visibility:hidden'"}>Back</button><button class="btn primary" data-onb="1">${last?"Finish":"Continue"}</button></div></div>`;
+}
+
+/* ---------- sheets ---------- */
+function goalSheet(g){
+  const tab=state.tab.goal,ts=gTasks(g),u=gUse(g),d=ts.filter(t=>t.s==="done").length;
+  const members=[...new Set(ts.map(t=>t.who))];
+  const body={
+   overview:`<div class="stack"><dl class="kv"><dt>Status</dt><dd><span class="row-flex"><span class="dot ${g.s}"></span>${label[g.s]}</span></dd><dt>Progress</dt><dd><div class="progress"><i style="width:${ts.length?d/ts.length*100:0}%"></i></div></dd><dt>Owner</dt><dd class="row-flex">${av("mac")} Big Mac</dd><dt>Cost so far</dt><dd>${badge(u)}</dd></dl><div><h3 class="section-title">Description</h3><p class="muted">${g.desc}</p></div><div><h3 class="section-title">Done when</h3><p class="muted">${g.done}</p></div></div>`,
+   tasks:ts.length?`<div class="rows">${members.map(k=>`<div class="group-label">${people[k].n}</div>${ts.filter(t=>t.who===k).map(taskRow).join("")}`).join("")}</div>`:empty("☐","No tasks yet. Add the first step for this goal.","Add a task"),
+   outputs:g.out.length?`<div class="thumbs">${g.out.map(o=>`<div class="thumb"><div class="img"></div><div>${o}</div></div>`).join("")}</div>`:empty("↗","Files staff share will appear here."),
+   activity:g.act.length?`<div class="timeline">${g.act.map(a=>`<div class="tl"><span class="t">${a[0]}</span><span class="line"><span class="dot"></span></span><div><b>${people[a[1]].n}</b><div class="sm muted">${a[2]}</div></div></div>`).join("")}</div>`:empty("◷","Nothing has happened yet."),
+   usage:`<div class="stack">${usageTiles(u)}<div><h3 class="section-title">By model</h3>${modelTable(ts.flatMap(t=>t.u))}</div><div><h3 class="section-title">By task</h3><div class="rows">${[...ts].sort((a,b)=>tUse(b).cost-tUse(a).cost).map(t=>`<button class="item" data-task="${t.id}"><span class="grow">${t.t}</span><span class="share"><i style="width:${u.cost?tUse(t).cost/u.cost*100:0}%"></i></span><span class="cost">${fmtC(tUse(t).cost)}</span></button>`).join("")||`<p class="sm muted">No tasks yet.</p>`}</div></div></div>`}[tab];
+  return {head:`<div class="top-row"><div><div class="xs faint">Goal</div><h2>${g.t}</h2></div><button class="icon-btn" data-close aria-label="Close">✕</button></div>${tabs("goal",[["overview","Overview"],["tasks","Tasks",ts.length],["outputs","Outputs",g.out.length],["activity","Activity"],["usage","Usage"]],tab)}`,body,foot:`<button class="btn">Chat with Mac</button><button class="btn primary">Add a task</button>`};
+}
+function taskSheet(t){
+  const tab=state.tab.task,u=tUse(t),g=goals.find(x=>x.id===t.g);
+  const body={
+   overview:`<div class="stack"><dl class="kv"><dt>Status</dt><dd class="row-flex"><span class="dot ${t.s}"></span>${label[t.s]}</dd><dt>Assignee</dt><dd class="row-flex">${av(t.who)} ${people[t.who].n}</dd><dt>Goal</dt><dd><button data-goal="${g.id}" style="text-decoration:underline;text-align:left">${g.t}</button></dd><dt>Cost so far</dt><dd>${badge(u)}</dd></dl><div><h3 class="section-title">Result</h3><p class="muted">${t.res||"Not finished yet."}</p></div></div>`,
+   steps:`<div class="stack-sm">${t.steps.map(s=>`<div class="row-flex"><span class="check ${s[1]?"on":""}">${s[1]?"✓":""}</span><span class="${s[1]?"muted":""}">${s[0]}</span></div>`).join("")}</div>`,
+   discussion:`<div class="stack"><div class="comment">${av(t.who)}<div class="bubble grow"><b>${people[t.who].n}</b><div class="sm muted">Started. Will share a draft soon.</div></div></div><div class="comment">${av("ashim")}<div class="bubble grow"><b>Ashim</b><div class="sm muted">Please include the phone view.</div></div></div><div class="field"><textarea placeholder="Write a comment"></textarea><div><button class="btn primary">Post</button></div></div></div>`,
+   usage:`<div class="stack">${usageTiles(u)}<div><h3 class="section-title">By model</h3>${modelTable(t.u)}</div><p class="note" style="margin:0">Live: updates while the task runs.</p></div>`}[tab];
+  return {head:`<div class="top-row"><div><div class="xs faint">Task · ${g.t}</div><h2>${t.t}</h2></div><button class="icon-btn" data-close aria-label="Close">✕</button></div>${tabs("task",[["overview","Overview"],["steps","Steps",t.steps.length],["discussion","Discussion",2],["usage","Usage"]],tab)}`,body,foot:`<button class="btn" data-goal="${g.id}">Back to goal</button><button class="btn primary">${t.s==="done"?"Reopen":"Mark done"}</button>`};
+}
+function renderSheet(){
+  const sh=$("#sheet"),sc=$("#scrim");
+  if(!state.sheet){sh.classList.remove("on");sc.classList.remove("on");return}
+  const v=state.sheet.type==="goal"?goalSheet(goals.find(g=>g.id===state.sheet.id)):taskSheet(tasks.find(t=>t.id===state.sheet.id));
+  const keep=$(".sheet-body",sh)?.scrollTop||0;
+  sh.innerHTML=`<div class="sheet-head">${v.head}</div><div class="sheet-body">${v.body}</div><div class="sheet-foot">${v.foot}</div>`;
+  $(".sheet-body",sh).scrollTop=keep;
+  sh.classList.add("on");sc.classList.add("on");
+}
+
+/* ---------- render + events ---------- */
+function render(){
+  $("#nav").innerHTML=screens.map(([k,l])=>`<button data-screen="${k}" ${k===state.screen?'aria-current="page"':""}>${l}</button>`).join("");
+  $("#main").innerHTML={board,chat:chatScreen,usage:usageScreen,settings:settingsScreen,onboarding}[state.screen]();
+  $("#theme").textContent=document.documentElement.dataset.theme==="dark"?"☀":"☾";
+  $("#main").className=state.screen==="board"?"full":"";
+  initCanvas();
+  renderSheet();
+}
+document.addEventListener("click",e=>{
+  const c=e.target.closest("[data-screen],[data-goal],[data-task],[data-tab],[data-close],[data-chat],[data-back],[data-toggle],[data-onb],[data-choice]");
+  if(e.target.id==="scrim"||e.target.id==="theme"){}
+  if(e.target.id==="scrim")state.sheet=null;
+  else if(e.target.closest("#theme")){const d=document.documentElement;d.dataset.theme=d.dataset.theme==="dark"?"light":"dark";localStorage.setItem("theme",d.dataset.theme)}
+  else if(!c)return;
+  else{
+    const d=c.dataset;
+    if(d.screen){state.screen=d.screen;state.sheet=null;scrollTo(0,0)}
+    else if(d.goal){state.sheet={type:"goal",id:+d.goal}}
+    else if(d.task){state.sheet={type:"task",id:+d.task}}
+    else if("close" in d)state.sheet=null;
+    else if(d.tab){const id=c.closest("[data-tabs]").dataset.tabs;state.tab[id]=d.tab}
+    else if(d.chat){state.chat=d.chat;state.chatOpen=true}
+    else if("back" in d)state.chatOpen=false;
+    else if(d.toggle)state.toggles[d.toggle]=!state.toggles[d.toggle];
+    else if(d.onb){state.onb=Math.min(onbSteps.length-1,Math.max(0,state.onb+ +d.onb))}
+    else if(d.choice){const s=onbSteps[state.onb],cur=state.onbChoice[state.onb]||[];state.onbChoice[state.onb]=s.multi?(cur.includes(d.choice)?cur.filter(x=>x!==d.choice):[...cur,d.choice]):[d.choice]}
+  }
+  render();
+});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&state.sheet){state.sheet=null;render()}
+  const t=e.target.closest?.('[role=tab]');
+  if(t&&(e.key==="ArrowRight"||e.key==="ArrowLeft")){const b=[...t.parentElement.children],i=b.indexOf(t)+(e.key==="ArrowRight"?1:-1);const n=b[(i+b.length)%b.length];n.click();requestAnimationFrame(()=>$(`[data-tabs="${t.parentElement.dataset.tabs}"] [aria-selected=true]`)?.focus())}
+});
+const saved=localStorage.getItem("theme");
+document.documentElement.dataset.theme=saved||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+const h=location.hash.slice(1);if(screens.some(s=>s[0]===h))state.screen=h;
+render();
+</script>
+</body>
+</html>

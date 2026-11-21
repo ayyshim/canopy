@@ -95,11 +95,18 @@ func (s *Server) BoardSnapshot(ctx context.Context, wsID, userID uuid.UUID) (*bo
 	if err != nil {
 		return nil, err
 	}
+	urows, err := q.UsageWorkForWorkspace(ctx, wsID)
+	if err != nil {
+		return nil, err
+	}
+	goalUsage, taskUsage := core.SumUsage(urows)
 	visibleGoals := map[uuid.UUID]bool{}
 	for _, g := range goals {
 		if view.seesMember(g.ManagerID) {
 			visibleGoals[g.ID] = true
-			snap.Goals = append(snap.Goals, core.ToGoal(g))
+			gv := core.ToGoal(g)
+			gv.Usage = usageOrZero(goalUsage[g.ID])
+			snap.Goals = append(snap.Goals, gv)
 		}
 	}
 	repos, err := q.ListWorkspaceGoalRepos(ctx, wsID)
@@ -152,7 +159,9 @@ func (s *Server) BoardSnapshot(ctx context.Context, wsID, userID uuid.UUID) (*bo
 	for _, t := range tasks {
 		if view.seesMember(t.MemberID) {
 			visibleTasks[t.ID] = true
-			snap.Tasks = append(snap.Tasks, core.ToTask(t))
+			tv := core.ToTask(t)
+			tv.Usage = usageOrZero(taskUsage[t.ID])
+			snap.Tasks = append(snap.Tasks, tv)
 		}
 	}
 	attachments, err := q.ListWorkspaceAttachments(ctx, wsID)

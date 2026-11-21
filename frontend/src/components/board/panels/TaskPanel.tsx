@@ -14,6 +14,8 @@ import { Avatar } from "../icons";
 import { RunsOn, SignalBox, StatusPill, TaskRow, shortTitle } from "./bits";
 import { Attachments } from "./Attachments";
 import { PanelBody, PanelFoot, PanelHead } from "./Panel";
+import { Tabs, TabPanel, useTab, EmptyState, UsageBadge } from "../../ui";
+import { UsageTab } from "./UsageTab";
 import { OutputThumb } from "../OutputThumb";
 
 export function TaskPanel({ id }: { id: string }) {
@@ -27,6 +29,7 @@ export function TaskPanel({ id }: { id: string }) {
   const comments = useBoard((s) => s.comments[id]);
   const logs = useBoard((s) => (t.member_id ? s.logs[t.member_id] : undefined));
   const [text, setText] = useState("");
+  const [tab, setTab] = useTab("task", "overview", ["overview", "steps", "outputs", "discussion", "usage"]);
 
   useEffect(() => {
     loadTask(id);
@@ -58,10 +61,18 @@ export function TaskPanel({ id }: { id: string }) {
 
   return (
     <>
-      <PanelHead><span className="tag">Task</span><h2>{t.title}</h2></PanelHead>
+      <PanelHead tabs={<Tabs label="Task sections" idBase="task" value={tab} onChange={setTab} tabs={[
+        { id: "overview", label: "Overview", count: sigs.length || undefined },
+        { id: "steps", label: "Steps", count: steps.length || undefined },
+        { id: "outputs", label: "Outputs", count: outs.length },
+        { id: "discussion", label: "Discussion", count: comments?.length || undefined },
+        { id: "usage", label: "Usage" },
+      ]} />}><span className="tag">Task</span><h2>{t.title}</h2></PanelHead>
       <PanelBody>
+        <TabPanel id="overview" value={tab} idBase="task"><div className="stack">
         <div className="row wrap">
           <StatusPill t={t} />
+          <UsageBadge usage={t.usage} />
           {g && (
             <button className="pill" style={{ cursor: "pointer" }} onClick={() => ui.openSide({ type: "goal", id: g.id })}>
               <span className="gdot" style={{ background: g.color, width: 8, height: 8 }} />{shortTitle(g.title)}
@@ -93,6 +104,17 @@ export function TaskPanel({ id }: { id: string }) {
             </button>
           </div>
         )}
+        {t.description && <div className="sb-sec"><span className="lbl">Details</span><span style={{ whiteSpace: "pre-wrap" }}>{t.description}</span></div>}
+        {t.summary && <div className="sb-sec"><span className="lbl">Result</span><span>{t.summary}</span></div>}
+        <dl className="kv">
+          <dt>Started</dt><dd>{t.started_at ? clock(t.started_at) : "Not yet"}</dd>
+          <dt>Finished</dt><dd>{t.finished_at ? clock(t.finished_at) : "Not yet"}</dd>
+          <dt>Works in</dt><dd className="mono" style={{ fontSize: 12 }}>{t.required_dirs.length ? t.required_dirs.map((d) => <div key={d.directory_id}>{repoBranch(d.directory_id)}</div>) : "Workspace notes only"}</dd>
+          <dt>Can reach</dt><dd style={{ fontSize: 12.5 }}>{reach || "Workspace notes only"}</dd>
+        </dl>
+        <Attachments taskId={t.id} />
+        </div></TabPanel>
+        <TabPanel id="steps" value={tab} idBase="task"><div className="stack">
         {t.kind === "triage" && (
           <div className="sb-sec">
             <span className="lbl">Tasks it created</span>
@@ -111,30 +133,25 @@ export function TaskPanel({ id }: { id: string }) {
             </ul>
           </div>
         )}
-        {t.description && <div className="sb-sec"><span className="lbl">Details</span><span style={{ whiteSpace: "pre-wrap" }}>{t.description}</span></div>}
-        {t.summary && <div className="sb-sec"><span className="lbl">Result</span><span>{t.summary}</span></div>}
-        <dl className="kv">
-          <dt>Started</dt><dd>{t.started_at ? clock(t.started_at) : "Not yet"}</dd>
-          <dt>Finished</dt><dd>{t.finished_at ? clock(t.finished_at) : "Not yet"}</dd>
-          <dt>Works in</dt><dd className="mono" style={{ fontSize: 12 }}>{t.required_dirs.length ? t.required_dirs.map((d) => <div key={d.directory_id}>{repoBranch(d.directory_id)}</div>) : "Workspace notes only"}</dd>
-          <dt>Can reach</dt><dd style={{ fontSize: 12.5 }}>{reach || "Workspace notes only"}</dd>
-        </dl>
         <div className="sb-sec">
           <span className="lbl">Waits on</span>
           {t.depends_on.length ? t.depends_on.map((d) => findTask(b, d)).filter(Boolean).map((x) => <TaskRow key={x!.id} t={x!} />) : <span className="hint">Nothing</span>}
         </div>
         {unlocks.length > 0 && <div className="sb-sec"><span className="lbl">Unlocks</span>{unlocks.map((x) => <TaskRow key={x.id} t={x} />)}</div>}
-        <Attachments taskId={t.id} />
+        {!steps.length && !t.depends_on.length && !unlocks.length && t.kind !== "triage" && <EmptyState icon="☐">No steps yet. They show up once the agent plans the work.</EmptyState>}
+        </div></TabPanel>
+        <TabPanel id="outputs" value={tab} idBase="task">
         <div className="sb-sec">
-          <span className="lbl">Outputs</span>
           {outs.length ? (
             <div className="thumbs">
               {outs.map((o) => <button key={o.id} className={`fruit${o.status === "review" ? " review" : o.status === "approved" ? " approved" : ""}`} onClick={() => ui.openViewer(o.id)} title={o.title}><OutputThumb o={o} /></button>)}
             </div>
-          ) : <p className="hint">Nothing yet.</p>}
+          ) : <EmptyState icon="▢">No outputs yet. Files this task makes show up here.</EmptyState>}
         </div>
+        </TabPanel>
+        <TabPanel id="discussion" value={tab} idBase="task"><div className="stack">
         <div className="sb-sec">
-          <span className="lbl">Activity</span>
+          <span className="lbl">Agent activity</span>
           {taskLogs.length ? (
             <ul className="timeline">{taskLogs.map((l) => <li key={l.id}><span className="mono hint" style={{ fontSize: 11 }}>{clock(l.at)}</span> {l.text.slice(0, 300)}</li>)}</ul>
           ) : <p className="hint">Nothing yet.</p>}
@@ -154,8 +171,10 @@ export function TaskPanel({ id }: { id: string }) {
           })}
           {comments && !comments.length && <p className="hint">No comments yet.</p>}
         </div>
+        </div></TabPanel>
+        <TabPanel id="usage" value={tab} idBase="task"><UsageTab usage={t.usage} /></TabPanel>
       </PanelBody>
-      <PanelFoot>
+      {tab === "discussion" && <PanelFoot>
         <form className="stack-sm" style={{ width: "100%", gap: 6 }} onSubmit={send}>
           <label className="lbl" htmlFor="comment-input">Comment for {m?.name ?? "the agent"}</label>
           <div className="row">
@@ -163,7 +182,7 @@ export function TaskPanel({ id }: { id: string }) {
             <button className="btn btn-primary btn-sm" type="submit">Post</button>
           </div>
         </form>
-      </PanelFoot>
+      </PanelFoot>}
     </>
   );
 }

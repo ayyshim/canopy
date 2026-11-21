@@ -126,8 +126,8 @@ export function ChatWindow({ win, index }: { win: ChatWin; index: number }) {
       <div className="chat-head" onPointerDown={drag} onDoubleClick={() => setPos(null)}>
         <Avatar name={m.name} color={m.avatar_color} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <b>{m.name}</b>{" "}
-          <span className="muted" style={{ fontSize: 12 }}>{m.kind === "manager" ? "Manager" : skillLabel(m.skill ?? "")}{boss ? ", works for " + boss.name : m.kind === "staff" ? ", independent" : ""}</span>
+          <b>{m.name}</b>
+          <div className="sub">{m.kind === "manager" ? "Manager" : skillLabel(m.skill ?? "")}{boss ? ", works for " + boss.name : m.kind === "staff" ? ", independent" : ""}</div>
           <div className="stat" style={{ marginTop: 2 }}><span className={`dot ${st.k}`} /> {st.t}</div>
         </div>
         <button className="mine" aria-expanded={jump} onClick={() => setJump(!jump)} title="Jump to a message you sent"><ListIcon /><b>{mine.length}</b></button>
