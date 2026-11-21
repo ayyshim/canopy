@@ -418,3 +418,13 @@ token up. Only safe actions get buttons: allow or deny, grant or deny, approve, 
 answer (picked on the hub, never sent by the client). "Always allow" and "ask for changes" stay in the app.
 `GET /me` has `waiting` (open things that notify the person) for the app badge; resolved cards already reach
 open tabs as `signal.resolved` with the signal id.
+
+## Agents send their own notifications
+
+Managers and staff have a `notify(message, level, files, links)` tool for real milestones and for being blocked
+outside Canopy. It queues a `progress` row (`needs_attention` uses `errors`) titled like every other
+notification, for the goal's person, and marks the row `media.agent` so it can be counted. Limits are 5 per
+task per hour and 20 per member per day; past them the agent is told to use `complete_task` or `ask_question`.
+Files are output names and must belong to the same task or another task on the same goal, so an agent can't
+attach another goal's work. Links must be https. The prompt says not to use it for routine steps or for what
+questions, outputs and task completion already send.
