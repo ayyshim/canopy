@@ -23,7 +23,7 @@ var Defs = []Def{
 		`{"type":"object","properties":{"path":{"type":"string"},"mode":{"type":"string","enum":["read","read_write"]},"reason":{"type":"string"}},"required":["path","reason"]}`},
 	{protocol.ToolReportProgress, "Report progress on your task after finishing a step (step is the 1-based number of the step you finished).",
 		`{"type":"object","properties":{"step":{"type":"integer"},"progress":{"type":"integer","minimum":0,"maximum":100},"note":{"type":"string"}}}`},
-	{protocol.ToolSubmitOutput, "Share a file you made (screenshot, recording, document, diff or report). Save it in your outputs folder first. With needs_review, a person approves it or asks for changes; this waits for them.",
+	{protocol.ToolSubmitOutput, "Share a file you made (screenshot, recording, document, diff or report). Save it in your outputs folder first (keep subfolders, such as assets/app.css, as they are). For an HTML prototype, submit every page and its css, js and images from the outputs folder, and the entry page (index.html) last with needs_review. With needs_review, a person approves it or asks for changes; this waits for them.",
 		`{"type":"object","properties":{"path":{"type":"string"},"title":{"type":"string"},"kind":{"type":"string","enum":["image","recording","document","diff","report"]},"needs_review":{"type":"boolean"},"note":{"type":"string"}},"required":["path","title"]}`},
 	{protocol.ToolCompleteTask, "Mark your current task done, with a short summary of what you did and where the results are.",
 		`{"type":"object","properties":{"summary":{"type":"string"},"no_work_reason":{"type":"string","description":"triage tasks only: why no work is needed, when you assigned nothing"}},"required":["summary"]}`},
