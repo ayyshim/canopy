@@ -23,7 +23,7 @@ func (e *Engine) Pause(ctx context.Context, jobID uuid.UUID, reason string) (db.
 		if cur.Status == "ended" {
 			return ErrEnded
 		}
-		j, err = t.Q.UpdateJob(ctx, db.UpdateJobParams{ID: jobID, Status: ptr("paused"), PauseReason: &reason})
+		j, err = updateJob(ctx, t, db.UpdateJobParams{ID: jobID, Status: ptr("paused"), PauseReason: &reason})
 		return err
 	})
 	return j, err
@@ -43,7 +43,7 @@ func (e *Engine) Resume(ctx context.Context, jobID uuid.UUID) (db.Job, error) {
 		case "active":
 			return ErrNotPaused
 		}
-		j, err = t.Q.UpdateJob(ctx, db.UpdateJobParams{ID: jobID, Status: ptr("active"), PauseReason: ptr(""),
+		j, err = updateJob(ctx, t, db.UpdateJobParams{ID: jobID, Status: ptr("active"), PauseReason: ptr(""),
 			SetNext: true, NextRunAt: nextAfter(cur, e.now()), ConsecutiveFailures: ptr(int32(0))})
 		return err
 	})
@@ -85,7 +85,7 @@ func (e *Engine) startExtra(ctx context.Context, jobID uuid.UUID, trigger string
 			return err
 		}
 		if trigger == "manual" {
-			_, err = t.Q.UpdateJob(ctx, db.UpdateJobParams{ID: jobID, LastRunAt: &now})
+			_, err = updateJob(ctx, t, db.UpdateJobParams{ID: jobID, LastRunAt: &now})
 		}
 		return err
 	})
@@ -154,7 +154,7 @@ func (e *Engine) stop(ctx context.Context, r db.JobRun, j db.Job, status, skip, 
 		if status != "skipped" {
 			p.Error = &why
 		}
-		if _, err := t.Q.UpdateJobRun(ctx, p); err != nil {
+		if _, err := updateRun(ctx, t, j, p); err != nil {
 			return err
 		}
 		if status != "failed" || r.Trigger == "test" {
@@ -165,7 +165,7 @@ func (e *Engine) stop(ctx context.Context, r db.JobRun, j db.Job, status, skip, 
 		if fails >= failuresToPause {
 			up.Status, up.PauseReason = ptr("paused"), ptr("failures")
 		}
-		_, err = t.Q.UpdateJob(ctx, up)
+		_, err = updateJob(ctx, t, up)
 		return err
 	})
 }

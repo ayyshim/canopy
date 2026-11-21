@@ -127,7 +127,7 @@ func (e *Engine) handleDue(ctx context.Context, t *core.Tx, j db.Job, now time.T
 	if next == nil {
 		upd.Status = ptr("ended")
 	}
-	save := func() error { _, err := t.Q.UpdateJob(ctx, upd); return err }
+	save := func() error { _, err := updateJob(ctx, t, upd); return err }
 
 	// 1. ended
 	if j.EndsAt != nil && !now.Before(*j.EndsAt) {
@@ -212,7 +212,7 @@ func lateLimit(j db.Job) time.Duration {
 }
 
 func (e *Engine) pause(ctx context.Context, t *core.Tx, j db.Job, reason string) error {
-	_, err := t.Q.UpdateJob(ctx, db.UpdateJobParams{ID: j.ID, Status: ptr("paused"), PauseReason: &reason})
+	_, err := updateJob(ctx, t, db.UpdateJobParams{ID: j.ID, Status: ptr("paused"), PauseReason: &reason})
 	return err
 }
 
@@ -222,7 +222,7 @@ func (e *Engine) skip(ctx context.Context, t *core.Tx, j db.Job, scheduled time.
 	if err != nil {
 		return err
 	}
-	_, err = t.Q.CreateJobRun(ctx, db.CreateJobRunParams{ID: uuid.Must(uuid.NewV7()), JobID: j.ID, Number: n, ScheduledFor: scheduled,
+	_, err = createRun(ctx, t, j, db.CreateJobRunParams{ID: uuid.Must(uuid.NewV7()), JobID: j.ID, Number: n, ScheduledFor: scheduled,
 		Trigger: trigger, Status: "skipped", SkipReason: reason, FinishedAt: &now})
 	return err
 }
@@ -248,7 +248,7 @@ func (e *Engine) startRun(ctx context.Context, t *core.Tx, j db.Job, ws db.Works
 	if err != nil {
 		return db.JobRun{}, err
 	}
-	run, err := t.Q.CreateJobRun(ctx, db.CreateJobRunParams{ID: uuid.Must(uuid.NewV7()), JobID: j.ID, Number: n, ScheduledFor: scheduled,
+	run, err := createRun(ctx, t, j, db.CreateJobRunParams{ID: uuid.Must(uuid.NewV7()), JobID: j.ID, Number: n, ScheduledFor: scheduled,
 		Trigger: trigger, Status: "running", StartedAt: &now})
 	if err != nil {
 		return run, err
@@ -277,7 +277,7 @@ func (e *Engine) startRun(ctx context.Context, t *core.Tx, j db.Job, ws db.Works
 	if err != nil {
 		return run, err
 	}
-	run, err = t.Q.UpdateJobRun(ctx, db.UpdateJobRunParams{ID: run.ID, GoalID: &g.ID})
+	run, err = updateRun(ctx, t, j, db.UpdateJobRunParams{ID: run.ID, GoalID: &g.ID})
 	if err != nil {
 		return run, err
 	}

@@ -57,7 +57,7 @@ func RunFinished(ctx context.Context, t *core.Tx, g db.Goal, now time.Time) (Out
 		}
 		p.SetMemoryAfter, p.MemoryAfter = true, run.PendingMemory
 	}
-	if out.Run, err = t.Q.UpdateJobRun(ctx, p); err != nil {
+	if out.Run, err = updateRun(ctx, t, job, p); err != nil {
 		return out, err
 	}
 	// Test runs do not count either way.
@@ -74,6 +74,6 @@ func RunFinished(ctx context.Context, t *core.Tx, g db.Goal, now time.Time) (Out
 		jp.Status, jp.PauseReason = ptr("paused"), ptr("failures")
 		out.Paused = true
 	}
-	out.Job, err = t.Q.UpdateJob(ctx, jp)
+	out.Job, err = updateJob(ctx, t, jp)
 	return out, err
 }
