@@ -25,3 +25,9 @@ func TestInjectPreviewScript(t *testing.T) {
 		}
 	}
 }
+
+func TestPreviewScriptKeepsStorageInWindowName(t *testing.T) {
+	if !strings.Contains(previewScript, "window.name") {
+		t.Fatal("storage helper must persist in window.name")
+	}
+}

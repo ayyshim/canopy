@@ -198,10 +198,14 @@ func (s *Server) findPreviewOutput(r *http.Request, g previewGrant, name string)
 
 const previewMarker = "<!--canopy-preview-->"
 
+// Storage is kept in window.name, so it lasts across pages of one preview but never leaves the frame.
 const previewScript = previewMarker + `<script>(function(){
-function mem(){var d={};return{getItem:function(k){return k in d?d[k]:null},setItem:function(k,v){d[k]=String(v)},removeItem:function(k){delete d[k]},clear:function(){d={}},key:function(i){return Object.keys(d)[i]||null},get length(){return Object.keys(d).length}}}
+var P='__cp:';
+function mem(n){var d={};try{if(window.name.indexOf(P)==0)d=JSON.parse(window.name.slice(P.length))[n]||{}}catch(e){}
+function save(){try{var w={};if(window.name){if(window.name.indexOf(P)!=0)return;w=JSON.parse(window.name.slice(P.length))}w[n]=d;window.name=P+JSON.stringify(w)}catch(e){}}
+return{getItem:function(k){return k in d?d[k]:null},setItem:function(k,v){d[k]=String(v);save()},removeItem:function(k){delete d[k];save()},clear:function(){d={};save()},key:function(i){return Object.keys(d)[i]||null},get length(){return Object.keys(d).length}}}
 ['localStorage','sessionStorage'].forEach(function(n){var ok=false;try{ok=!!window[n];window[n].getItem('x')}catch(e){ok=false}
-if(!ok){try{Object.defineProperty(window,n,{value:mem(),configurable:true})}catch(e){}}});
+if(!ok){try{Object.defineProperty(window,n,{value:mem(n),configurable:true})}catch(e){}}});
 var m=location.pathname.match(/\/preview\/[^\/]+\/(.*)$/);
 function name(){try{return m?decodeURIComponent(m[1]):''}catch(e){return m?m[1]:''}}
 window.addEventListener('load',function(){parent.postMessage({type:'canopy-preview',name:name(),missing:!!document.querySelector('meta[name=canopy-missing]')},'*')});
