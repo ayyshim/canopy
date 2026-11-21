@@ -3,6 +3,7 @@ package orch
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"path"
@@ -13,6 +14,7 @@ import (
 
 	"canopy/hub/internal/authz"
 	"canopy/hub/internal/core"
+	"canopy/hub/internal/jobs"
 	"canopy/hub/internal/notify"
 	"canopy/hub/internal/store"
 	"canopy/hub/internal/store/db"
@@ -100,6 +102,12 @@ func (o *Orch) onToolCall(ctx context.Context, rn db.Runner, c protocol.ToolCall
 		handle = o.toolAttachFile
 	case protocol.ToolNotify:
 		handle = o.toolNotify
+	case protocol.ToolJobRunReport:
+		handle = o.toolJobRunReport
+	case protocol.ToolJobMemoryRead:
+		handle = o.toolJobMemoryRead
+	case protocol.ToolJobRunRead:
+		handle = o.toolJobRunRead
 	default:
 		o.reply(tc, "Unknown tool "+c.Tool, true)
 		return
@@ -466,6 +474,13 @@ func (o *Orch) toolCompleteTask(ctx context.Context, tc *toolCtx) error {
 		if slices.ContainsFunc(open, func(s db.Signal) bool { return s.Type == "review" }) {
 			return toolError("An output is still waiting for review.")
 		}
+		if task.GoalID != nil {
+			if _, run, isJob, err := jobs.GoalRun(ctx, t.Q, *task.GoalID); err != nil {
+				return err
+			} else if isJob && run.Result == "" {
+				return toolError("Call job_run_report first, then complete_task.")
+			}
+		}
 		if task.Kind == "plan" && task.GoalID != nil {
 			g, err := t.Q.GetGoal(ctx, *task.GoalID)
 			if err != nil {
@@ -706,4 +721,112 @@ func (o *Orch) notifyTaskDone(ctx context.Context, t *core.Tx, tc *toolCtx, task
 		}
 	}
 	return notify.Enqueue(ctx, t, tc.ws, n)
+}
+
+// ---- job tools (sessions on a job goal only) ----
+
+// jobOf finds the job run this session works on.
+func (o *Orch) jobOf(ctx context.Context, tc *toolCtx) (db.Job, db.JobRun, error) {
+	goalID := tc.sess.GoalID
+	if goalID == nil && tc.task != nil {
+		goalID = tc.task.GoalID
+	}
+	if goalID != nil {
+		job, run, ok, err := jobs.GoalRun(ctx, o.Store.Queries, *goalID)
+		if err != nil {
+			return job, run, err
+		}
+		if ok {
+			return job, run, nil
+		}
+	}
+	return db.Job{}, db.JobRun{}, toolError("This tool is only for job runs.")
+}
+
+func (o *Orch) toolJobRunReport(ctx context.Context, tc *toolCtx) error {
+	var in struct {
+		Title     string  `json:"title"`
+		Summary   string  `json:"summary"`
+		Result    string  `json:"result"`
+		NewMemory *string `json:"new_memory"`
+	}
+	if err := decode(tc.call.Args, &in); err != nil {
+		return err
+	}
+	job, run, err := o.jobOf(ctx, tc)
+	if err != nil {
+		return err
+	}
+	_, err = jobs.SaveReport(ctx, o.Store.Queries, job, run, jobs.Report{Title: in.Title, Summary: in.Summary, Result: in.Result, NewMemory: in.NewMemory})
+	if err != nil {
+		var ue jobs.UserError
+		if errors.As(err, &ue) {
+			return toolError(string(ue))
+		}
+		return err
+	}
+	o.reply(tc, "Report saved. Now call complete_task.", false)
+	return nil
+}
+
+func (o *Orch) toolJobMemoryRead(ctx context.Context, tc *toolCtx) error {
+	job, _, err := o.jobOf(ctx, tc)
+	if err != nil {
+		return err
+	}
+	text, err := jobs.MemoryText(ctx, o.Store.Queries, job)
+	if err != nil {
+		return err
+	}
+	o.reply(tc, text, false)
+	return nil
+}
+
+func (o *Orch) toolJobRunRead(ctx context.Context, tc *toolCtx) error {
+	var in struct {
+		N int32 `json:"n"`
+	}
+	if err := decode(tc.call.Args, &in); err != nil {
+		return err
+	}
+	job, _, err := o.jobOf(ctx, tc)
+	if err != nil {
+		return err
+	}
+	var names []string
+	if runs, err := o.Store.LastJobRuns(ctx, db.LastJobRunsParams{JobID: job.ID, Limit: 100000}); err == nil {
+		for _, r := range runs {
+			if r.Number == in.N && r.GoalID != nil {
+				names, err = o.goalOutputNames(ctx, tc.ws.ID, *r.GoalID)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	text, err := jobs.RunText(ctx, o.Store.Queries, job, in.N, names)
+	if err != nil {
+		return toolError(err.Error())
+	}
+	o.reply(tc, text, false)
+	return nil
+}
+
+// goalOutputNames lists the output files of every task in a goal.
+func (o *Orch) goalOutputNames(ctx context.Context, wsID, goalID uuid.UUID) ([]string, error) {
+	tasks, err := o.Store.ListGoalTasks(ctx, &goalID)
+	if err != nil {
+		return nil, err
+	}
+	outs, err := o.Store.ListOutputs(ctx, wsID)
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for _, out := range outs {
+		if slices.ContainsFunc(tasks, func(t db.Task) bool { return out.TaskID != nil && *out.TaskID == t.ID }) {
+			names = append(names, out.Name)
+		}
+	}
+	return names, nil
 }

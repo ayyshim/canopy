@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"net/url"
 	"os"
 	"strings"
@@ -195,7 +194,7 @@ func TestMemoryTooLongRefused(t *testing.T) {
 		t.Fatalf("exactly the cap should pass: %v", err)
 	}
 	err := f.report(t, run, strings.Repeat("a", MaxMemoryChars+1))
-	if !errors.Is(err, ErrMemoryTooLong) || !strings.Contains(err.Error(), "Fold the oldest details") {
+	if err != ErrMemoryTooLong || !strings.Contains(err.Error(), "Fold the oldest details") {
 		t.Fatalf("got %v", err)
 	}
 }

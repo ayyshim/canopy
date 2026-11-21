@@ -3,7 +3,6 @@ package jobs
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"unicode/utf8"
@@ -19,7 +18,12 @@ import (
 const MaxMemoryChars = 5000
 
 // ErrMemoryTooLong is shown to the agent as is.
-var ErrMemoryTooLong = errors.New("Too long. Fold the oldest details into short facts, keep names and open threads, and send it again.")
+const ErrMemoryTooLong = UserError("Too long. Fold the oldest details into short facts, keep names and open threads, and send it again.")
+
+// UserError is a message meant for the agent, not a server failure.
+type UserError string
+
+func (e UserError) Error() string { return string(e) }
 
 // Report is what the agent sends with job_run_report.
 type Report struct {
@@ -34,15 +38,15 @@ func SaveReport(ctx context.Context, q *db.Queries, job db.Job, run db.JobRun, i
 	switch in.Result {
 	case "ok", "attention", "nothing_to_do":
 	default:
-		return run, errors.New("result must be ok, attention or nothing_to_do.")
+		return run, UserError("result must be ok, attention or nothing_to_do.")
 	}
 	if run.Status != "running" {
-		return run, errors.New("This run is already finished.")
+		return run, UserError("This run is already finished.")
 	}
 	p := db.UpdateJobRunParams{ID: run.ID, Result: &in.Result, Title: &in.Title, Summary: &in.Summary}
 	if in.NewMemory != nil {
 		if job.Kind != "continuous" {
-			return run, errors.New("This is a single run job. It has no memory, so leave out new_memory.")
+			return run, UserError("This is a single run job. It has no memory, so leave out new_memory.")
 		}
 		if utf8.RuneCountInString(*in.NewMemory) > MaxMemoryChars {
 			return run, ErrMemoryTooLong
