@@ -1,3 +1,5 @@
+import { baseRole } from "@/lib/catalog";
+
 // Fallback directory suggestions (SPEC "Suggestion rules"), the same rules the hub uses
 // (hub/internal/domain). In setup no agent is running yet, so these are what the manager
 // "suggests".
@@ -44,11 +46,12 @@ export function clamp(gs: Suggestion[], limit: { directory_key: string; mode: Mo
 export function suggest(skill: string, dirs: SetupDir[], workspaceName: string, limit: { directory_key: string; mode: Mode }[] | null): Suggestion[] {
   const out: Suggestion[] = [];
   const add = (d: SetupDir, mode: Mode, reason: string) => out.push({ directory_key: d.key, mode, reason });
-  switch (skill) {
+  const role = baseRole(skill);
+  switch (role) {
     case "developer":
     case "reviewer": {
       const d = mainCodebase(dirs, workspaceName);
-      if (d) add(d, skill === "developer" ? "read_write" : "read", skill === "developer" ? "Writes code in the main codebase" : "Reviews changes in the main codebase");
+      if (d) add(d, role === "developer" ? "read_write" : "read", role === "developer" ? "Writes code in the main codebase" : "Reviews changes in the main codebase");
       break;
     }
     case "designer":

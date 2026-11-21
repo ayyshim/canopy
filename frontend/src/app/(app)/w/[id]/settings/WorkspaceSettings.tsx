@@ -1,5 +1,7 @@
 "use client";
 
+import { useCatalog, skillLabel } from "@/lib/catalog";
+import { GoodAtPicker } from "@/components/GoodAtPicker";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { Avatar } from "@/components/board/icons";
@@ -11,7 +13,7 @@ import { api, ApiError, currentOrg, hardNavigate, isOrgAdmin } from "@/lib/api";
 import { SkillAdd, SkillList, SkillPicker, SkillsIntro } from "@/components/skills/Skills";
 import { useMe } from "@/lib/me";
 import type { SkillView } from "@/lib/skills";
-import { isHidden, SKILL_LABEL, type AnyMember, type CloneView, type Computer, type DirectoryDetail, type GrantView, type MemberView, type NoteView, type WorkspaceSummary, type WorkspaceView } from "@/lib/types";
+import { isHidden, type AnyMember, type CloneView, type Computer, type DirectoryDetail, type GrantView, type MemberView, type NoteView, type WorkspaceSummary, type WorkspaceView } from "@/lib/types";
 
 type Detail = { workspace: WorkspaceView; viewer: { role: string }; members: AnyMember[]; directories: DirectoryDetail[]; grants: GrantView[]; clones: CloneView[] };
 type Access = { user_id: string; name: string; email: string; avatar_color: string; role: string; manager_ids: string[]; independent_staff: boolean };
@@ -291,6 +293,7 @@ function RepoSetup({ dir, run, wsId }: { dir: DirectoryDetail; run: Run; wsId: s
 }
 
 function Members({ d, run }: { d: Detail; run: Run }) {
+  useCatalog();
   const ws = d.workspace.id;
   const members = d.members.filter((m) => !isHidden(m)) as MemberView[];
   const managers = members.filter((m) => m.kind === "manager");
@@ -335,7 +338,7 @@ function Members({ d, run }: { d: Detail; run: Run }) {
             <label className="field spacer"><span>Name</span><input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder={form.kind === "manager" ? "Atlas" : "Morgan"} /></label>
             {form.kind === "staff" && (
               <>
-                <label className="field"><span>Role</span><select className="input" value={form.skill} onChange={(e) => setForm({ ...form, skill: e.target.value })}>{Object.entries(SKILL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+                <div className="field"><span>Good at</span><GoodAtPicker value={form.skill} onChange={(v) => setForm({ ...form, skill: v })} /></div>
                 <label className="field"><span>Works for</span><select className="input" value={form.reports_to} onChange={(e) => setForm({ ...form, reports_to: e.target.value })}><option value="">Any manager</option>{managers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
               </>
             )}
@@ -355,7 +358,7 @@ function Members({ d, run }: { d: Detail; run: Run }) {
               {members.map((m) => (
                 <tr key={m.id}>
                   <td><div className="row"><Avatar name={m.name} color={m.avatar_color} size={28} /><b>{m.name}</b></div></td>
-                  <td>{m.kind === "manager" ? "Manager" : SKILL_LABEL[m.skill ?? ""]}</td>
+                  <td>{m.kind === "manager" ? "Manager" : skillLabel(m.skill ?? "")}</td>
                   <td>{m.kind === "manager" ? "—" : m.reports_to ? members.find((x) => x.id === m.reports_to)?.name : "Independent"}</td>
                   <td><select className="input" style={{ minHeight: 34, width: "auto" }} value={m.model} onChange={(e) => run(() => api("PATCH", `/workspaces/${ws}/members/${m.id}`, { model: e.target.value }))}>
                     <option value="opus">Opus</option><option value="sonnet">Sonnet</option><option value="haiku">Haiku</option></select></td>

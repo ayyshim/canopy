@@ -1,9 +1,9 @@
 "use client";
 
+import { useCatalog, skillLabel } from "@/lib/catalog";
 import Link from "next/link";
 import { ago, computer, firstName, independentStaff, isAdmin, memberStatus, personName, visibleMember } from "@/lib/board/derive";
 import { useUI } from "@/lib/board/ui";
-import { SKILL_LABEL } from "@/lib/types";
 import { useB, useBoardCtx } from "../context";
 import { Avatar, RepoIcon } from "../icons";
 import { PanelBody, PanelFoot, PanelHead } from "./Panel";
@@ -11,6 +11,7 @@ import { FolderIcon } from "./WorkspacePanel";
 
 /** PoolPanel: independent staff, and which managers they're helping now. */
 export function PoolPanel() {
+  useCatalog();
   const b = useB();
   const ui = useUI();
   const pool = independentStaff(b);
@@ -34,7 +35,7 @@ export function PoolPanel() {
             return (
               <button className="trow" key={m.id} onClick={() => ui.openChat(m.id)}>
                 <Avatar name={m.name} color={m.avatar_color} size={28} />
-                <span className="spacer"><b>{m.name}</b><br /><span className="hint">{SKILL_LABEL[m.skill ?? ""]}, {m.model}</span>
+                <span className="spacer"><b>{m.name}</b><br /><span className="hint">{skillLabel(m.skill ?? "")}, {m.model}</span>
                   {helping.length > 0 && <><br /><span style={{ fontSize: 12, color: "var(--teal-text)" }}>Helping {helping.map((id) => visibleMember(b, id)?.name).join(" and ")}</span></>}
                 </span>
                 <span className={`dot ${st.k}`} title={st.t} />

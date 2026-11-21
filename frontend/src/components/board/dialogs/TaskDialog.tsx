@@ -1,16 +1,18 @@
 "use client";
 
+import { useCatalog, skillLabel } from "@/lib/catalog";
 import { useState } from "react";
 import { ApiError } from "@/lib/api";
 import { attachFiles, createTask } from "@/lib/board/actions";
 import { goal as findGoal, independentStaff, managers, staffOf, visibleMember } from "@/lib/board/derive";
 import { useUI } from "@/lib/board/ui";
-import { SKILL_LABEL, type MemberView } from "@/lib/types";
+import { type MemberView } from "@/lib/types";
 import { useB, useBoardCtx } from "../context";
 import { FilePicker, MAX_FILE_MB } from "../panels/Attachments";
 
 /** TaskDialog adds a task by hand, under a goal or on its own, waiting on other tasks. */
 export function TaskDialog({ goalId, memberId }: { goalId?: string; memberId?: string }) {
+  useCatalog();
   const b = useB();
   const { wsId } = useBoardCtx();
   const ui = useUI();
@@ -55,13 +57,13 @@ export function TaskDialog({ goalId, memberId }: { goalId?: string; memberId?: s
             const m = vis(mg.id);
             return m ? (
               <optgroup key={m.id} label={`${m.name}’s team`}>
-                {team(m).map((x) => <option key={x.id} value={x.id}>{x.name}{x.kind === "staff" ? ", " + SKILL_LABEL[x.skill ?? ""] : ""}</option>)}
+                {team(m).map((x) => <option key={x.id} value={x.id}>{x.name}{x.kind === "staff" ? ", " + skillLabel(x.skill ?? "") : ""}</option>)}
               </optgroup>
             ) : null;
           })}
           {independentStaff(b).some((s) => vis(s.id)) && (
             <optgroup label="Independent staff">
-              {independentStaff(b).map((s) => vis(s.id)).filter(Boolean).map((x) => <option key={x!.id} value={x!.id}>{x!.name}, {SKILL_LABEL[x!.skill ?? ""]}</option>)}
+              {independentStaff(b).map((s) => vis(s.id)).filter(Boolean).map((x) => <option key={x!.id} value={x!.id}>{x!.name}, {skillLabel(x!.skill ?? "")}</option>)}
             </optgroup>
           )}
         </select></label>

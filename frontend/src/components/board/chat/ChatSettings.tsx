@@ -1,11 +1,13 @@
 "use client";
 
+import { baseRole, useCatalog, skillLabel, skillDesc } from "@/lib/catalog";
+import { GoodAtPicker } from "@/components/GoodAtPicker";
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { patchMember, putGrants, suggestGrants } from "@/lib/board/actions";
 import { isAdmin, managers, memberStatus, staffOf, visibleMember } from "@/lib/board/derive";
 import { useUI } from "@/lib/board/ui";
-import { SKILL_DESC, SKILL_LABEL, type MemberView } from "@/lib/types";
+import { type MemberView } from "@/lib/types";
 import { useB, useBoardCtx } from "../context";
 import { SkillPicker } from "@/components/skills/Skills";
 import { friendly } from "@/lib/skills";
@@ -25,11 +27,14 @@ export function defaultInstructions(kind: string, skill?: string | null): string
     designer: "## Role\nYou make screens and visual assets.\n\n## How to work\n- Follow the brand guide\n- Share a screenshot for review before handing off",
     writer: "## Role\nYou write and edit docs.\n\n## How to work\n- Plain words, short sentences\n- Match the existing docs structure",
   };
-  return t[skill ?? ""] ?? "## Role\nDescribe what this member does.";
+  const base = t[skill ?? ""] ?? t[baseRole(skill)];
+  if (!base) return "## Role\nDescribe what this member does.";
+  return skill?.includes(".") ? `${base}\n\n## Focus\n${skillLabel(skill)}: ${skillDesc(skill)}` : base;
 }
 
 /** ChatSettings edits a member: name, skill, manager, model, instructions and directory access. */
 export function ChatSettings({ m }: { m: MemberView }) {
+  useCatalog();
   const b = useB();
   const { wsId } = useBoardCtx();
   const ui = useUI();
@@ -56,10 +61,8 @@ export function ChatSettings({ m }: { m: MemberView }) {
           <input className="input" value={name} disabled={!admin} onChange={(e) => setName(e.target.value)} onBlur={() => name.trim() && name !== m.name && patch({ name: name.trim() }, "Renamed to " + name.trim())} /></label>
         {!isM && (
           <>
-            <label className="field"><span>Skill</span>
-              <select className="input" value={m.skill ?? ""} disabled={!admin} onChange={(e) => patch({ skill: e.target.value })}>
-                {Object.entries(SKILL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select></label>
+            <div className="field"><span>Good at</span>
+              <GoodAtPicker value={m.skill ?? ""} disabled={!admin} onChange={(v) => patch({ skill: v })} /></div>
             <label className="field"><span>Works for</span>
               <select className="input" value={m.reports_to ?? ""} disabled={!admin}
                 onChange={(e) => patch({ reports_to: e.target.value || null, set_reports_to: true, ...(e.target.value ? { isolated: false } : {}) }, e.target.value ? `${m.name} now reports to ${visibleMember(b, e.target.value)?.name}` : `${m.name} is now independent staff`)}>
@@ -77,7 +80,7 @@ export function ChatSettings({ m }: { m: MemberView }) {
           <select className="input" value={m.model} disabled={!admin} onChange={(e) => patch({ model: e.target.value })}>
             {MODELS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select></label>
-        <p className="hint full">{isM ? "Takes goals from people, plans the work and leads its staff" : SKILL_DESC[m.skill ?? ""]}. Runs with the sign-in of whoever the work is for.</p>
+        <p className="hint full">{isM ? "Takes goals from people, plans the work and leads its staff" : skillDesc(m.skill ?? "")}. Runs with the sign-in of whoever the work is for.</p>
       </div>
       <div className="field">
         <div className="row">
@@ -117,7 +120,7 @@ export function ChatSettings({ m }: { m: MemberView }) {
             return (
               <button className="trow" key={x.id} onClick={() => ui.openChat(x.id)}>
                 <Avatar name={x.name} color={x.avatar_color} size={28} />
-                <span className="spacer"><b>{x.name}</b><br /><span className="hint">{SKILL_LABEL[x.skill ?? ""]}, {x.model}</span></span>
+                <span className="spacer"><b>{x.name}</b><br /><span className="hint">{skillLabel(x.skill ?? "")}, {x.model}</span></span>
                 <span className={`dot ${st.k}`} title={st.t} />
               </button>
             );

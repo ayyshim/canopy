@@ -1,7 +1,7 @@
 "use client";
 
+import { useCatalog, skillLabel } from "@/lib/catalog";
 import { Avatar } from "@/components/board/icons";
-import { SKILL_LABEL } from "@/lib/types";
 import type { StepProps } from "../Setup";
 
 function Edit({ step, go }: { step: number; go: (step: number) => void }) {
@@ -10,6 +10,7 @@ function Edit({ step, go }: { step: number; go: (step: number) => void }) {
 
 /** Review and create: exactly what Create workspace sends. */
 export function Review({ p, dirs, computer, people, orgName, go }: StepProps) {
+  useCatalog();
   const name = (key: string) => p.members.find((m) => m.key === key)?.name || "";
   const access = (key: string) => {
     const m = p.members.find((x) => x.key === key)!;
@@ -55,7 +56,7 @@ export function Review({ p, dirs, computer, people, orgName, go }: StepProps) {
         {p.members.map((m) => (
           <div className="row" key={m.key} style={{ alignItems: "flex-start", padding: "6px 0", paddingLeft: m.kind === "staff" && m.reports_to_key ? 26 : 0 }}>
             <Avatar name={m.name || "?"} color={m.kind === "manager" ? "#14322A" : "#0E9AA7"} size={28} />
-            <span className="spacer"><b>{m.name}</b> <span className="hint">{m.kind === "manager" ? "Manager" : SKILL_LABEL[m.skill] + (m.reports_to_key ? "" : ", shared")}</span><br />
+            <span className="spacer"><b>{m.name}</b> <span className="hint">{m.kind === "manager" ? "Manager" : skillLabel(m.skill) + (m.reports_to_key ? "" : ", shared")}</span><br />
               <code style={{ fontSize: 12 }}>{access(m.key)}</code>
               {m.skill_keys.length > 0 && <><br /><span className="hint">Skills: {m.skill_keys.map((k) => p.skills.find((x) => x.key === k)?.name).filter(Boolean).join(", ")}</span></>}</span>
             {m.kind === "staff" && (m.grants_by === "you" ? <span className="pill">Set by you</span> : <span className="pill info">Chosen by {m.reports_to_key ? name(m.reports_to_key) : "Canopy"}</span>)}

@@ -1,8 +1,8 @@
 "use client";
 
+import { useCatalog, skillLabel } from "@/lib/catalog";
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api";
-import { SKILL_LABEL } from "@/lib/types";
 import type { StepProps } from "../Setup";
 
 export type ChatMember = { key: string; name: string; kind: "manager" | "staff"; skill: string; reports_to_key: string; instructions: string; skill_keys: string[] };
@@ -11,6 +11,7 @@ type Msg = { role: "user" | "assistant"; text: string };
 
 /** A chat where the person describes their needs and gets a suggested team. */
 export function MembersChat({ p, orgId, computerId, online, onUse }: Pick<StepProps, "p" | "orgId"> & { computerId: string | undefined; online: boolean; onUse: (m: ChatMember[]) => void }) {
+  useCatalog();
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -67,7 +68,7 @@ export function MembersChat({ p, orgId, computerId, online, onUse }: Pick<StepPr
           <h3 style={{ margin: 0 }}>Suggested team</h3>
           <ul style={{ margin: "6px 0", paddingLeft: 18 }}>
             {team.map((m) => (
-              <li key={m.key}><b>{m.name}</b>{m.kind === "manager" ? " (manager)" : ` · ${SKILL_LABEL[m.skill] ?? "Staff"}${m.reports_to_key && nameOf(m.reports_to_key) ? `, reports to ${nameOf(m.reports_to_key)}` : ", helps anyone"}`}</li>
+              <li key={m.key}><b>{m.name}</b>{m.kind === "manager" ? " (manager)" : ` · ${skillLabel(m.skill) ?? "Staff"}${m.reports_to_key && nameOf(m.reports_to_key) ? `, reports to ${nameOf(m.reports_to_key)}` : ", helps anyone"}`}</li>
             ))}
           </ul>
           <button type="button" className="btn btn-primary" onClick={() => { onUse(team); setUsed(true); }}>Use this team</button>
