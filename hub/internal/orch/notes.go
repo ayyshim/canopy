@@ -39,6 +39,24 @@ func (o *Orch) saveNote(ctx context.Context, t *core.Tx, ws db.Workspace, goalID
 	return n, t.Emit(ctx, core.WS(ws.OrgID, ws.ID, "note.saved"), core.ToNote(n))
 }
 
+// workingFor is the person this session works for: the person in a chat, or the person who
+// created the goal. Private notes of that person are the only ones the agent may see.
+func (o *Orch) workingFor(ctx context.Context, tc *toolCtx) *uuid.UUID {
+	if tc.sess.PersonID != nil {
+		return tc.sess.PersonID
+	}
+	goalID := tc.sess.GoalID
+	if goalID == nil && tc.task != nil {
+		goalID = tc.task.GoalID
+	}
+	if goalID != nil {
+		if g, err := o.Store.GetGoal(ctx, *goalID); err == nil {
+			return g.CreatedBy
+		}
+	}
+	return nil
+}
+
 var errNoNote = fmt.Errorf("no note")
 
 func (o *Orch) toolReadNotes(ctx context.Context, tc *toolCtx) error {
@@ -48,7 +66,7 @@ func (o *Orch) toolReadNotes(ctx context.Context, tc *toolCtx) error {
 	if err := decode(tc.call.Args, &in); err != nil {
 		return err
 	}
-	notes, err := o.Store.ListNotes(ctx, tc.ws.ID)
+	notes, err := o.Store.ListNotes(ctx, db.ListNotesParams{WorkspaceID: tc.ws.ID, ViewerID: o.workingFor(ctx, tc)})
 	if err != nil {
 		return err
 	}

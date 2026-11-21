@@ -23,7 +23,7 @@ func (s *Server) handleListNotes(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	notes, err := s.Store.ListNotes(ctx, wsID)
+	notes, err := s.Store.ListNotes(ctx, db.ListNotesParams{WorkspaceID: wsID, ViewerID: &view.v.UserID})
 	if err != nil {
 		return err
 	}

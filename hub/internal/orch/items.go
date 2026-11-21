@@ -100,7 +100,7 @@ func (o *Orch) toolReadItem(ctx context.Context, tc *toolCtx) error {
 	if !ok {
 		return toolError("Give a ref like G-12, T-34 or N-5.")
 	}
-	it, ok, err := refs.Resolver{Q: o.Store.Queries}.One(ctx, tc.ws.ID, refs.AllScope(), ref)
+	it, ok, err := refs.Resolver{Q: o.Store.Queries}.One(ctx, tc.ws.ID, refs.ForUser(o.workingFor(ctx, tc)), ref)
 	if err != nil {
 		return err
 	}

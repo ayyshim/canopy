@@ -269,11 +269,20 @@ func (q *Queries) ListNoteRevisions(ctx context.Context, noteID uuid.UUID) ([]No
 }
 
 const listNotes = `-- name: ListNotes :many
-SELECT id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number, visibility, color, board_x, board_y, edited_by_user_id, edited_by_member_id FROM notes WHERE workspace_id = $1 ORDER BY updated_at DESC, id
+SELECT id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number, visibility, color, board_x, board_y, edited_by_user_id, edited_by_member_id FROM notes
+WHERE workspace_id = $1
+  AND (visibility = 'shared' OR author_user_id = $2)
+ORDER BY updated_at DESC, id
 `
 
-func (q *Queries) ListNotes(ctx context.Context, workspaceID uuid.UUID) ([]Note, error) {
-	rows, err := q.db.Query(ctx, listNotes, workspaceID)
+type ListNotesParams struct {
+	WorkspaceID uuid.UUID
+	ViewerID    *uuid.UUID
+}
+
+// Shared notes, plus the viewer's own private ones. No viewer means shared notes only.
+func (q *Queries) ListNotes(ctx context.Context, arg ListNotesParams) ([]Note, error) {
+	rows, err := q.db.Query(ctx, listNotes, arg.WorkspaceID, arg.ViewerID)
 	if err != nil {
 		return nil, err
 	}

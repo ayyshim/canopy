@@ -9,7 +9,11 @@ RETURNING *;
 SELECT * FROM notes WHERE id = $1;
 
 -- name: ListNotes :many
-SELECT * FROM notes WHERE workspace_id = $1 ORDER BY updated_at DESC, id;
+-- Shared notes, plus the viewer's own private ones. No viewer means shared notes only.
+SELECT * FROM notes
+WHERE workspace_id = sqlc.arg(workspace_id)
+  AND (visibility = 'shared' OR author_user_id = sqlc.narg(viewer_id))
+ORDER BY updated_at DESC, id;
 
 -- name: UpdateNote :one
 UPDATE notes SET title = coalesce(sqlc.narg(title), title), body = coalesce(sqlc.narg(body), body),
