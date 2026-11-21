@@ -400,3 +400,10 @@ hub, web app and client (with `CANOPY_CLAUDE_BIN` set to fakeclaude), plays a go
   can. For real work, use a Linux computer or VM, or a shared Linux server.
 - **Claude Code only.** Codex, Gemini and Pi are detected but not run yet.
 - Deleting an organization disconnects its computers; their folders and git branches stay on disk.
+
+## Tools your agents can use
+
+Agents use your Claude sign-in and see your user-level Claude setup: claude.ai connectors, your
+MCP servers, plugins and skills, plus Canopy's own tools. Connect a connector in Claude first;
+agents can't do browser sign-ins themselves. Using the API key option instead of a Claude
+account means claude.ai connectors aren't available.
