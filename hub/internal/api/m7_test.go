@@ -46,7 +46,7 @@ func (e *env) joinOrg(owner *client, org, name string) (*client, string) {
 	if me.Status != http.StatusOK {
 		e.t.Fatalf("accept invite: %d %v", me.Status, me.Body)
 	}
-	return c, userID(me.Body)
+	return c, userID(e.finishSignIn(c, email, me.Body))
 }
 
 // DECISIONS "Where work runs": each person picks their own computer; only an admin shares a

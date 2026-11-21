@@ -244,11 +244,63 @@ func signupBody(orgName, name, email string) map[string]any {
 func (e *env) signup(orgName string) (*client, map[string]any) {
 	e.t.Helper()
 	c := e.client()
-	r := c.do("POST", "/api/v1/auth/signup", signupBody(orgName, "Riley Park", uniqueEmail("owner")))
+	email := uniqueEmail("owner")
+	r := c.do("POST", "/api/v1/auth/signup", signupBody(orgName, "Riley Park", email))
 	if r.Status != http.StatusCreated {
 		e.t.Fatalf("signup: %d %v", r.Status, r.Body)
 	}
-	return c, r.Body
+	return c, e.finishSignIn(c, email, r.Body)
+}
+
+// finishSignIn passes the two-factor step a sign-in response asks for and returns /me.
+// New people enroll with a code computed from the secret; enrolled people verify with a
+// fresh code (the used-step marker is cleared first so tests aren't limited to a few
+// codes per half minute; the replay test doesn't use this helper).
+func (e *env) finishSignIn(c *client, email string, signIn map[string]any) map[string]any {
+	e.t.Helper()
+	switch next := str(signIn["two_factor"]); next {
+	case "enroll":
+		setup := c.do("POST", "/api/v1/auth/two-factor/setup", nil)
+		if setup.Status != 200 {
+			e.t.Fatalf("two-factor setup: %d %v", setup.Status, setup.Body)
+		}
+		r := c.do("POST", "/api/v1/auth/two-factor/enable", map[string]any{"code": auth.TotpCode(str(setup.Body["secret"]), e.srv.Now())})
+		if r.Status != 200 {
+			e.t.Fatalf("two-factor enable: %d %v", r.Status, r.Body)
+		}
+		return r.Body["me"].(map[string]any)
+	case "verify":
+		r := c.do("POST", "/api/v1/auth/two-factor/verify", map[string]any{"code": e.freshCode(email)})
+		if r.Status != 200 {
+			e.t.Fatalf("two-factor verify: %d %v", r.Status, r.Body)
+		}
+		return r.Body
+	default:
+		e.t.Fatalf("sign-in asked for %q, body %v", next, signIn)
+		return nil
+	}
+}
+
+// freshCode returns a valid code for email's authenticator and forgets earlier use.
+func (e *env) freshCode(email string) string {
+	e.t.Helper()
+	var secret string
+	err := e.store.Pool.QueryRow(context.Background(),
+		`UPDATE users SET totp_last_step = 0 WHERE email = $1 RETURNING totp_secret`, normalized(email)).Scan(&secret)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	return auth.TotpCode(secret, e.srv.Now())
+}
+
+// login signs in with the password and completes two-factor, returning /me.
+func (e *env) login(c *client, email, password string) map[string]any {
+	e.t.Helper()
+	r := c.do("POST", "/api/v1/auth/login", map[string]any{"email": email, "password": password})
+	if r.Status != 200 {
+		e.t.Fatalf("login: %d %v", r.Status, r.Body)
+	}
+	return e.finishSignIn(c, email, r.Body)
 }
 
 func str(v any) string { s, _ := v.(string); return s }

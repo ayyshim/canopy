@@ -137,6 +137,15 @@ func (s *Server) setupRoutes(r chi.Router) {
 		r.Get("/preview/{token}/*", httpx.Handler(s.handlePreviewFile))
 		r.Post("/auth/logout", httpx.Handler(s.handleLogout))
 
+		// Open to a session that still needs its code.
+		r.Group(func(r chi.Router) {
+			r.Use(auth.RequireSession, auth.RateLimit(s.Limiter, "two-factor", s.Cfg.AuthRateLimit, s.Cfg.TrustProxy))
+			r.Get("/auth/two-factor", httpx.Handler(s.handleTwoFactorState))
+			r.Post("/auth/two-factor/setup", httpx.Handler(s.handleTwoFactorSetup))
+			r.Post("/auth/two-factor/enable", httpx.Handler(s.handleTwoFactorEnable))
+			r.Post("/auth/two-factor/verify", httpx.Handler(s.handleTwoFactorVerify))
+		})
+
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RateLimit(s.Limiter, "auth", s.Cfg.AuthRateLimit, s.Cfg.TrustProxy))
 			r.Post("/auth/signup", httpx.Handler(s.handleSignup))
@@ -155,6 +164,10 @@ func (s *Server) setupRoutes(r chi.Router) {
 			r.Delete("/push/subscriptions", httpx.Handler(s.handlePushUnsubscribe))
 			r.Post("/push/test", httpx.Handler(s.handlePushTest))
 			r.Post("/notifications/act", httpx.Handler(s.handleNotificationAct))
+			r.With(auth.RateLimit(s.Limiter, "two-factor", s.Cfg.AuthRateLimit, s.Cfg.TrustProxy)).Group(func(r chi.Router) {
+				r.Post("/me/two-factor/recovery-codes", httpx.Handler(s.handleNewRecoveryCodes))
+				r.Post("/me/two-factor/change", httpx.Handler(s.handleChangeTwoFactor))
+			})
 			r.Post("/orgs", httpx.Handler(s.handleCreateOrg))
 			r.Get("/orgs/{orgID}", httpx.Handler(s.handleGetOrg))
 			r.Patch("/orgs/{orgID}", httpx.Handler(s.handlePatchOrg))
@@ -165,17 +178,24 @@ func (s *Server) setupRoutes(r chi.Router) {
 
 		// Hub admin dashboard.
 		r.Route("/admin", func(r chi.Router) {
-			r.Use(auth.RequireUser, s.requireHubAdmin)
-			r.Get("/overview", httpx.Handler(s.handleAdminOverview))
-			r.Get("/organizations", httpx.Handler(s.handleAdminListOrgs))
-			r.Get("/organizations/{orgID}", httpx.Handler(s.handleAdminGetOrg))
-			r.Get("/users", httpx.Handler(s.handleAdminListUsers))
-			r.Get("/users/{userID}", httpx.Handler(s.handleAdminGetUser))
-			r.Patch("/users/{userID}", httpx.Handler(s.handleAdminPatchUser))
-			r.Get("/settings", httpx.Handler(s.handleAdminGetSettings))
-			r.Patch("/settings", httpx.Handler(s.handleAdminPatchSettings))
+			r.Use(auth.RequireUser)
+			// Resetting someone's two-factor is hidden: everyone but a hub admin gets 404.
+			r.With(s.requireHubAdminOr404).Post("/users/{userID}/two-factor/reset", httpx.Handler(s.handleAdminResetTwoFactor))
+			r.Group(s.adminRoutes)
 		})
 	}
+}
+
+func (s *Server) adminRoutes(r chi.Router) {
+	r.Use(s.requireHubAdmin)
+	r.Get("/overview", httpx.Handler(s.handleAdminOverview))
+	r.Get("/organizations", httpx.Handler(s.handleAdminListOrgs))
+	r.Get("/organizations/{orgID}", httpx.Handler(s.handleAdminGetOrg))
+	r.Get("/users", httpx.Handler(s.handleAdminListUsers))
+	r.Get("/users/{userID}", httpx.Handler(s.handleAdminGetUser))
+	r.Patch("/users/{userID}", httpx.Handler(s.handleAdminPatchUser))
+	r.Get("/settings", httpx.Handler(s.handleAdminGetSettings))
+	r.Patch("/settings", httpx.Handler(s.handleAdminPatchSettings))
 }
 
 func newID() uuid.UUID { return uuid.Must(uuid.NewV7()) }

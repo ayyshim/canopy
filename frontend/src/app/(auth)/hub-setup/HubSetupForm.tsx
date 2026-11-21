@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Field, focusFirstInvalid } from "@/components/Field";
 import { ProviderFields, type ProviderKey } from "@/components/ProviderFields";
 import { api, ApiError, hardNavigate, type Hub, type Me, type ProviderInput } from "@/lib/api";
+import { pendingStep, twoFactorPath, type TwoFactorPending } from "@/lib/twoFactor";
 
 const emptyProviders: Record<ProviderKey, ProviderInput> = {
   github: { enabled: false, client_id: "", client_secret: "" },
@@ -43,13 +44,14 @@ export function HubSetupForm() {
     if (Object.keys(e).length) return focusFirstInvalid(form.current);
     setBusy(true);
     try {
-      await api<Me>("POST", "/hub/setup", {
+      const res = await api<Me | TwoFactorPending>("POST", "/hub/setup", {
         token,
         hub: { name: hubName, signup_open: signupOpen },
         admin,
         providers: Object.fromEntries(Object.entries(providers).filter(([, p]) => p.enabled)),
       });
-      hardNavigate("/admin");
+      const step = pendingStep(res);
+      hardNavigate(step ? twoFactorPath(step, "/admin") : "/admin");
     } catch (err) {
       setBusy(false);
       if (err instanceof ApiError && Object.keys(err.fields).length) {

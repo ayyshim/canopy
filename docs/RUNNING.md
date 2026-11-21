@@ -236,6 +236,15 @@ certificates with `--domain`), `backups/`, `hub.env` (settings), `hub.log` (the 
 background), `hub.json` (the running hub’s address, for `status`), and `hub.lock`, which holds the
 running hub’s process id and stops two hubs from sharing one directory.
 
+## Two-step sign-in
+
+Everyone signs in with a password (or GitHub or Google) and then a 6-digit code from an authenticator app. At first sign-in, and for anyone already signed in when you upgrade, Canopy shows a QR code to scan and 10 recovery codes. Each recovery code works once.
+
+- **Lost phone:** sign in with a recovery code, then use Account, Two-step sign-in, Change authenticator app.
+- **New recovery codes:** Account, Two-step sign-in, Get new recovery codes. Both actions ask for a code from the current app.
+- **Lost phone and recovery codes:** a hub admin opens Users, picks the person and chooses Reset two-step sign-in. They are signed out everywhere and set it up again at next sign-in.
+- **No admin left who can sign in:** stop the hub and run `canopy-hub reset-two-factor EMAIL [--data DIR]`. It does the same reset on the server.
+
 ## Connect people’s computers
 
 Each person connects their own computer. Their goals run there with their own Claude sign-in.
@@ -284,6 +293,8 @@ canopy-hub install [--dir DIR] [--no-path]
 canopy-hub migrate status      show the data's version and what an upgrade would change
 canopy-hub migrate up          upgrade the data now (the hub also does this on start)
 canopy-hub backup [--data DIR] copy the database into DIR/backups (stop the hub first)
+canopy-hub reset-two-factor EMAIL [--data DIR]
+                               clear that person's two-factor setup and sessions (stop the hub first)
 canopy-hub version             version, database schema and PostgreSQL version
 canopy-hub help
 ```

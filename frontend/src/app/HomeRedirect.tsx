@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { unauthorizedPath } from "@/lib/twoFactor";
 import { api, ApiError, landingPath, type Hub, type Me } from "@/lib/api";
 
 /** First run: hub setup. Signed in: the person's landing page. Otherwise: sign in. */
@@ -14,7 +15,7 @@ export function HomeRedirect() {
       try {
         router.replace(landingPath(await api<Me>("GET", "/me")));
       } catch (e) {
-        router.replace(e instanceof ApiError && e.status === 401 ? "/login" : "/login?error=oauth_failed");
+        router.replace(e instanceof ApiError && e.status === 401 ? unauthorizedPath(e) : "/login?error=oauth_failed");
       }
     })().catch(() => router.replace("/login"));
   }, [router]);

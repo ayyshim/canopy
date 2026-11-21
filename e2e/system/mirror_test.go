@@ -30,7 +30,8 @@ func TestMirrorOfflineReadsAndOwnerApproval(t *testing.T) {
 	inv := alice.do("POST", "/api/v1/orgs/"+org+"/invites", map[string]any{"email": "bob@mirror.test", "role": "member"}, 201)
 	token := str(inv["link"])[strings.LastIndex(str(inv["link"]), "/")+1:]
 	bob := h.client()
-	bob.me = bob.do("POST", "/api/v1/invites/"+token+"/accept", map[string]any{"name": "Bob", "password": "bob-pass-12"}, 200)
+	bob.do("POST", "/api/v1/invites/"+token+"/accept", map[string]any{"name": "Bob", "password": "bob-pass-12"}, 200)
+	bob.me = bob.enroll()
 	bobID := str(m(bob.me["user"])["id"])
 	alice.do("PUT", "/api/v1/workspaces/"+ws+"/access/"+bobID, map[string]any{"role": "admin"}, 204)
 	bobPC := h.pair(bob, org, "computer", "Bob’s laptop", "bwrap")

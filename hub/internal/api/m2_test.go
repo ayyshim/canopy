@@ -257,8 +257,12 @@ func TestInviteAcceptNewAndExistingAccounts(t *testing.T) {
 	_ = e.store.Pool.QueryRow(ctx, `SELECT count(*) FROM organizations`).Scan(&orgsBefore)
 	_ = e.store.Pool.QueryRow(ctx, `SELECT count(*) FROM users`).Scan(&usersBefore)
 	acc := guest.do("POST", "/api/v1/invites/"+token+"/accept", map[string]any{"name": "New Person", "password": "new person pw"})
-	if acc.Status != 200 || currentOrg(acc.Body) != org {
+	if acc.Status != 200 || acc.Body["two_factor"] != "enroll" {
 		t.Fatalf("accept new: %d %v", acc.Status, acc.Body)
+	}
+	acc.Body = e.finishSignIn(guest, newEmail, acc.Body)
+	if currentOrg(acc.Body) != org {
+		t.Fatalf("accept new: current org %v", acc.Body)
 	}
 	var orgsAfter, usersAfter int
 	_ = e.store.Pool.QueryRow(ctx, `SELECT count(*) FROM organizations`).Scan(&orgsAfter)
@@ -298,8 +302,12 @@ func TestInviteAcceptNewAndExistingAccounts(t *testing.T) {
 	}
 	_ = e.store.Pool.QueryRow(ctx, `SELECT count(*) FROM users`).Scan(&usersBefore)
 	acc = c2.do("POST", "/api/v1/invites/"+token2+"/accept", map[string]any{"password": "correct horse"})
-	if acc.Status != 200 || len(acc.Body["organizations"].([]any)) != 2 {
+	if acc.Status != 200 || acc.Body["two_factor"] != "verify" {
 		t.Fatalf("accept existing: %d %v", acc.Status, acc.Body)
+	}
+	acc.Body = e.finishSignIn(c2, existing, acc.Body)
+	if len(acc.Body["organizations"].([]any)) != 2 {
+		t.Fatalf("accept existing: %v", acc.Body)
 	}
 	_ = e.store.Pool.QueryRow(ctx, `SELECT count(*) FROM users`).Scan(&usersAfter)
 	if usersAfter != usersBefore {

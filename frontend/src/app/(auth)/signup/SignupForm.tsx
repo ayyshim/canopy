@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { Field, focusFirstInvalid } from "@/components/Field";
 import { api, ApiError, hardNavigate, ORG_SIZES, type Me, type OrgSize } from "@/lib/api";
 import { useHub } from "@/lib/hub";
+import { pendingStep, twoFactorPath, type TwoFactorPending } from "@/lib/twoFactor";
 
 type Errors = Record<string, string>;
 
@@ -47,8 +48,9 @@ export function SignupForm() {
     setFormError("");
     setEmailTaken(false);
     try {
-      await api<Me>("POST", "/auth/signup", { org, user });
-      hardNavigate("/setup");
+      const res = await api<Me | TwoFactorPending>("POST", "/auth/signup", { org, user });
+      const step = pendingStep(res);
+      hardNavigate(step ? twoFactorPath(step, "/setup") : "/setup");
     } catch (e) {
       setBusy(false);
       if (!(e instanceof ApiError)) return setFormError("Something went wrong. Try again.");

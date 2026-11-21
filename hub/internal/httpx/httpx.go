@@ -16,6 +16,8 @@ type Error struct {
 	Code    string            `json:"code"`
 	Message string            `json:"message"`
 	Fields  map[string]string `json:"fields,omitempty"`
+	// Next tells a client with a pending two-factor session what to do: enroll or verify.
+	Next string `json:"next,omitempty"`
 }
 
 func (e *Error) Error() string { return e.Code + ": " + e.Message }

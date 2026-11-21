@@ -41,7 +41,8 @@ func newRefsFixture(t *testing.T) *refsFixture {
 	nm := owner.do("POST", "/api/v1/workspaces/"+ws+"/members", map[string]any{"name": "Max", "kind": "manager", "cli": "claude"})
 	f.max = uuid.MustParse(str(nm.Body["member"].(map[string]any)["id"]))
 
-	r := owner.do("POST", "/api/v1/orgs/"+org+"/invites", map[string]any{"email": uniqueEmail("guest"), "role": "member",
+	guestEmail := uniqueEmail("guest")
+	r := owner.do("POST", "/api/v1/orgs/"+org+"/invites", map[string]any{"email": guestEmail, "role": "member",
 		"workspace_grants": []any{map[string]any{"workspace_id": ws, "role": "staff", "manager_ids": []string{f.riley.String()}}}})
 	token := strings.TrimPrefix(str(r.Body["link"]), "http://canopy.test/invite/")
 	f.guest = e.client()
@@ -49,7 +50,7 @@ func newRefsFixture(t *testing.T) *refsFixture {
 	if acc.Status != 200 {
 		t.Fatalf("accept: %d %v", acc.Status, acc.Body)
 	}
-	f.guestID = uuid.MustParse(userID(acc.Body))
+	f.guestID = uuid.MustParse(userID(e.finishSignIn(f.guest, guestEmail, acc.Body)))
 
 	goal := func(mgr uuid.UUID, title string) string {
 		r := owner.do("POST", "/api/v1/workspaces/"+ws+"/goals", map[string]any{"manager_id": mgr.String(), "title": title})
