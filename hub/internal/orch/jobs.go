@@ -6,8 +6,8 @@ import (
 	"github.com/google/uuid"
 
 	"canopy/hub/internal/core"
-	"canopy/shared/protocol"
 	"canopy/hub/internal/store/db"
+	"canopy/shared/protocol"
 )
 
 // StopGoal ends a goal's sessions and marks it stopped (a cancelled, capped or timed out job run).
