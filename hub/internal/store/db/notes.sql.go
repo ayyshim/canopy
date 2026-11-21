@@ -11,10 +11,42 @@ import (
 	"github.com/google/uuid"
 )
 
+const addNoteRevision = `-- name: AddNoteRevision :one
+INSERT INTO note_revisions (id, note_id, rev, title, body, kind, edited_by_user_id, edited_by_member_id)
+SELECT $1, n.id, coalesce((SELECT max(x.rev) FROM note_revisions x WHERE x.note_id = n.id), 0) + 1,
+  n.title, n.body, n.kind, n.edited_by_user_id, n.edited_by_member_id
+FROM notes n WHERE n.id = $2
+RETURNING id, note_id, rev, title, body, kind, edited_by_user_id, edited_by_member_id, created_at
+`
+
+type AddNoteRevisionParams struct {
+	ID      uuid.UUID
+	ForNote uuid.UUID
+}
+
+func (q *Queries) AddNoteRevision(ctx context.Context, arg AddNoteRevisionParams) (NoteRevision, error) {
+	row := q.db.QueryRow(ctx, addNoteRevision, arg.ID, arg.ForNote)
+	var i NoteRevision
+	err := row.Scan(
+		&i.ID,
+		&i.NoteID,
+		&i.Rev,
+		&i.Title,
+		&i.Body,
+		&i.Kind,
+		&i.EditedByUserID,
+		&i.EditedByMemberID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createNote = `-- name: CreateNote :one
-INSERT INTO notes (id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, number)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, next_item_number($2, 'note'))
-RETURNING id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number
+INSERT INTO notes (id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, number,
+  visibility, color, board_x, board_y)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, next_item_number($2, 'note'),
+  coalesce($9, 'shared'), coalesce($10, 'yellow'), $11, $12)
+RETURNING id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number, visibility, color, board_x, board_y, edited_by_user_id, edited_by_member_id
 `
 
 type CreateNoteParams struct {
@@ -26,6 +58,10 @@ type CreateNoteParams struct {
 	Body           string
 	AuthorUserID   *uuid.UUID
 	AuthorMemberID *uuid.UUID
+	Visibility     interface{}
+	Color          interface{}
+	BoardX         *float64
+	BoardY         *float64
 }
 
 func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, error) {
@@ -38,6 +74,10 @@ func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, e
 		arg.Body,
 		arg.AuthorUserID,
 		arg.AuthorMemberID,
+		arg.Visibility,
+		arg.Color,
+		arg.BoardX,
+		arg.BoardY,
 	)
 	var i Note
 	err := row.Scan(
@@ -52,6 +92,12 @@ func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Number,
+		&i.Visibility,
+		&i.Color,
+		&i.BoardX,
+		&i.BoardY,
+		&i.EditedByUserID,
+		&i.EditedByMemberID,
 	)
 	return i, err
 }
@@ -66,7 +112,7 @@ func (q *Queries) DeleteNote(ctx context.Context, id uuid.UUID) error {
 }
 
 const getNote = `-- name: GetNote :one
-SELECT id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number FROM notes WHERE id = $1
+SELECT id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number, visibility, color, board_x, board_y, edited_by_user_id, edited_by_member_id FROM notes WHERE id = $1
 `
 
 func (q *Queries) GetNote(ctx context.Context, id uuid.UUID) (Note, error) {
@@ -84,12 +130,18 @@ func (q *Queries) GetNote(ctx context.Context, id uuid.UUID) (Note, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Number,
+		&i.Visibility,
+		&i.Color,
+		&i.BoardX,
+		&i.BoardY,
+		&i.EditedByUserID,
+		&i.EditedByMemberID,
 	)
 	return i, err
 }
 
 const getNoteByNumber = `-- name: GetNoteByNumber :one
-SELECT id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number FROM notes WHERE workspace_id = $1 AND number = $2
+SELECT id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number, visibility, color, board_x, board_y, edited_by_user_id, edited_by_member_id FROM notes WHERE workspace_id = $1 AND number = $2
 `
 
 type GetNoteByNumberParams struct {
@@ -112,12 +164,44 @@ func (q *Queries) GetNoteByNumber(ctx context.Context, arg GetNoteByNumberParams
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Number,
+		&i.Visibility,
+		&i.Color,
+		&i.BoardX,
+		&i.BoardY,
+		&i.EditedByUserID,
+		&i.EditedByMemberID,
+	)
+	return i, err
+}
+
+const getNoteRevision = `-- name: GetNoteRevision :one
+SELECT id, note_id, rev, title, body, kind, edited_by_user_id, edited_by_member_id, created_at FROM note_revisions WHERE note_id = $1 AND rev = $2
+`
+
+type GetNoteRevisionParams struct {
+	NoteID uuid.UUID
+	Rev    int32
+}
+
+func (q *Queries) GetNoteRevision(ctx context.Context, arg GetNoteRevisionParams) (NoteRevision, error) {
+	row := q.db.QueryRow(ctx, getNoteRevision, arg.NoteID, arg.Rev)
+	var i NoteRevision
+	err := row.Scan(
+		&i.ID,
+		&i.NoteID,
+		&i.Rev,
+		&i.Title,
+		&i.Body,
+		&i.Kind,
+		&i.EditedByUserID,
+		&i.EditedByMemberID,
+		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const goalNote = `-- name: GoalNote :one
-SELECT id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number FROM notes WHERE goal_id = $1 AND kind = $2 ORDER BY created_at DESC LIMIT 1
+SELECT id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number, visibility, color, board_x, board_y, edited_by_user_id, edited_by_member_id FROM notes WHERE goal_id = $1 AND kind = $2 ORDER BY created_at DESC LIMIT 1
 `
 
 type GoalNoteParams struct {
@@ -140,12 +224,52 @@ func (q *Queries) GoalNote(ctx context.Context, arg GoalNoteParams) (Note, error
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Number,
+		&i.Visibility,
+		&i.Color,
+		&i.BoardX,
+		&i.BoardY,
+		&i.EditedByUserID,
+		&i.EditedByMemberID,
 	)
 	return i, err
 }
 
+const listNoteRevisions = `-- name: ListNoteRevisions :many
+SELECT id, note_id, rev, title, body, kind, edited_by_user_id, edited_by_member_id, created_at FROM note_revisions WHERE note_id = $1 ORDER BY rev DESC
+`
+
+func (q *Queries) ListNoteRevisions(ctx context.Context, noteID uuid.UUID) ([]NoteRevision, error) {
+	rows, err := q.db.Query(ctx, listNoteRevisions, noteID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []NoteRevision
+	for rows.Next() {
+		var i NoteRevision
+		if err := rows.Scan(
+			&i.ID,
+			&i.NoteID,
+			&i.Rev,
+			&i.Title,
+			&i.Body,
+			&i.Kind,
+			&i.EditedByUserID,
+			&i.EditedByMemberID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listNotes = `-- name: ListNotes :many
-SELECT id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number FROM notes WHERE workspace_id = $1 ORDER BY updated_at DESC, id
+SELECT id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number, visibility, color, board_x, board_y, edited_by_user_id, edited_by_member_id FROM notes WHERE workspace_id = $1 ORDER BY updated_at DESC, id
 `
 
 func (q *Queries) ListNotes(ctx context.Context, workspaceID uuid.UUID) ([]Note, error) {
@@ -169,6 +293,12 @@ func (q *Queries) ListNotes(ctx context.Context, workspaceID uuid.UUID) ([]Note,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Number,
+			&i.Visibility,
+			&i.Color,
+			&i.BoardX,
+			&i.BoardY,
+			&i.EditedByUserID,
+			&i.EditedByMemberID,
 		); err != nil {
 			return nil, err
 		}
@@ -180,17 +310,40 @@ func (q *Queries) ListNotes(ctx context.Context, workspaceID uuid.UUID) ([]Note,
 	return items, nil
 }
 
+const pruneNoteRevisions = `-- name: PruneNoteRevisions :exec
+DELETE FROM note_revisions r WHERE r.note_id = $1
+  AND r.rev <= (SELECT max(x.rev) FROM note_revisions x WHERE x.note_id = $1) - 20
+`
+
+func (q *Queries) PruneNoteRevisions(ctx context.Context, noteID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, pruneNoteRevisions, noteID)
+	return err
+}
+
 const updateNote = `-- name: UpdateNote :one
 UPDATE notes SET title = coalesce($1, title), body = coalesce($2, body),
-  kind = coalesce($3, kind)
-WHERE id = $4 RETURNING id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number
+  kind = coalesce($3, kind),
+  visibility = coalesce($4, visibility), color = coalesce($5, color),
+  board_x = CASE WHEN $6::boolean THEN $7 ELSE board_x END,
+  board_y = CASE WHEN $6::boolean THEN $8 ELSE board_y END,
+  edited_by_user_id = CASE WHEN $9::boolean THEN $10 ELSE edited_by_user_id END,
+  edited_by_member_id = CASE WHEN $9::boolean THEN $11 ELSE edited_by_member_id END
+WHERE id = $12 RETURNING id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number, visibility, color, board_x, board_y, edited_by_user_id, edited_by_member_id
 `
 
 type UpdateNoteParams struct {
-	Title *string
-	Body  *string
-	Kind  *string
-	ID    uuid.UUID
+	Title            *string
+	Body             *string
+	Kind             *string
+	Visibility       *string
+	Color            *string
+	SetPos           bool
+	BoardX           *float64
+	BoardY           *float64
+	SetEditor        bool
+	EditedByUserID   *uuid.UUID
+	EditedByMemberID *uuid.UUID
+	ID               uuid.UUID
 }
 
 func (q *Queries) UpdateNote(ctx context.Context, arg UpdateNoteParams) (Note, error) {
@@ -198,6 +351,14 @@ func (q *Queries) UpdateNote(ctx context.Context, arg UpdateNoteParams) (Note, e
 		arg.Title,
 		arg.Body,
 		arg.Kind,
+		arg.Visibility,
+		arg.Color,
+		arg.SetPos,
+		arg.BoardX,
+		arg.BoardY,
+		arg.SetEditor,
+		arg.EditedByUserID,
+		arg.EditedByMemberID,
 		arg.ID,
 	)
 	var i Note
@@ -213,6 +374,12 @@ func (q *Queries) UpdateNote(ctx context.Context, arg UpdateNoteParams) (Note, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Number,
+		&i.Visibility,
+		&i.Color,
+		&i.BoardX,
+		&i.BoardY,
+		&i.EditedByUserID,
+		&i.EditedByMemberID,
 	)
 	return i, err
 }
