@@ -136,7 +136,7 @@ func parseShell(s string, depth int) ([]shellCmd, bool) {
 			inD, has = true, true
 		case c == ' ' || c == '\t':
 			flushWord()
-		case c == ';' || c == '\n':
+		case c == ';' || c == '\n' || c == '(' || c == ')':
 			flushCmd(false)
 		case c == '&':
 			if i+1 < len(s) && s[i+1] == '&' {
@@ -180,6 +180,9 @@ func parseShell(s string, depth int) ([]shellCmd, bool) {
 	return out, true
 }
 
+var keywords = map[string]bool{"!": true, "{": true, "}": true, "if": true, "then": true, "else": true, "elif": true,
+	"while": true, "until": true, "do": true, "done": true, "fi": true}
+
 var shells = map[string]bool{"sh": true, "bash": true, "zsh": true, "dash": true, "ksh": true}
 
 var interpreters = map[string]bool{"python": true, "python3": true, "perl": true, "ruby": true, "node": true}
@@ -211,7 +214,7 @@ func destructiveCmd(w []string, piped bool, prev string, depth int) bool {
 	if depth > 5 {
 		return true
 	}
-	for len(w) > 0 && strings.Contains(w[0], "=") && !strings.HasPrefix(w[0], "-") && !strings.Contains(w[0], "/") {
+	for len(w) > 0 && (keywords[w[0]] || strings.Contains(w[0], "=") && !strings.HasPrefix(w[0], "-") && !strings.Contains(w[0], "/")) {
 		w = w[1:]
 	}
 	if len(w) == 0 {
@@ -255,12 +258,21 @@ func destructiveCmd(w []string, piped bool, prev string, depth int) bool {
 			i++
 		}
 		return destructiveCmd(args[i:], false, "", depth+1)
-	case "env", "command", "nohup", "time", "nice", "exec", "builtin":
+	case "env", "command", "nohup", "time", "nice", "exec", "builtin", "timeout":
 		i := 0
-		for i < len(args) && strings.HasPrefix(args[i], "-") {
+		for i < len(args) && (strings.HasPrefix(args[i], "-") || (prog == "timeout" && i == 0)) {
 			i++
 		}
 		return destructiveCmd(args[i:], false, "", depth+1)
+	case "tee", "cp", "mv", "ln", "install":
+		for _, a := range args {
+			if redirectOutside(a) && !strings.HasPrefix(a, "-") {
+				return true
+			}
+		}
+		return false
+	case "terraform", "tofu", "gh", "aws", "gcloud", "npm", "pnpm", "yarn":
+		return hasArg(args, "destroy", "delete", "rm", "publish", "unpublish")
 	case "eval":
 		return isDestructive(strings.Join(args, " "))
 	}
@@ -268,8 +280,8 @@ func destructiveCmd(w []string, piped bool, prev string, depth int) bool {
 		return true
 	}
 	if shells[prog] {
-		if piped && (prev == "curl" || prev == "wget") {
-			return true
+		if piped {
+			return true // runs whatever the previous command prints
 		}
 		for i, a := range args {
 			if a == "-c" && i+1 < len(args) {
