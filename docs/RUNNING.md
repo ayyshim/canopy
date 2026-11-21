@@ -394,7 +394,26 @@ To re-record the board GIF in the README, run `scripts/record-board.sh`. It star
 hub, web app and client (with `CANOPY_CLAUDE_BIN` set to fakeclaude), plays a goal with
 `[tasks:3] [ask] [slow:2]`, and writes `docs/assets/board.gif`. It needs docker, go, node, pnpm and ffmpeg.
 
-## Web push
+## Notifications
+
+Each person chooses desktop, push and email notifications on the account page (Progress updates are
+off until chosen). Each workspace can also post to a Discord channel.
+
+### Discord
+
+Workspace admins set this up under the workspace’s settings, in the Notifications tab:
+
+1. In Discord, open the channel’s settings (the gear next to its name).
+2. Choose Integrations, then Webhooks, then New webhook.
+3. Choose Copy webhook URL, paste it in Canopy and save.
+4. Pick which events go to Discord, then choose Send a test.
+
+Messages are named “Workspace - Agent”. Only discord.com webhook URLs are accepted, and the secret part
+is never shown again after saving; use Replace to change it or Remove to stop. To ping a role for
+questions, turn on developer mode in Discord, copy the role’s ID and paste it in. Turn on “One thread per
+goal” only for forum channels.
+
+### Web push
 
 The hub sends push notifications to the web app, including buttons (Allow, Deny, Approve) that answer
 without opening Canopy. It makes its VAPID keys on first start. Browsers only allow push on **https** or
@@ -403,6 +422,10 @@ the app must be added to the Home Screen first, and notification buttons don't s
 Each person turns push on per device, and can pause it with `snooze_until` on `PATCH /api/v1/me`.
 On a real hub the hub accepts only the push services browsers use (Google, Mozilla, Apple, Microsoft);
 with `COOKIE_SECURE=false` it takes any address, for local testing.
+
+On the account page, “This device” turns push on for the browser you’re using, sends a test and shows
+whether push is on, blocked or unsupported. “Pause notifications” (also the bell in the board’s top bar)
+stops push for an hour or until 8:00 tomorrow; email and Discord carry on.
 
 ## Prototype pages
 
