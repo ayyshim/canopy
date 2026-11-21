@@ -188,28 +188,30 @@ type GateRule struct {
 }
 
 type Goal struct {
-	ID          uuid.UUID
-	WorkspaceID uuid.UUID
-	ManagerID   *uuid.UUID
-	Title       string
-	DoneWhen    string
-	Color       string
-	Status      string
-	Summary     string
-	CreatedBy   *uuid.UUID
-	PlannedAt   *time.Time
-	FinishedAt  *time.Time
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	RunnerID    *uuid.UUID
-	Base        string
-	Branch      string
-	Snapshot    bool
-	Shipped     []byte
-	ShowTasks   bool
-	DoneBy      *uuid.UUID
-	ReadyAt     *time.Time
-	Description string
+	ID                 uuid.UUID
+	WorkspaceID        uuid.UUID
+	ManagerID          *uuid.UUID
+	Title              string
+	DoneWhen           string
+	Color              string
+	Status             string
+	Summary            string
+	CreatedBy          *uuid.UUID
+	PlannedAt          *time.Time
+	FinishedAt         *time.Time
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	RunnerID           *uuid.UUID
+	Base               string
+	Branch             string
+	Snapshot           bool
+	Shipped            []byte
+	ShowTasks          bool
+	DoneBy             *uuid.UUID
+	ReadyAt            *time.Time
+	Description        string
+	HandoverApprovedBy *uuid.UUID
+	HandoverApprovedAt *time.Time
 }
 
 type GoalEvent struct {

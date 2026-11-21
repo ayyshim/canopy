@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"canopy/hub/internal/core"
 	"canopy/hub/internal/store/db"
 	"canopy/shared/protocol"
@@ -157,9 +159,20 @@ func (o *Orch) toolSubmitOutput(ctx context.Context, tc *toolCtx) error {
 				outID = x.ID.String()
 			}
 		}
+		payload := map[string]any{"output_id": outID, "title": firstNonEmpty(in.Title, in.Name)}
+		var forUser *uuid.UUID
+		if task.Kind == "handover" && task.GoalID != nil {
+			// The brief is for the goal's person, who alone (and admins) can approve it.
+			g, err := t.Q.GetGoal(ctx, *task.GoalID)
+			if err != nil {
+				return err
+			}
+			forUser = g.CreatedBy
+			payload["handover"] = true
+		}
 		sig, err := t.Q.CreateSignal(ctx, db.CreateSignalParams{ID: newID(), WorkspaceID: tc.ws.ID, Type: "review", MemberID: &tc.member.ID, TaskID: &task.ID,
-			SessionID: &tc.sess.ID, GoalID: task.GoalID,
-			Payload: mustJSON(map[string]any{"output_id": outID, "title": firstNonEmpty(in.Title, in.Name)}), RequestID: tc.call.CallID})
+			SessionID: &tc.sess.ID, GoalID: task.GoalID, ForUserID: forUser,
+			Payload: mustJSON(payload), RequestID: tc.call.CallID})
 		if err != nil {
 			return err
 		}

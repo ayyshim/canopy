@@ -230,6 +230,8 @@ export interface GoalView {
   shipped: any;
   show_tasks: boolean;
   done_by?: string /* uuid */;
+  handover_approved_by?: string /* uuid */;
+  handover_approved_at?: string /* RFC3339 */;
   created_at: string /* RFC3339 */;
   usage?: UsageTotals; // tokens and cost so far; nil when not loaded
 }

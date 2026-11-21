@@ -468,6 +468,15 @@ func (o *Orch) toolCompleteTask(ctx context.Context, tc *toolCtx) error {
 				return toolError("Call submit_plan with your plan first.")
 			}
 		}
+		if task.Kind == "handover" && task.GoalID != nil {
+			g, err := t.Q.GetGoal(ctx, *task.GoalID)
+			if err != nil {
+				return err
+			}
+			if g.HandoverApprovedAt == nil {
+				return toolError("Submit handover.md with submit_output (needs_review on) and wait for the person to approve it first.")
+			}
+		}
 		if task.Kind == "triage" && task.GoalID != nil && strings.TrimSpace(in.NoWorkReason) == "" {
 			goalTasks, err := t.Q.ListGoalTasks(ctx, task.GoalID)
 			if err != nil {

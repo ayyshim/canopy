@@ -94,7 +94,7 @@ function General({ d, run }: { d: Detail; run: Run }) {
             <button aria-pressed={ws.goal_completion === "auto"} onClick={() => run(() => api("PATCH", `/workspaces/${ws.id}`, { goal_completion: "auto" }))}>Mark done automatically</button>
             <button aria-pressed={ws.goal_completion !== "auto"} onClick={() => run(() => api("PATCH", `/workspaces/${ws.id}`, { goal_completion: "manual" }))}>Ask the goal’s person</button>
           </div>
-          <span className="hint">Goals run on the computer of the person who gives them. Done goals’ tasks are hidden from the board.</span>
+          <span className="hint">Goals run on the computer of the person who gives them. Goals still wait for an approved handover brief. Done goals’ tasks are hidden from the board.</span>
         </div>
       </Section>
       <Section title="Notes and decisions" sub="Kept in the hub, so every member can read them even when no computer is on. Managers write plans and summaries; people write decisions and notes.">
