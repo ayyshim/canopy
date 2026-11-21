@@ -239,7 +239,8 @@ code,.mono{font-family:var(--font-mono);font-size:.92em}
 .goal .gb{display:flex;align-items:center;gap:var(--sp-2);font-size:var(--t-xs);color:var(--muted)}
 .goal .gm{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .goal .gm i{width:16px;height:16px;border-radius:50%;display:grid;place-items:center;color:#fff;font-style:normal;font-size:8px;font-weight:700}
-.goal .gb .tr{flex:1;height:4px;border-radius:2px;background:var(--soft);overflow:hidden}
+.goal .gb>span{white-space:nowrap}
+.goal .gb .tr{flex:1;min-width:8px;height:4px;border-radius:2px;background:var(--soft);overflow:hidden}
 .goal .gb .tr i{display:block;height:100%;transition:width .4s}
 .node.task{border-radius:var(--r-md);padding:var(--sp-2) var(--sp-3);color:var(--ink);border:1px solid var(--edge);box-shadow:var(--shadow);display:flex;flex-direction:column;justify-content:space-between;border-left:4px solid var(--gc,var(--edge));background:var(--surface)}
 .node.task.doing,.node.task.review{background:var(--amber-soft)}

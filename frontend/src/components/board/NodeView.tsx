@@ -243,7 +243,7 @@ export function NodeView({ n }: { n: Node }) {
       return (
         <div className={`node task ${t.status}${red ? " blocked" : ""}${dimFor(t.id)}${sel ? " sel" : ""}${glow}`} style={{ ...style, ["--gc" as string]: g?.color ?? "transparent" }}
           role="button" tabIndex={0} onClick={openTask} onKeyDown={keyOpen(openTask)} aria-label={`Task ${t.title}`}>
-          <span className="tt">{t.kind === "handover" && <span className="tag">Handover</span>} {t.title}</span><span className="ft">{ft}<UsageBadge usage={t.usage} compact /></span>
+          <span className="tt">{t.title}</span><span className="ft">{t.kind === "handover" && <span className="tag">Handover</span>}{ft}<UsageBadge usage={t.usage} compact /></span>
           {q && <span className="pin" aria-label="Open question">?</span>}
         </div>
       );

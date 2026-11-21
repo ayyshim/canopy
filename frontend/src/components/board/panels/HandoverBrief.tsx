@@ -36,7 +36,7 @@ export function HandoverBrief({ g }: { g: GoalView }) {
   return (
     <div className={`box${approved ? " ok" : sig ? " warn" : ""}`}>
       <b>Handover brief</b>
-      <div className="mdprev" style={{ maxHeight: 320 }}>
+      <div className="mdprev" style={{ maxHeight: 220 }}>
         {text === null ? <p className="hint">Loading…</p> : <Markdown text={text} className="md" />}
       </div>
       {approved && <span className="hint">Approved by {personName(b, g.handover_approved_by)} at {clock(g.handover_approved_at)}.</span>}
