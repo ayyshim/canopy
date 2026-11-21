@@ -520,8 +520,13 @@ func (s *Session) onEvent(e claudecode.Event) {
 		if dup {
 			return
 		}
+		taskID := turn.TaskID
+		if taskID == nil {
+			taskID = turn.CommentTaskID // a reply in a task's thread is that task's work
+		}
 		s.m.send(protocol.TUsage, protocol.Usage{SessionID: s.id, TurnID: turn.TurnID, AttributedUserID: turn.AttributedUserID,
-			CLI: s.spec.CLI, Model: e.Model, TokensIn: e.TokensIn, TokensOut: e.TokensOut})
+			CLI: s.spec.CLI, Model: e.Model, TokensIn: e.TokensIn, TokensOut: e.TokensOut,
+			CacheRead: e.CacheRead, CacheWrite: e.CacheWrite, TaskID: taskID})
 	case "rate_limit":
 		var windows map[string]protocol.RateWindow
 		if len(e.Windows) > 0 {
