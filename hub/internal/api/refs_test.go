@@ -249,7 +249,7 @@ func TestBackfillOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer conn.Close(ctx)
-	raw, err := os.ReadFile(filepath.Join("..", "store", "migrations", "00023_item_numbers.sql"))
+	raw, err := os.ReadFile(filepath.Join("..", "store", "migrations", "00024_item_numbers.sql"))
 	if err != nil {
 		t.Fatal(err)
 	}

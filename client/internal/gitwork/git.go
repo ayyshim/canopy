@@ -113,7 +113,7 @@ func defaultBranch(ctx context.Context, dir string) string {
 // Info describes a folder for the directory picker.
 func Info(ctx context.Context, dir string) protocol.RepoInfoResult {
 	top, err := git(ctx, dir, "rev-parse", "--show-toplevel")
-	if err != nil || filepath.Clean(top) != filepath.Clean(dir) {
+	if err != nil || realPath(top) != realPath(dir) {
 		return protocol.RepoInfoResult{}
 	}
 	res := protocol.RepoInfoResult{IsRepo: true, DefaultBranch: defaultBranch(ctx, dir), Dirty: dirtyFiles(ctx, dir)}
@@ -124,6 +124,14 @@ func Info(ctx context.Context, dir string) protocol.RepoInfoResult {
 	}
 	res.CurrentBranch, _ = git(ctx, dir, "branch", "--show-current")
 	return res
+}
+
+// realPath resolves symlinks so /var and /private/var compare equal.
+func realPath(p string) string {
+	if r, err := filepath.EvalSymlinks(p); err == nil {
+		p = r
+	}
+	return filepath.Clean(p)
 }
 
 // IsRepoRoot is a quick check for the folder browser.

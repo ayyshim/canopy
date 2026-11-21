@@ -210,6 +210,54 @@ func triagePrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Not
 	return b.String()
 }
 
+// handoverPrompt asks a manager to write the brief a person approves before a goal can finish.
+func handoverPrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Note) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "Handover task: %s\n", t.Title)
+	fmt.Fprintf(&b, "\nGoal: %s\n", g.Title)
+	if g.Description != "" {
+		fmt.Fprintf(&b, "Description: %s\n", g.Description)
+	}
+	if g.DoneWhen != "" {
+		fmt.Fprintf(&b, "Goal is done when: %s\n", g.DoneWhen)
+	}
+	b.WriteString("\nTasks on this goal:\n")
+	for _, x := range st.tasks {
+		if x.GoalID == nil || *x.GoalID != g.ID || x.ID == t.ID || x.Kind == "plan" || x.Kind == "handover" {
+			continue
+		}
+		who := "unassigned"
+		if x.MemberID != nil {
+			if mm, ok := st.member[*x.MemberID]; ok {
+				who = mm.Name
+			}
+		}
+		fmt.Fprintf(&b, "- %s (%s): %s\n", x.Title, who, firstNonEmpty(x.Summary, "done"))
+	}
+	for _, n := range notes {
+		if n.GoalID != nil && *n.GoalID == g.ID && n.Kind != "summary" {
+			fmt.Fprintf(&b, "Note “%s” (%s): read it with read_notes.\n", n.Title, n.Kind)
+		}
+	}
+	if repos := st.goalRepos[g.ID]; len(repos) > 0 {
+		b.WriteString("\nCode changed on the goal branch " + g.Branch + ":\n")
+		for _, r := range repos {
+			if r.TipSha == "" || r.TipSha == r.BaseSha {
+				continue
+			}
+			fmt.Fprintf(&b, "- %s: %d commits since %s\n", st.dir[r.DirectoryID].Name, r.Commits, firstNonEmpty(r.Base, g.Base, "the default branch"))
+		}
+		b.WriteString("Read the diff in each mounted repository, for example `git diff " + baseRef(g.Base) + "...HEAD`.\n")
+	}
+	b.WriteString("\nYou are writing a handover brief for the person who gave this goal. Do NOT change code or redo any work. ")
+	b.WriteString("Read the task summaries above, the outputs, the notes and the diff. Then write handover.md in plain words, short headings and no jargon, covering:\n")
+	b.WriteString("1. What was asked.\n2. What changed and where.\n3. How to check it.\n4. What isn’t done or is risky.\n5. What the person must decide.\n")
+	fmt.Fprintf(&b, "\nSave it as ./%s/handover.md and call submit_output with needs_review set to true. ", OutputsDir(t.ID))
+	b.WriteString("The person approves it or asks for changes; if they ask for changes, revise the same file and call submit_output again. ")
+	b.WriteString("After it is approved, call complete_task with a one-line summary. Do not call complete_task before that.\n")
+	return b.String()
+}
+
 // writeTeam lists the manager's staff, borrowable independent staff and the skill library.
 func writeTeam(b *strings.Builder, st *wsState, m db.Member) {
 	b.WriteString("\nYour staff:\n")

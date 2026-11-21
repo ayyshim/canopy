@@ -17,10 +17,10 @@ import { Markdown, type MdLinks } from "../panels/bits";
 import { ImageView } from "./ImageView";
 import { Prototype } from "./Prototype";
 
-const fileURL = (o: OutputView, n: number) => `/api/v1/outputs/${o.id}/versions/${n}/file`;
+export const fileURL = (o: OutputView, n: number) => `/api/v1/outputs/${o.id}/versions/${n}/file`;
 
 /** useText fetches a text output's content. */
-function useText(url: string, enabled: boolean) {
+export function useText(url: string, enabled: boolean) {
   const [got, setGot] = useState<{ url: string; text: string } | null>(null);
   useEffect(() => {
     if (!enabled) return;

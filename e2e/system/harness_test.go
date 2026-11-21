@@ -27,7 +27,13 @@ import (
 
 var bins struct{ hub, canopy, fakeclaude string }
 
-const adminDB = "postgres://canopy:canopy@localhost:5432/postgres?sslmode=disable"
+// adminDB is the Postgres the tests create databases on; TEST_DATABASE_URL overrides the default.
+var adminDB = func() string {
+	if v := os.Getenv("TEST_DATABASE_URL"); v != "" {
+		return v
+	}
+	return "postgres://canopy:canopy@localhost:5432/postgres?sslmode=disable"
+}()
 
 func TestMain(m *testing.M) {
 	dir, err := os.MkdirTemp("", "canopy-system-bins")
@@ -350,11 +356,22 @@ func (c *client) waitSignal(ws, typ string, d time.Duration) map[string]any {
 	return found
 }
 
+// approveHandovers approves every handover brief waiting for review.
+func (c *client) approveHandovers(b map[string]any) {
+	for _, s := range list(b["signals"]) {
+		sig := m(s)
+		if str(sig["type"]) == "review" && m(sig["payload"])["handover"] == true {
+			c.do("POST", "/api/v1/signals/"+str(sig["id"])+"/resolve", map[string]any{"action": "approve"}, 200)
+		}
+	}
+}
+
 func (c *client) waitGoalDone(ws, goalID string, d time.Duration) map[string]any {
 	c.t.Helper()
 	var b map[string]any
 	waitFor(c.t, d, "goal done", func() bool {
 		b = c.board(ws)
+		c.approveHandovers(b)
 		return goalStatus(b, goalID) == "done"
 	})
 	return b

@@ -6,7 +6,7 @@ import { useState } from "react";
 import { markGoalDone, shipGoal, showGoalTasks } from "@/lib/board/actions";
 import {
   clock, computer, computerFor, directory, goal as findGoal, goalRepos, goalTasks, isAdmin, memberStatus, personName,
-  signInLabel, visibleMember, firstName, plural,
+  signInLabel, visibleMember, workTasks, firstName, plural,
 } from "@/lib/board/derive";
 import { useUI } from "@/lib/board/ui";
 import type { GoalView } from "@/lib/types";
@@ -20,6 +20,7 @@ import { PanelBody, PanelFoot, PanelHead } from "./Panel";
 import { Tabs, TabPanel, useTab, EmptyState } from "../../ui";
 import { UsageBadge } from "../../ui";
 import { UsageTab } from "./UsageTab";
+import { HandoverBrief } from "./HandoverBrief";
 import { OutputThumb } from "../OutputThumb";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -49,7 +50,7 @@ function GivenGoalPanel({ g }: { g: GoalView }) {
   const [tab, setTab] = useTab("goal", "overview", ids);
   const now = useNow(30000);
   const ts = goalTasks(b, g.id);
-  const work = ts.filter((t) => t.kind !== "plan");
+  const work = workTasks(b, g.id);
   const dn = work.filter((t) => t.status === "done").length;
   const m = visibleMember(b, g.manager_id);
   const outs = b.outputs.filter((o) => ts.some((t) => t.id === o.task_id));
@@ -67,6 +68,8 @@ function GivenGoalPanel({ g }: { g: GoalView }) {
   const ends = g.finished_at ? new Date(g.finished_at).getTime() : now;
   const mins = Math.max(0, Math.round((ends - new Date(g.created_at).getTime()) / 60000));
   const base = g.base || "the default branch";
+  const approved = !!g.handover_approved_by;
+  const why = approved ? undefined : "The handover brief isn’t approved yet.";
   const ship = async (action: "pr" | "merge" | "keep") => {
     setBusy(action);
     await shipGoal(g.id, action);
@@ -102,23 +105,27 @@ function GivenGoalPanel({ g }: { g: GoalView }) {
           <div className="meter"><i style={{ width: `${work.length ? (dn / work.length) * 100 : 0}%`, background: g.color }} /></div>
         </div>
 
+        <HandoverBrief g={g} />
+
         {g.status === "ready" && (
           <div className="box warn">
             <b>Every task is done</b>
             <span style={{ fontSize: 13 }}>
               {repos.length ? <>Check the outputs, then ship the code on <code>{g.branch}</code>.</> : "Check the outputs, then mark the goal as done."} Its finished tasks will be hidden from the board.
             </span>
+            {approved && <span className="hint">Brief approved by {personName(b, g.handover_approved_by)} at {clock(g.handover_approved_at)}.</span>}
             {mine ? (
               <div className="stack-sm">
                 {repos.length ? (
                   <>
-                    <button className="btn btn-sm btn-primary" disabled={!!busy} onClick={() => ship("pr")}>{busy === "pr" ? "Opening…" : `Open pull request${repos.length > 1 ? "s" : ""} into ${base}`}</button>
-                    <button className="btn btn-sm" disabled={!!busy} onClick={() => ship("merge")}>{busy === "merge" ? "Merging…" : `Merge into ${base} on ${computer(b, g.runner_id ?? computerFor(b, g.created_by ?? ""))?.name ?? "its computer"}`}</button>
-                    <button className="btn btn-sm" disabled={!!busy} onClick={() => ship("keep")}>Keep the branch and mark done</button>
+                    <button className="btn btn-sm btn-primary" disabled={!!busy || !approved} onClick={() => ship("pr")}>{busy === "pr" ? "Opening…" : `Open pull request${repos.length > 1 ? "s" : ""} into ${base}`}</button>
+                    <button className="btn btn-sm" disabled={!!busy || !approved} onClick={() => ship("merge")}>{busy === "merge" ? "Merging…" : `Merge into ${base} on ${computer(b, g.runner_id ?? computerFor(b, g.created_by ?? ""))?.name ?? "its computer"}`}</button>
+                    <button className="btn btn-sm" disabled={!!busy || !approved} onClick={() => ship("keep")}>Keep the branch and mark done</button>
                   </>
                 ) : (
-                  <button className="btn btn-sm btn-primary" onClick={() => markGoalDone(g.id)}>Mark as done</button>
+                  <button className="btn btn-sm btn-primary" disabled={!approved} onClick={() => markGoalDone(g.id)}>Mark as done</button>
                 )}
+                {why && <span className="hint">{why}</span>}
                 <button className="btn btn-sm" onClick={() => ui.openDialog({ kind: "task", goalId: g.id, memberId: g.manager_id ?? undefined })}>Add a follow-up task</button>
               </div>
             ) : (

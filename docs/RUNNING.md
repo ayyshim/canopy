@@ -418,6 +418,16 @@ A note with a board position shows on the canvas as a sticky note, with its N-5 
 - **Who edits.** The author edits their notes; admins also edit shared ones. Agents can update notes with `update_note` when asked or clearly useful. A sticky shows "Edited by <agent>" and glows briefly when an agent changes it.
 - **History.** Every change to the title or text keeps the earlier version (the last 20). Open the note in the Notes panel and choose **Restore**; the current text is kept in the history too.
 
+## Handover brief
+
+When every task of a goal is done, the goal’s manager writes a short handover brief (`handover.md`)
+and the goal’s person gets a review card, “Review the handover brief for <goal>”. Open the goal, read
+the brief in its Overview, then choose Approve or Ask for changes. Admins can answer too. Other people
+see who the goal is waiting for.
+
+A goal can only be shipped or marked done once its brief is approved, also when the workspace marks goals
+done automatically. The approved brief stays on the goal after it is done. Reopening a goal asks for a new brief.
+
 ## Prototype pages
 
 When an agent submits an HTML file, the output viewer shows it as a live page ("Prototype"), with its CSS,

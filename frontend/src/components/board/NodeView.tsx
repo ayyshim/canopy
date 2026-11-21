@@ -5,7 +5,7 @@ import { UsageBadge } from "../ui";
 import { useCatalog, skillLabel } from "@/lib/catalog";
 import { resolveSignal } from "@/lib/board/actions";
 import {
-  account, blockReason, chatLocked, blockedOnPerson, computer, fmtTokens, goalProgress, goalRepos, isAdmin, memberStatus, needsMe, payload,
+  account, blockReason, briefInReview, chatLocked, blockedOnPerson, computer, fmtTokens, goalProgress, goalRepos, isAdmin, memberStatus, needsMe, payload,
   runnerForTask, signInLabel, signalsForTask, task as findTask, whyWaiting, workTasks, firstName, clock, plural,
 } from "@/lib/board/derive";
 import type { Node } from "@/lib/board/layout";
@@ -72,7 +72,7 @@ export function NodeView({ n }: { n: Node }) {
       const dn = ts.filter((t) => t.status === "done").length;
       const sel = focusGoal === g.id;
       const hasRepos = goalRepos(b, g.id).length > 0;
-      const status = g.status === "ready" ? (hasRepos ? "Ready to ship" : "Ready to close") : g.status === "done" ? "Done ✓" : g.status === "planning" ? "Planning" : g.status === "draft" ? "Draft" : `${dn} of ${ts.length}`;
+      const status = g.status !== "done" && briefInReview(b, g.id) ? "Brief to review" : g.status === "ready" ? (hasRepos ? "Ready to ship" : "Ready to close") : g.status === "done" ? "Done ✓" : g.status === "planning" ? "Planning" : g.status === "draft" ? "Draft" : `${dn} of ${ts.length}`;
       const open = () => ui.openSide({ type: "goal", id: g.id });
       const mName = m && "name" in m ? m.name : "Manager";
       const mColor = m && "avatar_color" in m ? m.avatar_color : "var(--line)";
@@ -247,7 +247,7 @@ export function NodeView({ n }: { n: Node }) {
       return (
         <div className={`node task ${t.status}${red ? " blocked" : ""}${dimFor(t.id)}${sel ? " sel" : ""}${glow}`} style={{ ...style, ["--gc" as string]: g?.color ?? "transparent" }}
           role="button" tabIndex={0} onClick={openTask} onKeyDown={keyOpen(openTask)} aria-label={`Task ${t.title}`}>
-          <span className="tt"><IdTag kind="task" number={t.number} />{t.title}</span><span className="ft">{ft}<UsageBadge usage={t.usage} compact /></span>
+          <span className="tt"><IdTag kind="task" number={t.number} />{t.title}</span><span className="ft">{t.kind === "handover" && <span className="tag">Handover</span>}{ft}<UsageBadge usage={t.usage} compact /></span>
           {q && <span className="pin" aria-label="Open question">?</span>}
         </div>
       );

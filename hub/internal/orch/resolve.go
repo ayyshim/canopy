@@ -276,6 +276,21 @@ func (o *Orch) Resolve(ctx context.Context, signalID uuid.UUID, by *uuid.UUID, r
 					return err
 				}
 				params := db.UpdateTaskParams{ID: task.ID, Status: ptr("doing")}
+				if task.Kind == "handover" && r.Action == "approve" && task.GoalID != nil {
+					if err := o.approveHandover(ctx, t, ws, task, outID, by); err != nil {
+						return err
+					}
+					params.Status, params.Progress, params.SetFinished = ptr("done"), ptr(int32(100)), true
+					if sess != nil {
+						ns, err := q.UpdateAgentSession(ctx, db.UpdateAgentSessionParams{ID: sess.ID, SetTask: true})
+						if err != nil {
+							return err
+						}
+						if err := emitSession(ctx, t, ws, ns); err != nil {
+							return err
+						}
+					}
+				}
 				if r.Action == "changes" {
 					params.Progress = ptr(int32(72)) // SPEC: "rolls the task back to 72%"
 				}
@@ -296,7 +311,11 @@ func (o *Orch) Resolve(ctx context.Context, signalID uuid.UUID, by *uuid.UUID, r
 				}
 			}
 			if r.Action == "approve" {
-				toolReply(protocol.ToolResult{Text: "Approved by " + who + ". Finish the task."})
+				text := "Approved by " + who + ". Finish the task."
+				if task := sig.TaskID; task != nil && payload["handover"] == true {
+					text = "Approved by " + who + ". The handover is done; nothing more to do."
+				}
+				toolReply(protocol.ToolResult{Text: text})
 				summary = "Approved “" + fmt.Sprint(payload["title"]) + "”"
 			} else {
 				toolReply(protocol.ToolResult{Text: "Changes requested by " + who + ": " + r.Note + o.ReferencedItems(ctx, ws, by, r.Note) + "\nMake the changes, save a new version of the same file and call submit_output again."})

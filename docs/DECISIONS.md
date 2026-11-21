@@ -364,6 +364,26 @@ It works on Claude Code 2.1.316 and later. Telemetry vars still set: `DISABLE_ER
 and `DISABLE_BUG_COMMAND=1`. `DISABLE_TELEMETRY=1` is not set, because with it only Artifact
 loads and ArtifactComments and ArtifactData are lost.
 
+## A goal needs an approved handover brief
+
+When every work task of a goal is done, the goal does not go to ready. Its manager gets a
+`handover` task, "Handover: <goal>", and writes `handover.md` for the goal's person: what was asked,
+what changed and where, how to check it, what isn't done or is risky, and what to decide. The
+manager submits it with `submit_output` (needs review). The review card is for the goal's person;
+admins can answer it too. "Changes" sends the comment back to the manager as for any output.
+
+On approve, the goal stores `handover_approved_by` and `handover_approved_at`, the handover task is
+done, and the brief becomes the goal summary, the "Summary:" note and the pull request body. The
+goal then goes to ready, or closes with its branch kept when goals finish automatically.
+
+Mark done and ship answer "The handover brief isn’t approved yet." without an approval, and
+`complete_task` on a handover task is refused until then. A goal reopened with a new task loses its
+approval, so it needs a fresh brief. A ready goal with no approval (made before this) goes back to
+active and gets a brief task.
+
+When a goal closes, its live sessions are ended too. Cleanup deletes their work folders, so a reopened
+goal (which needs a new brief) starts fresh sessions instead of reusing ones with a deleted folder.
+
 ## Prototype previews run on an opaque origin (2026-11-21)
 
 HTML outputs can be opened as live pages (`POST /outputs/{id}/preview`, then `GET /preview/{token}/{name}`).
@@ -386,7 +406,7 @@ elsewhere. They know nothing of the hub, but people should still only preview wo
 Goals, tasks and notes get a number per workspace and type, written G-12, T-34, N-5. The number is a column
 with `unique (workspace_id, number)`, handed out by `next_item_number()` from the `item_counters` table inside
 the insert statement. The counter row stays locked until the transaction ends, so concurrent inserts queue and
-never clash; numbers are never reused after a delete. Migration 00023 backfills old rows by `created_at, id`.
+never clash; numbers are never reused after a delete. Migration 00024 backfills old rows by `created_at, id`.
 
 `hub/internal/refs` parses refs (`G-12`, `#t-34`, any case, not glued to other words, not in code) and resolves
 them with the board snapshot's rules: a goal or task is visible when its manager or owner is, a note when it has

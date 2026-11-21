@@ -2,7 +2,7 @@
 
 import { RefText } from "./IdTag";
 import { resolveSignal } from "@/lib/board/actions";
-import { directory, firstName, payload, personName, visibleMember } from "@/lib/board/derive";
+import { directory, firstName, goal as findGoal, payload, task as findTask, personName, visibleMember } from "@/lib/board/derive";
 import { useUI } from "@/lib/board/ui";
 import { useNow } from "@/lib/useNow";
 import type { SignalView } from "@/lib/types";
@@ -103,7 +103,19 @@ export function SignalCard({ s, style, dim }: { s: SignalView; style: React.CSSP
           </span>
         </div>
       );
-    case "review":
+    case "review": {
+      const rt = findTask(b, s.task_id);
+      const rg = rt?.kind === "handover" ? findGoal(b, rt.goal_id) : undefined;
+      if (rg) {
+        return (
+          <div className={cls("gate")} style={style} data-sig={s.id}>
+            <span className="lock" aria-hidden="true"><EyeIcon /></span>
+            <span className="h">Review the handover brief for “{rg.title}”</span>
+            <p>The goal can’t finish until you approve it.</p>
+            <span className="bs"><button className="mini dark" onClick={() => ui.openSide({ type: "goal", id: rg.id })}>Open the goal</button></span>
+          </div>
+        );
+      }
       return (
         <div className={cls("gate")} style={style} data-sig={s.id}>
           <span className="lock" aria-hidden="true"><EyeIcon /></span>
@@ -112,6 +124,7 @@ export function SignalCard({ s, style, dim }: { s: SignalView; style: React.CSSP
           <span className="bs"><button className="mini dark" onClick={() => ui.openViewer(p.output_id)}>Open and review</button></span>
         </div>
       );
+    }
     case "sync_conflict": {
       const mine = p.owner_user_id === me;
       const d = directory(b, p.directory_id);

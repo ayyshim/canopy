@@ -10,35 +10,38 @@ import (
 )
 
 type GoalView struct {
-	ID          uuid.UUID       `json:"id"`
-	Number      int32           `json:"number"`
-	ManagerID   *uuid.UUID      `json:"manager_id"`
-	Title       string          `json:"title"`
-	DoneWhen    string          `json:"done_when"`
-	Description string          `json:"description"`
-	Color       string          `json:"color"`
-	Status      string          `json:"status"`
-	Summary     string          `json:"summary"`
-	CreatedBy   *uuid.UUID      `json:"created_by"`
-	PlannedAt   *time.Time      `json:"planned_at"`
-	FinishedAt  *time.Time      `json:"finished_at"`
-	ReadyAt     *time.Time      `json:"ready_at"`
-	RunnerID    *uuid.UUID      `json:"runner_id"`
-	Base        string          `json:"base"`
-	Branch      string          `json:"branch"`
-	Snapshot    bool            `json:"snapshot"`
-	Shipped     json.RawMessage `json:"shipped"`
-	ShowTasks   bool            `json:"show_tasks"`
-	DoneBy      *uuid.UUID      `json:"done_by"`
-	CreatedAt   time.Time       `json:"created_at"`
-	Usage       *UsageTotals    `json:"usage"` // tokens and cost so far; nil when not loaded
+	ID                 uuid.UUID       `json:"id"`
+	Number             int32           `json:"number"`
+	ManagerID          *uuid.UUID      `json:"manager_id"`
+	Title              string          `json:"title"`
+	DoneWhen           string          `json:"done_when"`
+	Description        string          `json:"description"`
+	Color              string          `json:"color"`
+	Status             string          `json:"status"`
+	Summary            string          `json:"summary"`
+	CreatedBy          *uuid.UUID      `json:"created_by"`
+	PlannedAt          *time.Time      `json:"planned_at"`
+	FinishedAt         *time.Time      `json:"finished_at"`
+	ReadyAt            *time.Time      `json:"ready_at"`
+	RunnerID           *uuid.UUID      `json:"runner_id"`
+	Base               string          `json:"base"`
+	Branch             string          `json:"branch"`
+	Snapshot           bool            `json:"snapshot"`
+	Shipped            json.RawMessage `json:"shipped"`
+	ShowTasks          bool            `json:"show_tasks"`
+	DoneBy             *uuid.UUID      `json:"done_by"`
+	HandoverApprovedBy *uuid.UUID      `json:"handover_approved_by"`
+	HandoverApprovedAt *time.Time      `json:"handover_approved_at"`
+	CreatedAt          time.Time       `json:"created_at"`
+	Usage              *UsageTotals    `json:"usage"` // tokens and cost so far; nil when not loaded
 }
 
 func ToGoal(g db.Goal) GoalView {
 	v := GoalView{ID: g.ID, Number: g.Number, ManagerID: g.ManagerID, Title: g.Title, DoneWhen: g.DoneWhen, Description: g.Description, Color: g.Color, Status: g.Status,
 		Summary: g.Summary, CreatedBy: g.CreatedBy, PlannedAt: g.PlannedAt, FinishedAt: g.FinishedAt, CreatedAt: g.CreatedAt,
 		ReadyAt: g.ReadyAt, RunnerID: g.RunnerID, Base: g.Base, Branch: g.Branch, Snapshot: g.Snapshot, Shipped: g.Shipped,
-		ShowTasks: g.ShowTasks, DoneBy: g.DoneBy}
+		ShowTasks: g.ShowTasks, DoneBy: g.DoneBy,
+		HandoverApprovedBy: g.HandoverApprovedBy, HandoverApprovedAt: g.HandoverApprovedAt}
 	if len(v.Shipped) == 0 {
 		v.Shipped = json.RawMessage("{}")
 	}
