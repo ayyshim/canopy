@@ -24,6 +24,19 @@ export interface AttachmentView {
 }
 
 //////////
+// source: notes.go
+
+export interface NoteRevisionView {
+  rev: number /* int32 */;
+  title: string;
+  body: string;
+  kind: string;
+  edited_by_user_id?: string /* uuid */;
+  edited_by_member_id?: string /* uuid */;
+  created_at: string /* RFC3339 */;
+}
+
+//////////
 // source: usage.go
 
 /**
@@ -139,6 +152,12 @@ export interface NoteView {
   body: string;
   author_user_id?: string /* uuid */;
   author_member_id?: string /* uuid */;
+  visibility: string;
+  color: string;
+  board_x?: number /* float64 */;
+  board_y?: number /* float64 */;
+  edited_by_user_id?: string /* uuid */;
+  edited_by_member_id?: string /* uuid */;
   updated_at: string /* RFC3339 */;
 }
 export interface GrantView {
