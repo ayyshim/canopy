@@ -12,6 +12,7 @@ import { Denied, PageShell, Section } from "@/components/PageShell";
 import { api, ApiError, currentOrg, hardNavigate, isOrgAdmin } from "@/lib/api";
 import { SkillAdd, SkillList, SkillPicker, SkillsIntro } from "@/components/skills/Skills";
 import { useMe } from "@/lib/me";
+import { Notifications } from "./DiscordSettings";
 import type { SkillView } from "@/lib/skills";
 import { isHidden, type AnyMember, type CloneView, type Computer, type DirectoryDetail, type GrantView, type MemberView, type NoteView, type WorkspaceSummary, type WorkspaceView } from "@/lib/types";
 
@@ -60,6 +61,7 @@ function Inner() {
           {tab === "members" && <Members d={d} run={run} />}
           {tab === "skills" && <Skills d={d} />}
           {tab === "access" && <AccessTab d={d} run={run} />}
+          {tab === "notifications" && <Notifications wsId={d.workspace.id} />}
           {tab === "danger" && (orgAdmin ? <Danger d={d} run={run} /> : <Denied title="Danger zone" />)}
         </>
       )}
