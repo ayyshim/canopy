@@ -46,7 +46,7 @@ export function CreateJobDialog({ wsId, onClose, onCreated }: { wsId: string; on
       <ol className="steps" aria-label="Steps" style={{ display: "flex", gap: 6, listStyle: "none", margin: 0, padding: 0, flexWrap: "wrap" }}>
         {STEPS.map((s, i) => (
           <li key={s}><button type="button" className="pill" aria-current={i === step ? "step" : undefined}
-            style={i === step ? { background: "var(--accent-soft)", color: "var(--ink)" } : undefined}
+            style={{ minHeight: 30, ...(i === step ? { background: "var(--accent-soft)", color: "var(--ink)" } : {}) }}
             onClick={() => i < step && setStep(i)} disabled={i > step}>{i + 1}. {s}</button></li>
         ))}
       </ol>
