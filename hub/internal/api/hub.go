@@ -189,7 +189,7 @@ func (s *Server) handleHubSetup(w http.ResponseWriter, r *http.Request) error {
 
 	ctx := r.Context()
 	userID := newID()
-	var me meView
+	var next string
 	err = s.Store.Tx(ctx, func(q *db.Queries) error {
 		if _, err := q.CreateHubSettings(ctx, db.CreateHubSettingsParams{Name: req.Hub.Name, SignupOpen: signupOpen}); err != nil {
 			if store.IsNotFound(err) {
@@ -212,16 +212,14 @@ func (s *Server) handleHubSetup(w http.ResponseWriter, r *http.Request) error {
 		if err := s.audit(ctx, q, nil, &userID, "hub.setup", fmt.Sprintf("%s set up the hub", req.Admin.Name)); err != nil {
 			return err
 		}
-		if _, err := s.Sessions.Start(ctx, w, r, q, userID); err != nil {
-			return err
-		}
-		me, err = s.buildMe(ctx, q, userID)
+		id, err := s.Sessions.Start(ctx, w, r, q, userID)
+		next = id.Next()
 		return err
 	})
 	if err != nil {
 		return err
 	}
 	s.setupDone.Store(true)
-	httpx.JSON(w, http.StatusCreated, me)
+	httpx.JSON(w, http.StatusCreated, twoFactorNext(next))
 	return nil
 }

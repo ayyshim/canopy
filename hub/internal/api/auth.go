@@ -93,7 +93,7 @@ func (s *Server) handleSignup(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	userID := newID()
-	var me meView
+	var next string
 	err = s.Store.Tx(ctx, func(q *db.Queries) error {
 		org, err := s.createOrg(ctx, q, req.Org, userID)
 		if err != nil {
@@ -114,10 +114,8 @@ func (s *Server) handleSignup(w http.ResponseWriter, r *http.Request) error {
 			fmt.Sprintf("%s created the organization", req.User.Name)); err != nil {
 			return err
 		}
-		if _, err := s.Sessions.Start(ctx, w, r, q, userID); err != nil {
-			return err
-		}
-		me, err = s.buildMe(ctx, q, userID)
+		id, err := s.Sessions.Start(ctx, w, r, q, userID)
+		next = id.Next()
 		return err
 	})
 	if store.IsUniqueViolation(err, "users_email_key") {
@@ -126,7 +124,7 @@ func (s *Server) handleSignup(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	httpx.JSON(w, http.StatusCreated, me)
+	httpx.JSON(w, http.StatusCreated, twoFactorNext(next))
 	return nil
 }
 
@@ -184,14 +182,11 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) error {
 	if !ok {
 		return errWrongPass
 	}
-	if _, err := s.Sessions.Start(ctx, w, r, s.Store.Queries, u.ID); err != nil {
-		return err
-	}
-	me, err := s.buildMe(ctx, s.Store.Queries, u.ID)
+	id, err := s.Sessions.Start(ctx, w, r, s.Store.Queries, u.ID)
 	if err != nil {
 		return err
 	}
-	httpx.JSON(w, http.StatusOK, me)
+	httpx.JSON(w, http.StatusOK, twoFactorNext(id.Next()))
 	return nil
 }
 
@@ -289,7 +284,7 @@ func (s *Server) handleReset(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	ctx := r.Context()
-	var me meView
+	var next string
 	err = s.Store.Tx(ctx, func(q *db.Queries) error {
 		reset, err := q.ClaimPasswordReset(ctx, auth.HashToken(req.Token))
 		if store.IsNotFound(err) {
@@ -303,16 +298,14 @@ func (s *Server) handleReset(w http.ResponseWriter, r *http.Request) error {
 		if err := q.DeleteUserSessions(ctx, reset.UserID); err != nil {
 			return err
 		}
-		if _, err := s.Sessions.Start(ctx, w, r, q, reset.UserID); err != nil {
-			return err
-		}
-		me, err = s.buildMe(ctx, q, reset.UserID)
+		id, err := s.Sessions.Start(ctx, w, r, q, reset.UserID)
+		next = id.Next()
 		return err
 	})
 	if err != nil {
 		return err
 	}
-	httpx.JSON(w, http.StatusOK, me)
+	httpx.JSON(w, http.StatusOK, twoFactorNext(next))
 	return nil
 }
 

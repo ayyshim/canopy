@@ -132,6 +132,15 @@ func (s *Server) setupRoutes(r chi.Router) {
 		r.Get("/preview/{token}/*", httpx.Handler(s.handlePreviewFile))
 		r.Post("/auth/logout", httpx.Handler(s.handleLogout))
 
+		// Open to a session that still needs its code.
+		r.Group(func(r chi.Router) {
+			r.Use(auth.RequireSession, auth.RateLimit(s.Limiter, "two-factor", s.Cfg.AuthRateLimit, s.Cfg.TrustProxy))
+			r.Get("/auth/two-factor", httpx.Handler(s.handleTwoFactorState))
+			r.Post("/auth/two-factor/setup", httpx.Handler(s.handleTwoFactorSetup))
+			r.Post("/auth/two-factor/enable", httpx.Handler(s.handleTwoFactorEnable))
+			r.Post("/auth/two-factor/verify", httpx.Handler(s.handleTwoFactorVerify))
+		})
+
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RateLimit(s.Limiter, "auth", s.Cfg.AuthRateLimit, s.Cfg.TrustProxy))
 			r.Post("/auth/signup", httpx.Handler(s.handleSignup))
