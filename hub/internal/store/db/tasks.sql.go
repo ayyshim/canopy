@@ -24,9 +24,9 @@ func (q *Queries) BumpTaskNudges(ctx context.Context, id uuid.UUID) (int32, erro
 
 const createTask = `-- name: CreateTask :one
 INSERT INTO tasks (id, workspace_id, goal_id, member_id, kind, title, description, skill, status, depends_on, steps,
-                   required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, plan_key)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
-RETURNING id, workspace_id, goal_id, member_id, kind, title, description, skill, status, progress, depends_on, steps, current_step, required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, summary, plan_key, started_at, finished_at, created_at, updated_at, nudges
+                   required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, plan_key, number)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, next_item_number($2, 'task'))
+RETURNING id, workspace_id, goal_id, member_id, kind, title, description, skill, status, progress, depends_on, steps, current_step, required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, summary, plan_key, started_at, finished_at, created_at, updated_at, nudges, number
 `
 
 type CreateTaskParams struct {
@@ -99,6 +99,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Nudges,
+		&i.Number,
 	)
 	return i, err
 }
@@ -113,7 +114,7 @@ func (q *Queries) DeleteTask(ctx context.Context, id uuid.UUID) error {
 }
 
 const getTask = `-- name: GetTask :one
-SELECT id, workspace_id, goal_id, member_id, kind, title, description, skill, status, progress, depends_on, steps, current_step, required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, summary, plan_key, started_at, finished_at, created_at, updated_at, nudges FROM tasks WHERE id = $1
+SELECT id, workspace_id, goal_id, member_id, kind, title, description, skill, status, progress, depends_on, steps, current_step, required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, summary, plan_key, started_at, finished_at, created_at, updated_at, nudges, number FROM tasks WHERE id = $1
 `
 
 func (q *Queries) GetTask(ctx context.Context, id uuid.UUID) (Task, error) {
@@ -146,12 +147,13 @@ func (q *Queries) GetTask(ctx context.Context, id uuid.UUID) (Task, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Nudges,
+		&i.Number,
 	)
 	return i, err
 }
 
 const getTaskForUpdate = `-- name: GetTaskForUpdate :one
-SELECT id, workspace_id, goal_id, member_id, kind, title, description, skill, status, progress, depends_on, steps, current_step, required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, summary, plan_key, started_at, finished_at, created_at, updated_at, nudges FROM tasks WHERE id = $1 FOR UPDATE
+SELECT id, workspace_id, goal_id, member_id, kind, title, description, skill, status, progress, depends_on, steps, current_step, required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, summary, plan_key, started_at, finished_at, created_at, updated_at, nudges, number FROM tasks WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetTaskForUpdate(ctx context.Context, id uuid.UUID) (Task, error) {
@@ -184,6 +186,7 @@ func (q *Queries) GetTaskForUpdate(ctx context.Context, id uuid.UUID) (Task, err
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Nudges,
+		&i.Number,
 	)
 	return i, err
 }
@@ -213,7 +216,7 @@ func (q *Queries) ListActiveWorkspaces(ctx context.Context) ([]uuid.UUID, error)
 }
 
 const listGoalTasks = `-- name: ListGoalTasks :many
-SELECT id, workspace_id, goal_id, member_id, kind, title, description, skill, status, progress, depends_on, steps, current_step, required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, summary, plan_key, started_at, finished_at, created_at, updated_at, nudges FROM tasks WHERE goal_id = $1 ORDER BY created_at, id
+SELECT id, workspace_id, goal_id, member_id, kind, title, description, skill, status, progress, depends_on, steps, current_step, required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, summary, plan_key, started_at, finished_at, created_at, updated_at, nudges, number FROM tasks WHERE goal_id = $1 ORDER BY created_at, id
 `
 
 func (q *Queries) ListGoalTasks(ctx context.Context, goalID *uuid.UUID) ([]Task, error) {
@@ -252,6 +255,7 @@ func (q *Queries) ListGoalTasks(ctx context.Context, goalID *uuid.UUID) ([]Task,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Nudges,
+			&i.Number,
 		); err != nil {
 			return nil, err
 		}
@@ -264,7 +268,7 @@ func (q *Queries) ListGoalTasks(ctx context.Context, goalID *uuid.UUID) ([]Task,
 }
 
 const listMemberOpenTasks = `-- name: ListMemberOpenTasks :many
-SELECT id, workspace_id, goal_id, member_id, kind, title, description, skill, status, progress, depends_on, steps, current_step, required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, summary, plan_key, started_at, finished_at, created_at, updated_at, nudges FROM tasks WHERE member_id = $1 AND status <> 'done' ORDER BY created_at, id
+SELECT id, workspace_id, goal_id, member_id, kind, title, description, skill, status, progress, depends_on, steps, current_step, required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, summary, plan_key, started_at, finished_at, created_at, updated_at, nudges, number FROM tasks WHERE member_id = $1 AND status <> 'done' ORDER BY created_at, id
 `
 
 func (q *Queries) ListMemberOpenTasks(ctx context.Context, memberID *uuid.UUID) ([]Task, error) {
@@ -303,6 +307,7 @@ func (q *Queries) ListMemberOpenTasks(ctx context.Context, memberID *uuid.UUID) 
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Nudges,
+			&i.Number,
 		); err != nil {
 			return nil, err
 		}
@@ -315,7 +320,7 @@ func (q *Queries) ListMemberOpenTasks(ctx context.Context, memberID *uuid.UUID) 
 }
 
 const listTasks = `-- name: ListTasks :many
-SELECT id, workspace_id, goal_id, member_id, kind, title, description, skill, status, progress, depends_on, steps, current_step, required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, summary, plan_key, started_at, finished_at, created_at, updated_at, nudges FROM tasks WHERE workspace_id = $1 ORDER BY created_at, id
+SELECT id, workspace_id, goal_id, member_id, kind, title, description, skill, status, progress, depends_on, steps, current_step, required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, summary, plan_key, started_at, finished_at, created_at, updated_at, nudges, number FROM tasks WHERE workspace_id = $1 ORDER BY created_at, id
 `
 
 func (q *Queries) ListTasks(ctx context.Context, workspaceID uuid.UUID) ([]Task, error) {
@@ -354,6 +359,7 @@ func (q *Queries) ListTasks(ctx context.Context, workspaceID uuid.UUID) ([]Task,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Nudges,
+			&i.Number,
 		); err != nil {
 			return nil, err
 		}
@@ -385,7 +391,7 @@ func (q *Queries) ResetTaskNudges(ctx context.Context, id uuid.UUID) error {
 }
 
 const setTaskDirs = `-- name: SetTaskDirs :one
-UPDATE tasks SET required_dirs = $2 WHERE id = $1 RETURNING id, workspace_id, goal_id, member_id, kind, title, description, skill, status, progress, depends_on, steps, current_step, required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, summary, plan_key, started_at, finished_at, created_at, updated_at, nudges
+UPDATE tasks SET required_dirs = $2 WHERE id = $1 RETURNING id, workspace_id, goal_id, member_id, kind, title, description, skill, status, progress, depends_on, steps, current_step, required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, summary, plan_key, started_at, finished_at, created_at, updated_at, nudges, number
 `
 
 type SetTaskDirsParams struct {
@@ -423,6 +429,7 @@ func (q *Queries) SetTaskDirs(ctx context.Context, arg SetTaskDirsParams) (Task,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Nudges,
+		&i.Number,
 	)
 	return i, err
 }
@@ -440,7 +447,7 @@ SET status = coalesce($1, status),
     started_at = CASE WHEN $10::boolean THEN now() ELSE started_at END,
     finished_at = CASE WHEN $11::boolean THEN now() ELSE finished_at END
 WHERE id = $12
-RETURNING id, workspace_id, goal_id, member_id, kind, title, description, skill, status, progress, depends_on, steps, current_step, required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, summary, plan_key, started_at, finished_at, created_at, updated_at, nudges
+RETURNING id, workspace_id, goal_id, member_id, kind, title, description, skill, status, progress, depends_on, steps, current_step, required_dirs, borrowed, attributed_user_id, created_by, created_by_member, parent_task_id, summary, plan_key, started_at, finished_at, created_at, updated_at, nudges, number
 `
 
 type UpdateTaskParams struct {
@@ -501,6 +508,7 @@ func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Nudges,
+		&i.Number,
 	)
 	return i, err
 }

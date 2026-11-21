@@ -12,9 +12,9 @@ import (
 )
 
 const createNote = `-- name: CreateNote :one
-INSERT INTO notes (id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at
+INSERT INTO notes (id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, number)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, next_item_number($2, 'note'))
+RETURNING id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number
 `
 
 type CreateNoteParams struct {
@@ -51,6 +51,7 @@ func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, e
 		&i.AuthorMemberID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Number,
 	)
 	return i, err
 }
@@ -65,7 +66,7 @@ func (q *Queries) DeleteNote(ctx context.Context, id uuid.UUID) error {
 }
 
 const getNote = `-- name: GetNote :one
-SELECT id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at FROM notes WHERE id = $1
+SELECT id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number FROM notes WHERE id = $1
 `
 
 func (q *Queries) GetNote(ctx context.Context, id uuid.UUID) (Note, error) {
@@ -82,12 +83,13 @@ func (q *Queries) GetNote(ctx context.Context, id uuid.UUID) (Note, error) {
 		&i.AuthorMemberID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Number,
 	)
 	return i, err
 }
 
 const goalNote = `-- name: GoalNote :one
-SELECT id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at FROM notes WHERE goal_id = $1 AND kind = $2 ORDER BY created_at DESC LIMIT 1
+SELECT id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number FROM notes WHERE goal_id = $1 AND kind = $2 ORDER BY created_at DESC LIMIT 1
 `
 
 type GoalNoteParams struct {
@@ -109,12 +111,13 @@ func (q *Queries) GoalNote(ctx context.Context, arg GoalNoteParams) (Note, error
 		&i.AuthorMemberID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Number,
 	)
 	return i, err
 }
 
 const listNotes = `-- name: ListNotes :many
-SELECT id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at FROM notes WHERE workspace_id = $1 ORDER BY updated_at DESC, id
+SELECT id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number FROM notes WHERE workspace_id = $1 ORDER BY updated_at DESC, id
 `
 
 func (q *Queries) ListNotes(ctx context.Context, workspaceID uuid.UUID) ([]Note, error) {
@@ -137,6 +140,7 @@ func (q *Queries) ListNotes(ctx context.Context, workspaceID uuid.UUID) ([]Note,
 			&i.AuthorMemberID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Number,
 		); err != nil {
 			return nil, err
 		}
@@ -151,7 +155,7 @@ func (q *Queries) ListNotes(ctx context.Context, workspaceID uuid.UUID) ([]Note,
 const updateNote = `-- name: UpdateNote :one
 UPDATE notes SET title = coalesce($1, title), body = coalesce($2, body),
   kind = coalesce($3, kind)
-WHERE id = $4 RETURNING id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at
+WHERE id = $4 RETURNING id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, created_at, updated_at, number
 `
 
 type UpdateNoteParams struct {
@@ -180,6 +184,7 @@ func (q *Queries) UpdateNote(ctx context.Context, arg UpdateNoteParams) (Note, e
 		&i.AuthorMemberID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Number,
 	)
 	return i, err
 }

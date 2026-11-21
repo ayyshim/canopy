@@ -210,6 +210,7 @@ type Goal struct {
 	DoneBy      *uuid.UUID
 	ReadyAt     *time.Time
 	Description string
+	Number      int32
 }
 
 type GoalEvent struct {
@@ -277,6 +278,12 @@ type Invite struct {
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 	DeclinedNotified bool
+}
+
+type ItemCounter struct {
+	WorkspaceID uuid.UUID
+	Kind        string
+	Last        int32
 }
 
 type LogLine struct {
@@ -368,6 +375,7 @@ type Note struct {
 	AuthorMemberID *uuid.UUID
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	Number         int32
 }
 
 type Organization struct {
@@ -584,6 +592,7 @@ type Task struct {
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 	Nudges           int32
+	Number           int32
 }
 
 type UsageEvent struct {

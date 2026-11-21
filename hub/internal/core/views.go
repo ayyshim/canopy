@@ -107,6 +107,7 @@ func ToClone(c db.DirectoryClone) CloneView {
 
 type NoteView struct {
 	ID             uuid.UUID  `json:"id"`
+	Number         int32      `json:"number"`
 	GoalID         *uuid.UUID `json:"goal_id"`
 	Kind           string     `json:"kind"`
 	Title          string     `json:"title"`
@@ -117,7 +118,7 @@ type NoteView struct {
 }
 
 func ToNote(n db.Note) NoteView {
-	return NoteView{ID: n.ID, GoalID: n.GoalID, Kind: n.Kind, Title: n.Title, Body: n.Body, AuthorUserID: n.AuthorUserID,
+	return NoteView{ID: n.ID, Number: n.Number, GoalID: n.GoalID, Kind: n.Kind, Title: n.Title, Body: n.Body, AuthorUserID: n.AuthorUserID,
 		AuthorMemberID: n.AuthorMemberID, UpdatedAt: n.UpdatedAt}
 }
 
