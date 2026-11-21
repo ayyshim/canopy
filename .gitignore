@@ -35,4 +35,5 @@ out/
 # Hub data when the hub runs from inside the repo
 canopy-data/
 
-outputs/!/frontend/src/**/outputs/
+outputs/
+!/frontend/src/**/outputs/
