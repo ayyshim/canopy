@@ -372,6 +372,104 @@ paths:
         "200": { description: The member's skills, content: { application/json: { schema: { type: object, required: [skills], properties: { skills: { type: array, items: { $ref: "#/components/schemas/Skill" } } } } } } }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  /workspaces/{wsId}/jobs:
+    get:
+      summary: List the jobs the caller can see (those of managers they can see), with each job's last run
+      parameters: [{ name: wsId, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: Jobs, content: { application/json: { schema: { type: object, required: [jobs], properties: { jobs: { type: array, items: { $ref: "#/components/schemas/Job" } } } } } } }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      summary: Create a job. The schedule is cron or plain text; a continuous job gets its memory note.
+      parameters: [{ name: wsId, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/JobInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/JobResponse" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /jobs/{jobId}:
+    get:
+      summary: One job (404 when the caller can't see its manager)
+      parameters: [{ name: jobId, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: Job, content: { application/json: { schema: { $ref: "#/components/schemas/JobResponse" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+    patch:
+      summary: Edit a job (its owner or a workspace admin). Only admins change the owner.
+      parameters: [{ name: jobId, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/JobInput" } } } }
+      responses:
+        "200": { description: Saved, content: { application/json: { schema: { $ref: "#/components/schemas/JobResponse" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+    delete:
+      summary: Delete a job and its memory (owner or admin). Refused with run_in_progress while a run is going.
+      parameters: [{ name: jobId, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { description: run_in_progress, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /jobs/{jobId}/pause:
+    post:
+      summary: Pause a job (owner or admin). A run that is going keeps going.
+      parameters: [{ name: jobId, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: Paused, content: { application/json: { schema: { $ref: "#/components/schemas/JobResponse" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { description: job_ended, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /jobs/{jobId}/resume:
+    post:
+      summary: Resume a paused job from now; nothing missed while paused is replayed
+      parameters: [{ name: jobId, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: Resumed, content: { application/json: { schema: { $ref: "#/components/schemas/JobResponse" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { description: not_paused or job_ended, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /jobs/{jobId}/run:
+    post:
+      summary: Start a run now, outside the schedule. With test true it never writes memory. Neither moves the next run.
+      parameters: [{ name: jobId, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: false, content: { application/json: { schema: { type: object, properties: { test: { type: boolean } } } } } }
+      responses:
+        "202": { description: Started, content: { application/json: { schema: { type: object, required: [run], properties: { run: { $ref: "#/components/schemas/JobRun" } } } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { description: run_in_progress, job_ended or no_worker, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /jobs/{jobId}/runs:
+    get:
+      summary: A job's runs, newest first, including skipped ones with their reason
+      parameters: [{ name: jobId, in: path, required: true, schema: { type: string, format: uuid } }, { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }]
+      responses:
+        "200": { description: Runs, content: { application/json: { schema: { type: object, required: [runs], properties: { runs: { type: array, items: { $ref: "#/components/schemas/JobRun" } } } } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /jobs/{jobId}/memory:
+    get:
+      summary: The rolling summary of a continuous job (404 for a single run job)
+      parameters: [{ name: jobId, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: Memory, content: { application/json: { schema: { $ref: "#/components/schemas/JobMemory" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      summary: Replace the summary (owner or admin). Refused with run_in_progress while a run is going.
+      parameters: [{ name: jobId, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [memory], properties: { memory: { type: string, maxLength: 5000 } } } } } }
+      responses:
+        "200": { description: Saved, content: { application/json: { schema: { $ref: "#/components/schemas/JobMemory" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { description: run_in_progress, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Error" }
+  /schedules/preview:
+    post:
+      summary: Turn a cron expression or plain text such as "every weekday at 9" into a cron, a sentence and the next 5 run times
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [schedule], properties: { schedule: { type: string }, timezone: { type: string, description: IANA zone; default is the workspace organization's, else UTC }, workspace_id: { type: string, format: uuid } } } } } }
+      responses:
+        "200": { description: Preview, content: { application/json: { schema: { $ref: "#/components/schemas/SchedulePreview" } } } }
+        "422": { $ref: "#/components/responses/Error" }
 components:
   responses:
     Error:
@@ -727,3 +825,99 @@ components:
         default_session_limit: { type: integer, format: int64 }
         default_weekly_limit: { type: integer, format: int64 }
         timezone: { type: string }
+    Job:
+      type: object
+      required: [id, workspace_id, title, kind, status, pause_reason, brief, cron, timezone, schedule, missed_policy, catchup_window_secs, run_timeout_secs, notify, required_dirs, consecutive_failures]
+      properties:
+        id: { type: string, format: uuid }
+        workspace_id: { type: string, format: uuid }
+        title: { type: string }
+        kind: { type: string, enum: [single, continuous] }
+        status: { type: string, enum: [active, paused, ended] }
+        pause_reason: { type: string, enum: ["", owner, failures, cap, owner_left] }
+        brief: { type: string }
+        owner_user_id: { type: string, format: uuid, nullable: true }
+        manager_id: { type: string, format: uuid, nullable: true }
+        assignee_member_id: { type: string, format: uuid, nullable: true, description: Null means the manager does the work }
+        runner_id: { type: string, format: uuid, nullable: true, description: Null means the owner's own computer }
+        cron: { type: string }
+        timezone: { type: string }
+        schedule: { type: string, description: The schedule in words; empty if it can't be described }
+        next_run_at: { type: string, format: date-time, nullable: true }
+        last_run_at: { type: string, format: date-time, nullable: true }
+        missed_policy: { type: string, enum: [skip, run_once] }
+        catchup_window_secs: { type: integer }
+        run_timeout_secs: { type: integer }
+        token_cap_per_run: { type: integer, format: int64, nullable: true }
+        token_cap_per_month: { type: integer, format: int64, nullable: true }
+        notify: { type: string, enum: [attention, always, failures] }
+        ends_at: { type: string, format: date-time, nullable: true }
+        max_runs: { type: integer, nullable: true }
+        required_dirs: { type: array, items: { type: object, required: [directory_id, mode], properties: { directory_id: { type: string, format: uuid }, mode: { type: string, enum: [read, read_write] } } } }
+        memory_note_id: { type: string, format: uuid, nullable: true }
+        consecutive_failures: { type: integer }
+        created_by: { type: string, format: uuid, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        last_run: { $ref: "#/components/schemas/JobRun" }
+    JobResponse:
+      type: object
+      required: [job]
+      properties: { job: { $ref: "#/components/schemas/Job" } }
+    JobInput:
+      type: object
+      description: Create needs title, kind, brief, manager_id and schedule. Patch takes any of the rest; kind can't change.
+      properties:
+        title: { type: string, maxLength: 200 }
+        kind: { type: string, enum: [single, continuous] }
+        brief: { type: string, maxLength: 20000 }
+        manager_id: { type: string, format: uuid }
+        assignee_member_id: { type: string, format: uuid, nullable: true, description: "The manager or one of their staff; null = the manager" }
+        runner_id: { type: string, format: uuid, nullable: true, description: "Your own computer or a shared one; null = your own" }
+        owner_user_id: { type: string, format: uuid, description: Admins only, on patch }
+        schedule: { type: string, description: A 5-field cron expression or plain text such as "every weekday at 9" }
+        timezone: { type: string, description: IANA zone; default is the organization's }
+        missed_policy: { type: string, enum: [skip, run_once] }
+        catchup_window_secs: { type: integer }
+        run_timeout_secs: { type: integer, minimum: 60 }
+        token_caps: { type: object, properties: { per_run: { type: integer, format: int64, nullable: true }, per_month: { type: integer, format: int64, nullable: true } } }
+        notify: { type: string, enum: [attention, always, failures] }
+        ends: { type: object, properties: { at: { type: string, format: date-time, nullable: true }, max_runs: { type: integer, nullable: true } } }
+        required_dirs: { type: array, description: The member doing the work must already have these grants, items: { type: object, required: [directory_id, mode], properties: { directory_id: { type: string, format: uuid }, mode: { type: string, enum: [read, read_write] } } } }
+    JobRun:
+      type: object
+      required: [id, job_id, number, scheduled_for, trigger, status, skip_reason, attempt, tokens, result, title, summary, error]
+      properties:
+        id: { type: string, format: uuid }
+        job_id: { type: string, format: uuid }
+        number: { type: integer }
+        scheduled_for: { type: string, format: date-time }
+        trigger: { type: string, enum: [schedule, manual, test] }
+        status: { type: string, enum: [running, succeeded, failed, skipped, capped, cancelled] }
+        skip_reason: { type: string }
+        attempt: { type: integer }
+        goal_id: { type: string, format: uuid, nullable: true }
+        started_at: { type: string, format: date-time, nullable: true }
+        finished_at: { type: string, format: date-time, nullable: true }
+        tokens: { type: integer, format: int64 }
+        result: { type: string, enum: ["", ok, attention, nothing_to_do] }
+        title: { type: string }
+        summary: { type: string }
+        error: { type: string }
+    JobMemory:
+      type: object
+      required: [memory, note_id, number, updated_at, max_chars]
+      properties:
+        memory: { type: string }
+        note_id: { type: string, format: uuid }
+        number: { type: integer, description: The note's N- number }
+        updated_at: { type: string, format: date-time }
+        max_chars: { type: integer }
+    SchedulePreview:
+      type: object
+      required: [cron, sentence, zone, next]
+      properties:
+        cron: { type: string }
+        sentence: { type: string }
+        zone: { type: string }
+        next: { type: array, description: The next 5 run times in UTC, items: { type: string, format: date-time } }
