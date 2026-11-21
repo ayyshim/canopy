@@ -25,7 +25,7 @@ function load(opts: { windows?: any[]; fetchStatus?: number; maxActions?: number
     registration: {
       showNotification: async (title: string, o: any) => { shown.push({ title, opts: o }); },
       getNotifications: async () => [{ close: () => closed.push("closed") }],
-      pushManager: { subscribe: async () => ({ toJSON: () => ({ endpoint: "e" }) }) },
+      pushManager: { subscribe: async () => ({ toJSON: () => ({ endpoint: "e", expirationTime: null, keys: { auth: "a", p256dh: "p" } }) }) },
     },
   };
   const ctx = vm.createContext({
@@ -136,5 +136,5 @@ test("pushsubscriptionchange saves the new subscription with a CSRF token", asyn
   const post = t.fetched.at(-1)!;
   assert.equal(post.url, "/api/v1/push/subscriptions");
   assert.equal(post.init.headers["X-CSRF-Token"], "csrf1");
-  assert.deepEqual(JSON.parse(post.init.body), { endpoint: "e" });
+  assert.deepEqual(JSON.parse(post.init.body), { endpoint: "e", keys: { auth: "a", p256dh: "p" } });
 });

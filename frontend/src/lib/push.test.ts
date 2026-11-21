@@ -17,7 +17,7 @@ function fake(opts: { ua?: string; standalone?: boolean; permission?: Notificati
   function makeSub() {
     return {
       endpoint: "https://push.example/abc",
-      toJSON: () => ({ endpoint: "https://push.example/abc", keys: { p256dh: "p", auth: "a" } }),
+      toJSON: () => ({ endpoint: "https://push.example/abc", expirationTime: null, keys: { p256dh: "p", auth: "a" } }),
       unsubscribe: async () => { log.push("unsubscribed"); sub = null; return true; },
     };
   }

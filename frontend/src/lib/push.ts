@@ -85,7 +85,9 @@ export async function subscribePush(env: PushEnv): Promise<void> {
   const sub =
     (await reg.pushManager.getSubscription()) ??
     (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) }));
-  await env.api("POST", "/push/subscriptions", sub.toJSON());
+  // The hub accepts only these two fields; toJSON also has expirationTime.
+  const { endpoint, keys } = sub.toJSON();
+  await env.api("POST", "/push/subscriptions", { endpoint, keys });
 }
 
 export async function unsubscribePush(env: PushEnv): Promise<void> {

@@ -119,6 +119,6 @@ async function resubscribe(event) {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf.token },
-    body: JSON.stringify(sub.toJSON()),
+    body: JSON.stringify({ endpoint: sub.toJSON().endpoint, keys: sub.toJSON().keys }),
   });
 }

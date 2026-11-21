@@ -38,7 +38,7 @@ export function PushDevice() {
               <button className="btn" disabled={busy} onClick={() => run(async () => { const n = await testPush(browserEnv()); setMsg(`Sent to ${n} device${n === 1 ? "" : "s"}.`); })}>Send a test</button>
             </>
           ) : (
-            <button className="btn" disabled={busy || status.permission === "denied"} onClick={() => run(turnOn, "Push is on for this device.")}>Turn on push</button>
+            <button className="btn" disabled={busy || status.permission === "denied"} onClick={() => run(turnOn, "Push is on for this device.")}>{busy ? "Turning on…" : "Turn on push"}</button>
           )}
         </div>
       )}
