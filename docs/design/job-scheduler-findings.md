@@ -88,7 +88,7 @@ Recommendation: start with **A**, and let a job optionally skip the plan task (c
 - `notify.Notifier.Run` (`notify/notify.go`): 1 min loop with a daily send at `DailyHour` (8). It already handles "once per day per person" logic and is the closest example of time-of-day work. Check it for time zone handling before copying.
 - `cmd/hub/main.go` ~L476: 30s loop for `DrainQueue` and hourly pruning.
 
-No cron parser exists in the repo yet. Time zones do exist: `organizations.timezone` sets the weekly limit reset (`api/limits.go`) and the daily summary uses the user's time zone (`notify/notify.go`). Neither is used for schedules yet.
+No cron parser exists in the repo yet. Time zones do exist: `organizations.timezone` sets the weekly limit reset (`api/limits.go`) and the daily summary uses the time zone of the person's organization (`notify/notify.go`); users have no time zone of their own. Neither is used for schedules yet.
 
 ## 7. Questions this raises for the plan doc
 
