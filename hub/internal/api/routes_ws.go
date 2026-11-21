@@ -75,6 +75,8 @@ func (s *Server) workspaceRoutes(r chi.Router) {
 	r.Post("/workspaces/{wsID}/notes", httpx.Handler(s.handleCreateNote))
 	r.Patch("/notes/{noteID}", httpx.Handler(s.handlePatchNote))
 	r.Delete("/notes/{noteID}", httpx.Handler(s.handleDeleteNote))
+	r.Get("/notes/{noteID}/revisions", httpx.Handler(s.handleListNoteRevisions))
+	r.Post("/notes/{noteID}/revisions/{rev}/restore", httpx.Handler(s.handleRestoreNoteRevision))
 
 	r.Post("/workspaces/{wsID}/goals", httpx.Handler(s.handleCreateGoal))
 	r.Get("/goals/{goalID}", httpx.Handler(s.handleGetGoal))
