@@ -19,7 +19,8 @@ SET name = coalesce(sqlc.narg(name), name),
     instructions = coalesce(sqlc.narg(instructions), instructions),
     all_directories = coalesce(sqlc.narg(all_directories), all_directories),
     sleeping = coalesce(sqlc.narg(sleeping), sleeping),
-    isolated = coalesce(sqlc.narg(isolated), isolated)
+    isolated = coalesce(sqlc.narg(isolated), isolated),
+    created_by = coalesce(created_by, sqlc.narg(claim_by))
 WHERE id = sqlc.arg(id)
 RETURNING *;
 

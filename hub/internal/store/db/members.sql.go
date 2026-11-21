@@ -282,8 +282,9 @@ SET name = coalesce($1, name),
     instructions = coalesce($8, instructions),
     all_directories = coalesce($9, all_directories),
     sleeping = coalesce($10, sleeping),
-    isolated = coalesce($11, isolated)
-WHERE id = $12
+    isolated = coalesce($11, isolated),
+    created_by = coalesce(created_by, $12)
+WHERE id = $13
 RETURNING id, workspace_id, name, kind, skill, reports_to, cli, model, instructions, avatar_color, all_directories, sleeping, position, created_at, updated_at, isolated, created_by
 `
 
@@ -299,6 +300,7 @@ type UpdateMemberParams struct {
 	AllDirectories *bool
 	Sleeping       *bool
 	Isolated       *bool
+	ClaimBy        *uuid.UUID
 	ID             uuid.UUID
 }
 
@@ -315,6 +317,7 @@ func (q *Queries) UpdateMember(ctx context.Context, arg UpdateMemberParams) (Mem
 		arg.AllDirectories,
 		arg.Sleeping,
 		arg.Isolated,
+		arg.ClaimBy,
 		arg.ID,
 	)
 	var i Member
