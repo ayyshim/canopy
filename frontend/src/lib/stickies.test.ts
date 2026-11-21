@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { canChangeVisibility, canEditNote, centerSpot, dragged, editedByAgent, isPinned, stickyColor, stickyPreview } from "./stickies.ts";
+import { canChangeVisibility, canDeleteNote, canEditNote, centerSpot, dragged, editedByAgent, isPinned, stickyColor, stickyPreview } from "./stickies.ts";
 
 const note = (o = {}) => ({ visibility: "shared", author_user_id: "u1", ...o });
 
@@ -29,6 +29,14 @@ test("who may edit", () => {
   assert.equal(canEditNote(note({ visibility: "private" }), "u2", true), false);
   assert.equal(canChangeVisibility(note(), "u1"), true);
   assert.equal(canChangeVisibility(note(), "u2"), false);
+});
+
+test("who may delete", () => {
+  assert.equal(canDeleteNote(note(), "u1", false), true);
+  assert.equal(canDeleteNote(note(), "u2", false), false);
+  assert.equal(canDeleteNote(note(), "u2", true), true);
+  assert.equal(canDeleteNote(note({ visibility: "private" }), "u2", true), false);
+  assert.equal(canDeleteNote(note({ visibility: "private" }), "u1", false), true);
 });
 
 test("Edited by shows after an agent edit", () => {

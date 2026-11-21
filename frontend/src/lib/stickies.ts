@@ -30,6 +30,10 @@ export function stickyPreview(body: string, maxLines = 5): string {
 export const canEditNote = (n: NoteLike, me: string, admin: boolean) =>
   n.author_user_id === me || (admin && !isPrivate(n));
 
+/** Same rule as the hub: the author, or an admin on a shared note. */
+export const canDeleteNote = (n: NoteLike, me: string, admin: boolean) =>
+  n.author_user_id === me || (admin && !isPrivate(n));
+
 /** Only the author changes who can see a note. */
 export const canChangeVisibility = (n: NoteLike, me: string) => n.author_user_id === me;
 

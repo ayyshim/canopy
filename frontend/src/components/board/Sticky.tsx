@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { createSticky, patchNote, type NotePatch } from "@/lib/board/actions";
+import { createSticky, deleteNote, patchNote, type NotePatch } from "@/lib/board/actions";
 import { camera } from "@/lib/board/camera";
 import { isAdmin, visibleMember } from "@/lib/board/derive";
 import { useBoard } from "@/lib/board/store";
 import { useUI } from "@/lib/board/ui";
-import { canEditNote, dragged, editedByAgent, isPrivate, STICKY_COLORS, STICKY_H, STICKY_W, stickyColor, stickyPreview } from "@/lib/stickies";
+import { canDeleteNote, canEditNote, dragged, editedByAgent, isPrivate, STICKY_COLORS, STICKY_H, STICKY_W, stickyColor, stickyPreview } from "@/lib/stickies";
 import type { NoteView } from "@/lib/types";
 import { useB, useBoardCtx } from "./context";
 import { IdTag } from "./IdTag";
@@ -40,6 +40,11 @@ export function Sticky({ note }: { note: NoteView }) {
   const drag = useRef<{ px: number; py: number; x: number; y: number; moved: boolean } | null>(null);
   const x = pos?.x ?? note.board_x!, y = pos?.y ?? note.board_y!;
   const mine = canEditNote(note, me, isAdmin(b));
+  const canDelete = canDeleteNote(note, me, isAdmin(b));
+  const remove = async () => {
+    if (!confirm(`Delete N-${note.number} “${note.title}”?`)) return;
+    if (await deleteNote(note.id) && ui.side?.type === "notes" && ui.side.id === note.id) ui.openSide({ type: "notes" });
+  };
   const agent = editedByAgent(note) ? visibleMember(b, note.edited_by_member_id)?.name ?? "an agent" : null;
 
   // A short glow when an agent edits the sticky while it is on screen.
@@ -88,6 +93,7 @@ export function Sticky({ note }: { note: NoteView }) {
           note={note}
           onSave={async (p) => { await patchNote(note.id, p).catch(() => useUI.getState().toast("Couldn’t save the sticky note.", "error")); setEditing(false); }}
           onCancel={() => setEditing(false)}
+          onDelete={canDelete ? remove : undefined}
         />
       </div>
     );
@@ -107,6 +113,7 @@ export function Sticky({ note }: { note: NoteView }) {
         <IdTag kind="note" number={note.number} />
         {isPrivate(note) && <span className="st-priv" title="Only you and your agents see this"><LockIcon /> Private</span>}
         <span className="spacer" />
+        {canDelete && <button type="button" className="st-edit st-del" onClick={remove} aria-label={`Delete sticky note N-${note.number}`}>Delete</button>}
         {mine && <button type="button" className="st-edit" onClick={() => setEditing(true)} aria-label={`Edit sticky note N-${note.number}`}>Edit</button>}
       </div>
       <b className="st-title">{note.title}</b>
@@ -131,7 +138,7 @@ export function StickyDraft({ at }: { at: { x: number; y: number } }) {
 }
 
 /** StickyForm edits a sticky in place. New stickies are private. */
-function StickyForm({ note, onSave, onCancel }: { note?: NoteView; onSave: (p: NotePatch) => Promise<unknown>; onCancel: () => void }) {
+function StickyForm({ note, onSave, onCancel, onDelete }: { note?: NoteView; onSave: (p: NotePatch) => Promise<unknown>; onCancel: () => void; onDelete?: () => void }) {
   const { me } = useBoardCtx();
   const [title, setTitle] = useState(note?.title ?? "");
   const [body, setBody] = useState(note?.body ?? "");
@@ -164,7 +171,7 @@ function StickyForm({ note, onSave, onCancel }: { note?: NoteView; onSave: (p: N
         {STICKY_COLORS.map((c) => <button type="button" key={c} className={`st-sw c-${c}`} aria-label={c} aria-pressed={color === c} onClick={() => setColor(c)} />)}
       </div>
       <div className="row" style={{ gap: 6 }}>
-        <button type="button" className="btn btn-sm" onClick={onCancel}>Cancel</button><span className="spacer" />
+        <button type="button" className="btn btn-sm" onClick={onCancel}>Cancel</button>{onDelete && <button type="button" className="btn btn-sm btn-danger" onClick={onDelete}>Delete</button>}<span className="spacer" />
         <button type="submit" className="btn btn-sm btn-primary" disabled={!title.trim() || busy}>{busy ? "Saving…" : "Save"}</button>
       </div>
     </form>
