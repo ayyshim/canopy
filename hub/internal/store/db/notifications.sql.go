@@ -203,6 +203,21 @@ func (q *Queries) DeleteOldNotifications(ctx context.Context, createdAt time.Tim
 	return result.RowsAffected(), nil
 }
 
+const disableWorkspaceDiscord = `-- name: DisableWorkspaceDiscord :exec
+UPDATE workspaces SET discord_webhook = '', discord_last_error = $1 WHERE id = $2
+`
+
+type DisableWorkspaceDiscordParams struct {
+	Error string
+	ID    uuid.UUID
+}
+
+// Turns Discord off after the webhook was deleted; the settings stay.
+func (q *Queries) DisableWorkspaceDiscord(ctx context.Context, arg DisableWorkspaceDiscordParams) error {
+	_, err := q.db.Exec(ctx, disableWorkspaceDiscord, arg.Error, arg.ID)
+	return err
+}
+
 const insertNotification = `-- name: InsertNotification :one
 INSERT INTO notification_outbox (id, org_id, workspace_id, member_id, kind, title, body, link, signal_id, task_id, goal_id, for_user_id, recipients, media)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
@@ -369,6 +384,50 @@ UPDATE notification_outbox SET push_sent_at = now(), push_last_error = '' WHERE 
 
 func (q *Queries) MarkPushSent(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, markPushSent, id)
+	return err
+}
+
+const openWorkspaceDiscordSignal = `-- name: OpenWorkspaceDiscordSignal :one
+SELECT id, workspace_id, type, member_id, task_id, payload, status, resolved_by, resolution, request_id, expires_at, resolved_at, created_at, updated_at, session_id, for_user_id, goal_id, emailed_at FROM signals WHERE workspace_id = $1 AND type = 'error' AND status = 'open' AND payload->>'source' = 'discord' LIMIT 1
+`
+
+func (q *Queries) OpenWorkspaceDiscordSignal(ctx context.Context, workspaceID uuid.UUID) (Signal, error) {
+	row := q.db.QueryRow(ctx, openWorkspaceDiscordSignal, workspaceID)
+	var i Signal
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Type,
+		&i.MemberID,
+		&i.TaskID,
+		&i.Payload,
+		&i.Status,
+		&i.ResolvedBy,
+		&i.Resolution,
+		&i.RequestID,
+		&i.ExpiresAt,
+		&i.ResolvedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SessionID,
+		&i.ForUserID,
+		&i.GoalID,
+		&i.EmailedAt,
+	)
+	return i, err
+}
+
+const setGoalDiscordThread = `-- name: SetGoalDiscordThread :exec
+UPDATE goals SET discord_thread_id = $2 WHERE id = $1
+`
+
+type SetGoalDiscordThreadParams struct {
+	ID              uuid.UUID
+	DiscordThreadID string
+}
+
+func (q *Queries) SetGoalDiscordThread(ctx context.Context, arg SetGoalDiscordThreadParams) error {
+	_, err := q.db.Exec(ctx, setGoalDiscordThread, arg.ID, arg.DiscordThreadID)
 	return err
 }
 

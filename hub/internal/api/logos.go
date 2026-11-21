@@ -184,6 +184,19 @@ func (s *Server) handleGetWorkspaceLogo(w http.ResponseWriter, r *http.Request) 
 	return s.serveLogo(w, r, ws.LogoKey)
 }
 
+// handlePublicWorkspaceLogo lets Discord load the avatar. It only answers for workspaces with Discord on.
+func (s *Server) handlePublicWorkspaceLogo(w http.ResponseWriter, r *http.Request) error {
+	wsID, err := pathID(r, "wsID")
+	if err != nil {
+		return err
+	}
+	ws, err := s.Store.Queries.GetWorkspace(r.Context(), wsID)
+	if err != nil || ws.DiscordWebhook == "" {
+		return httpx.ErrNotFound
+	}
+	return s.serveLogo(w, r, ws.LogoKey)
+}
+
 func (s *Server) handleDeleteWorkspaceLogo(w http.ResponseWriter, r *http.Request) error {
 	wsID, err := pathID(r, "wsID")
 	if err != nil {

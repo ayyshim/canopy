@@ -70,3 +70,13 @@ SELECT count(*) FROM notification_outbox WHERE task_id = $1 AND media @> '{"agen
 
 -- name: CountAgentNotificationsForMember :one
 SELECT count(*) FROM notification_outbox WHERE member_id = $1 AND media @> '{"agent": true}' AND created_at > $2;
+
+-- name: SetGoalDiscordThread :exec
+UPDATE goals SET discord_thread_id = $2 WHERE id = $1;
+
+-- Turns Discord off after the webhook was deleted; the settings stay.
+-- name: DisableWorkspaceDiscord :exec
+UPDATE workspaces SET discord_webhook = '', discord_last_error = sqlc.arg(error) WHERE id = sqlc.arg(id);
+
+-- name: OpenWorkspaceDiscordSignal :one
+SELECT * FROM signals WHERE workspace_id = $1 AND type = 'error' AND status = 'open' AND payload->>'source' = 'discord' LIMIT 1;
