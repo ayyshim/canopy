@@ -70,6 +70,8 @@ func (s *Server) workspaceRoutes(r chi.Router) {
 	r.Put("/workspaces/{wsID}/directories/{dirID}/access/{userID}", httpx.Handler(s.handlePutDirectoryAccess))
 
 	r.Get("/workspaces/{wsID}/notes", httpx.Handler(s.handleListNotes))
+	r.Get("/workspaces/{wsID}/refs", httpx.Handler(s.handleSearchRefs))
+	r.Get("/workspaces/{wsID}/refs/{ref}", httpx.Handler(s.handleGetRef))
 	r.Post("/workspaces/{wsID}/notes", httpx.Handler(s.handleCreateNote))
 	r.Patch("/notes/{noteID}", httpx.Handler(s.handlePatchNote))
 	r.Delete("/notes/{noteID}", httpx.Handler(s.handleDeleteNote))

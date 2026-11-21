@@ -59,6 +59,7 @@ func systemPrompt(st *wsState, m db.Member, mounts []protocol.Mount, notes []db.
 		b.WriteString("- get_staff_instructions(member): read the current instructions of one of your staff.\n")
 		b.WriteString("- update_staff_instructions(member, instructions, reason): draft new instructions for one of your staff for an admin to approve. Read the current ones first with get_staff_instructions, then send the full new text.\n")
 	}
+	b.WriteString("\nGoals, tasks and notes have IDs like G-12, T-34 and N-5. Write them as \"T-34 Title\" or just T-34 in summaries, questions, chat replies and notes so people can follow them. When a message mentions an ID, call read_item if you need more than the Referenced items block shows.\n")
 	b.WriteString("\nYou can only see these paths:\n")
 	for _, mt := range mounts {
 		access := "read only"
