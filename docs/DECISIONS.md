@@ -363,3 +363,17 @@ and `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` turns it off, so Canopy no longer
 It works on Claude Code 2.1.316 and later. Telemetry vars still set: `DISABLE_ERROR_REPORTING=1`
 and `DISABLE_BUG_COMMAND=1`. `DISABLE_TELEMETRY=1` is not set, because with it only Artifact
 loads and ArtifactComments and ArtifactData are lost.
+
+## Prototype previews run on an opaque origin (2026-11-21)
+
+HTML outputs can be opened as live pages (`POST /outputs/{id}/preview`, then `GET /preview/{token}/{name}`).
+Agent pages need JavaScript and CSS, but they are untrusted code served from the hub's own host. So the
+preview response is sandboxed with `allow-scripts` and never `allow-same-origin`: the page gets an opaque
+origin and cannot read hub cookies, call the API as the person, or touch the parent page. The token in the
+URL is the only credential (random, 1 hour, kept in Redis, tied to the person, workspace, task and goal), and
+the file route stays as before (`default-src 'none'; sandbox`). Page names are looked up in the same task, then
+in the other tasks of the goal, so pages can link to each other with relative paths. Responses also send
+`Access-Control-Allow-Origin: *`, because pages on an opaque origin need CORS for fonts, modules and fetch.
+
+**Trade-off.** Preview pages can call any https site (`connect-src https:`), so they can send what they know
+elsewhere. They know nothing of the hub, but people should still only preview work from their own team.
