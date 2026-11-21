@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Field, focusFirstInvalid } from "@/components/Field";
-import { api, ApiError, hardNavigate } from "@/lib/api";
+import { api, ApiError, hardNavigate, type Me } from "@/lib/api";
+import { pendingStep, twoFactorPath, type TwoFactorPending } from "@/lib/twoFactor";
 import { usePathSegment } from "@/lib/path";
 
 export function ResetForm() {
@@ -28,8 +29,9 @@ export function ResetForm() {
     }
     setBusy(true);
     try {
-      await api("POST", "/auth/reset", { token, password });
-      hardNavigate("/");
+      const res = await api<Me | TwoFactorPending>("POST", "/auth/reset", { token, password });
+      const step = pendingStep(res);
+      hardNavigate(step ? twoFactorPath(step) : "/");
     } catch (e) {
       setBusy(false);
       if (e instanceof ApiError && e.code === "invalid_token") setState("invalid");
