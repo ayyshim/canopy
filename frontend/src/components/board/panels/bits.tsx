@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { moveGoal, resolveSignal } from "@/lib/board/actions";
 import {
-  briefInReview, computer, directory, firstName, goalRepos, isAdmin, payload, personName, signalsForTask, task as findTask, visibleMember, whyWaiting,
+  briefInReview, computer, directory, firstName, goalRepos, isAdmin, payload, personName, signalsForTask, goal as findGoal, task as findTask, visibleMember, whyWaiting,
 } from "@/lib/board/derive";
 import { useUI } from "@/lib/board/ui";
 import type { Board, GoalView, SignalView, TaskView } from "@/lib/types";
@@ -118,7 +118,18 @@ export function SignalBox({ s }: { s: SignalView }) {
         </>
       );
       break;
-    case "review":
+    case "review": {
+      const rt = findTask(b, s.task_id);
+      const rg = rt?.kind === "handover" ? findGoal(b, rt.goal_id) : undefined;
+      if (rg) {
+        body = (
+          <>
+            <b>Review the handover brief for “{rg.title}”</b>
+            <div className="row"><button className="btn btn-sm btn-primary" onClick={() => ui.openSide({ type: "goal", id: rg.id })}>Open the goal</button></div>
+          </>
+        );
+        break;
+      }
       body = (
         <>
           <b>“{p.title}” needs your review</b>
@@ -126,6 +137,7 @@ export function SignalBox({ s }: { s: SignalView }) {
         </>
       );
       break;
+    }
     case "error":
       body = (
         <>

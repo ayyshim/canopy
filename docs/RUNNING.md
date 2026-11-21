@@ -393,6 +393,16 @@ To re-record the board GIF in the README, run `scripts/record-board.sh`. It star
 hub, web app and client (with `CANOPY_CLAUDE_BIN` set to fakeclaude), plays a goal with
 `[tasks:3] [ask] [slow:2]`, and writes `docs/assets/board.gif`. It needs docker, go, node, pnpm and ffmpeg.
 
+## Handover brief
+
+When every task of a goal is done, the goal’s manager writes a short handover brief (`handover.md`)
+and the goal’s person gets a review card, “Review the handover brief for <goal>”. Open the goal, read
+the brief in its Overview, then choose Approve or Ask for changes. Admins can answer too. Other people
+see who the goal is waiting for.
+
+A goal can only be shipped or marked done once its brief is approved, also when the workspace marks goals
+done automatically. The approved brief stays on the goal after it is done. Reopening a goal asks for a new brief.
+
 ## Known gaps
 
 - **macOS computers have no sandbox yet.** The client refuses to run agents without one. On a
