@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Avatar } from "@/components/board/icons";
-import { DevicePush } from "@/components/DevicePush";
 import { Field } from "@/components/Field";
 import { PauseNotifications } from "@/components/PauseNotifications";
 import { Section } from "@/components/PageShell";
+import { PushDevice } from "@/components/PushDevice";
 import { api, ApiError, hardNavigate, ROLE_LABEL, type Me } from "@/lib/api";
 import { useMe } from "@/lib/me";
 import { setTheme, useTheme, type Theme } from "@/lib/theme";
@@ -111,7 +111,7 @@ export function Account() {
           </tbody>
         </table>
         {prefMsg && <span className="err" role="status">{prefMsg}</span>}
-        <DevicePush />
+        <PushDevice />
         <span className="hint">Desktop notifications show while Canopy is open in a background tab. Push reaches you when Canopy is closed, on each device where you turn it on. Progress updates are off until you choose them. Emails go out when something has waited two minutes. The daily summary arrives each morning with goals that moved, decisions waiting and your usage.</span>
       </Section>
       <Section title="Pause notifications" sub="Stops push for a while. Email and Discord carry on.">

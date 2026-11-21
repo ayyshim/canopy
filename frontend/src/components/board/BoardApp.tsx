@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useCallback, useEffect } from "react";
 import { computer, computerFor, signInLabel } from "@/lib/board/derive";
 import { useDesktopNotifications } from "@/lib/board/notify";
+import { useAppBadge, useCloseResolvedNotifications, useDeepLink } from "@/lib/board/pushSync";
 import { useBoardSocket } from "@/lib/board/socket";
 import { useBoard } from "@/lib/board/store";
 import { useUI } from "@/lib/board/ui";
 import { isWorkspaceActive } from "@/lib/liveStatus";
 import { useMe } from "@/lib/me";
+import { usePushStatus } from "@/lib/usePushStatus";
 import { useLiveTab } from "@/lib/useLiveTab";
 import { currentOrg } from "@/lib/api";
 import { Canvas } from "./Canvas";
@@ -27,7 +29,11 @@ export function BoardApp({ wsId }: { wsId: string }) {
   const board = useBoard((s) => s.board);
   const gone = useBoard((s) => s.gone);
   const send = useCallback((type: string, data: unknown) => sendRef.current(type, data), [sendRef]);
-  useDesktopNotifications(me);
+  const { status: push } = usePushStatus();
+  useDesktopNotifications(me, push?.subscribed === true);
+  useAppBadge(me);
+  useCloseResolvedNotifications(me);
+  useDeepLink(wsId, !!board);
   useLiveTab(currentOrg(me)?.name, board?.workspace.name ?? "", !!board && isWorkspaceActive(board));
 
   useEffect(() => {

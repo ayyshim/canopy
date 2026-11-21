@@ -7,12 +7,14 @@ const subscribe = (cb: () => void) => subscribeOnline(window, cb);
 const getSnapshot = () => isOnline(navigator);
 const getServerSnapshot = () => true;
 
-/** PwaClient registers the service worker (production only) and shows an offline banner. */
+/** PwaClient registers the service worker (production, or dev with NEXT_PUBLIC_SW_DEV=1) and shows an offline banner. */
 export default function PwaClient() {
   const online = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   useEffect(() => {
-    if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator) {
+    // NEXT_PUBLIC_SW_DEV=1 lets the worker run under `next dev`, to try push locally.
+    const on = process.env.NODE_ENV === "production" || process.env.NEXT_PUBLIC_SW_DEV === "1";
+    if (on && "serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
   }, []);
