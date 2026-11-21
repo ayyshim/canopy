@@ -43,13 +43,12 @@ export function CreateJobDialog({ wsId, onClose, onCreated }: { wsId: string; on
 
   return (
     <Modal title="Create a job" onClose={onClose}>
-      <ol className="steps" aria-label="Steps" style={{ display: "flex", gap: 6, listStyle: "none", margin: 0, padding: 0, flexWrap: "wrap" }}>
+      <div className="seg" role="group" aria-label="Steps">
         {STEPS.map((s, i) => (
-          <li key={s}><button type="button" className="pill" aria-current={i === step ? "step" : undefined}
-            style={{ minHeight: 30, ...(i === step ? { background: "var(--accent-soft)", color: "var(--ink)" } : {}) }}
-            onClick={() => i < step && setStep(i)} disabled={i > step}>{i + 1}. {s}</button></li>
+          <button key={s} type="button" aria-pressed={i === step} aria-current={i === step ? "step" : undefined}
+            onClick={() => i < step && setStep(i)} disabled={i > step}>{i + 1}. {s}</button>
         ))}
-      </ol>
+      </div>
       {!who ? <p className="hint">Loading…</p> : (
         <>
           {step === 0 && <WhatFields d={d} set={set} />}

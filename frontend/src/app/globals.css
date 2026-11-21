@@ -239,7 +239,7 @@ code,.mono{font-family:var(--font-mono);font-size:.92em}
 .node.goal{border-radius:var(--r-lg);background:var(--surface);border:1px solid var(--edge);padding:var(--sp-3);box-shadow:var(--shadow);display:flex;flex-direction:column;justify-content:space-between}
 .node.goal.done{opacity:.72}
 .node.goal.stopped{border-style:dotted}
-.jobtag{margin-left:6px;padding:0 6px;vertical-align:1px}
+.jobtag{margin:0 6px 0 2px;padding:0 6px;vertical-align:1px}
 .dropzone{position:relative;border-radius:var(--r-md)}
 .dropzone.drag{outline:2px dashed var(--accent);outline-offset:4px;background:var(--accent-soft)}
 .dz-hint{position:absolute;inset:0;display:grid;place-items:center;border-radius:inherit;background:color-mix(in srgb,var(--card) 82%,transparent);color:var(--accent);font-weight:600;font-size:var(--t-sm);pointer-events:none;text-align:center}

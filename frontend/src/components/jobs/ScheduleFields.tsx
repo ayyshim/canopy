@@ -27,7 +27,7 @@ export function ScheduleFields({ wsId, value, zone, onChange, onZone, onValid }:
     const t = setTimeout(() => {
       api<SchedulePreview>("POST", "/schedules/preview", { schedule: text, timezone: zone, workspace_id: wsId }).then(
         (data) => { if (n === seq.current) { setP({ status: "ok", data }); onValid(true); } },
-        (e) => { if (n === seq.current) { setP({ status: "bad", error: e instanceof ApiError ? e.message : "Couldn’t check that schedule." }); onValid(false); } },
+        (e) => { if (n === seq.current) { setP({ status: "bad", error: e instanceof ApiError ? Object.values(e.fields)[0] ?? e.message : "Couldn’t check that schedule." }); onValid(false); } },
       );
     }, 300);
     return () => clearTimeout(t);
