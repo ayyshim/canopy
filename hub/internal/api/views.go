@@ -50,7 +50,14 @@ type meView struct {
 	Organizations []orgSummary `json:"organizations"`
 	// CurrentOrgID is the organization to open: the last one used if the user is still a member,
 	// otherwise their first; null means they have none and should create one.
-	CurrentOrgID *uuid.UUID `json:"current_org_id"`
+	CurrentOrgID *uuid.UUID    `json:"current_org_id"`
+	TwoFactor    twoFactorView `json:"two_factor"`
+}
+
+// twoFactorView says whether the person has an authenticator and how many recovery codes are left.
+type twoFactorView struct {
+	EnabledAt         *time.Time `json:"enabled_at"`
+	RecoveryCodesLeft int64      `json:"recovery_codes_left"`
 }
 
 func toOrgView(o db.Organization) orgView {
@@ -72,7 +79,12 @@ func (s *Server) buildMe(ctx context.Context, q *db.Queries, userID uuid.UUID) (
 	if err != nil {
 		return meView{}, err
 	}
+	left, err := q.CountUnusedRecoveryCodes(ctx, userID)
+	if err != nil {
+		return meView{}, err
+	}
 	me := meView{
+		TwoFactor: twoFactorView{EnabledAt: u.TotpEnabledAt, RecoveryCodesLeft: left},
 		User: userView{ID: u.ID, Email: u.Email, Name: u.Name, AvatarColor: u.AvatarColor,
 			HasPassword: u.PasswordHash != nil, IsHubAdmin: u.IsHubAdmin, Providers: append([]string{}, providers...),
 			Notifications: notify.Parse(u.Notifications)},

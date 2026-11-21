@@ -153,7 +153,7 @@ func (s *Server) handleTwoFactorVerify(w http.ResponseWriter, r *http.Request) e
 	if u.TotpEnabledAt == nil || u.TotpSecret == nil {
 		return errNotEnrolled
 	}
-	ok := false
+	ok, usedRecovery := false, false
 	switch {
 	case strings.TrimSpace(req.RecoveryCode) != "":
 		n, err := s.Store.ClaimRecoveryCode(ctx, db.ClaimRecoveryCodeParams{
@@ -163,6 +163,7 @@ func (s *Server) handleTwoFactorVerify(w http.ResponseWriter, r *http.Request) e
 			return err
 		}
 		ok = n == 1
+		usedRecovery = ok
 	case strings.TrimSpace(req.Code) != "":
 		if step, valid := auth.CheckTotp(*u.TotpSecret, req.Code, s.Now()); valid {
 			// A step that was already used is refused, so a code works once.
@@ -180,6 +181,9 @@ func (s *Server) handleTwoFactorVerify(w http.ResponseWriter, r *http.Request) e
 	}
 	if err := s.Store.MarkSessionVerified(ctx, id.SessionID); err != nil {
 		return err
+	}
+	if usedRecovery {
+		s.notifyRecoveryCodeUsed(ctx, id.UserID, u.Email)
 	}
 	me, err := s.buildMe(ctx, s.Store.Queries, id.UserID)
 	if err != nil {

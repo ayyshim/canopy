@@ -26,7 +26,7 @@ paths:
       summary: Create an organization, then its owner, and sign in
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/SignupRequest" } } } }
       responses:
-        "201": { description: "Signed in, but a two-factor code is still needed", content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorPending" } } } }
+        "201": { description: Signed in with a session that still needs its two-factor code, content: { application/json: { schema: { $ref: "#/components/schemas/SignInResult" } } } }
         "403": { description: signups_closed, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
         "409": { description: "email_taken, or setup_required before hub setup", content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
         "422": { $ref: "#/components/responses/Error" }
@@ -36,41 +36,8 @@ paths:
       summary: Sign in with email and password
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LoginRequest" } } } }
       responses:
-        "200": { description: "Signed in, but a two-factor code is still needed", content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorPending" } } } }
+        "200": { description: Signed in with a session that still needs its two-factor code, content: { application/json: { schema: { $ref: "#/components/schemas/SignInResult" } } } }
         "401": { description: "unknown_email, wrong_password or no_password", content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
-        "422": { $ref: "#/components/responses/Error" }
-        "429": { $ref: "#/components/responses/Error" }
-  /auth/two-factor:
-    get:
-      summary: What the pending session must do next
-      responses:
-        "200": { description: Next step, content: { application/json: { schema: { type: object, required: [next], properties: { next: { type: string, enum: [enroll, verify, ""] } } } } } }
-        "401": { $ref: "#/components/responses/Error" }
-  /auth/two-factor/setup:
-    post:
-      summary: Make a new authenticator secret (only before enrollment finishes)
-      responses:
-        "200": { description: Secret and QR code, content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorSetup" } } } }
-        "401": { $ref: "#/components/responses/Error" }
-        "409": { description: already_enrolled, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
-  /auth/two-factor/enable:
-    post:
-      summary: Check the first code, turn two-factor on and return the recovery codes once
-      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [code], properties: { code: { type: string } } } } } }
-      responses:
-        "200": { description: Enabled, content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorEnabled" } } } }
-        "401": { description: too_many_attempts ends the session, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
-        "409": { description: "setup_required or already_enrolled", content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
-        "422": { $ref: "#/components/responses/Error" }
-        "429": { $ref: "#/components/responses/Error" }
-  /auth/two-factor/verify:
-    post:
-      summary: Finish sign-in with an authenticator code or a recovery code
-      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { code: { type: string }, recovery_code: { type: string } } } } } }
-      responses:
-        "200": { description: Verified, content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
-        "401": { description: too_many_attempts ends the session, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
-        "409": { description: not_enrolled, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
         "422": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
   /auth/logout:
@@ -98,7 +65,7 @@ paths:
       summary: Set a new password from a reset link; revokes all sessions and signs in
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [token, password], properties: { token: { type: string }, password: { type: string } } } } } }
       responses:
-        "200": { description: "Signed in, but a two-factor code is still needed", content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorPending" } } } }
+        "200": { description: Signed in with a session that still needs its two-factor code, content: { application/json: { schema: { $ref: "#/components/schemas/SignInResult" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
   /auth/oauth/{provider}/start:
@@ -177,7 +144,7 @@ paths:
       summary: First-run setup — name the hub, store sign-in providers, create the first hub admin
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/HubSetupRequest" } } } }
       responses:
-        "201": { description: "Signed in as hub admin, but a two-factor code is still needed", content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorPending" } } } }
+        "201": { description: Signed in as hub admin with a session that still needs its two-factor code, content: { application/json: { schema: { $ref: "#/components/schemas/SignInResult" } } } }
         "403": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
@@ -224,6 +191,71 @@ paths:
       responses:
         "200": { description: User, content: { application/json: { schema: { $ref: "#/components/schemas/AdminUserDetail" } } } }
         "409": { $ref: "#/components/responses/Error" }
+  /auth/two-factor:
+    get:
+      summary: What a session still has to do (open to a session that is waiting for its two-factor code)
+      responses:
+        "200": { description: "next is enroll, verify, or an empty string once the session is verified", content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorState" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /auth/two-factor/setup:
+    post:
+      summary: Make a new secret for someone who is not enrolled yet. The secret is only ever returned here
+      responses:
+        "200": { description: Secret, otpauth URL and QR code, content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorSetup" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "409": { description: already_enrolled, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/two-factor/enable:
+    post:
+      summary: Turn two-factor on with the first code, verify the session and return the recovery codes (shown once)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [code], properties: { code: { type: string, description: "The 6-digit code from the authenticator app" } } } } } }
+      responses:
+        "200": { description: Recovery codes and the signed-in user, content: { application/json: { schema: { type: object, required: [recovery_codes, me], properties: { recovery_codes: { type: array, items: { type: string } }, me: { $ref: "#/components/schemas/Me" } } } } } }
+        "401": { description: "too_many_attempts after 5 wrong codes ends the session", content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "409": { description: "already_enrolled or setup_required", content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { description: invalid_code, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/two-factor/verify:
+    post:
+      summary: Verify the session with an authenticator code or a single-use recovery code
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { code: { type: string }, recovery_code: { type: string } } } } } }
+      responses:
+        "200": { description: Signed in, content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        "401": { description: "too_many_attempts after 5 wrong codes ends the session", content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "409": { description: not_enrolled, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { description: invalid_code, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "429": { $ref: "#/components/responses/Error" }
+  /invites/{token}/accept:
+    post:
+      summary: Accept an invitation (new people choose a name and password) and sign in
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { name: { type: string }, password: { type: string } } } } } }
+      responses:
+        "200": { description: Signed in with a session that still needs its two-factor code, content: { application/json: { schema: { $ref: "#/components/schemas/SignInResult" } } } }
+        "422": { $ref: "#/components/responses/Error" }
+  /me/two-factor/recovery-codes:
+    post:
+      summary: Make 10 new recovery codes; the old ones stop working
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [code], properties: { code: { type: string, description: "The 6-digit code from the authenticator app" } } } } } }
+      responses:
+        "200": { description: The new codes (shown once), content: { application/json: { schema: { type: object, required: [recovery_codes], properties: { recovery_codes: { type: array, items: { type: string } } } } } } }
+        "422": { description: invalid_code, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "429": { $ref: "#/components/responses/Error" }
+  /me/two-factor/change:
+    post:
+      summary: Clear the authenticator and recovery codes, end the other sessions and send this one back to enroll
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [code], properties: { code: { type: string, description: "The 6-digit code from the authenticator app" } } } } } }
+      responses:
+        "200": { description: Set up a new app now, content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorState" } } } }
+        "422": { description: invalid_code, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "429": { $ref: "#/components/responses/Error" }
+  /admin/users/{userId}/two-factor/reset:
+    parameters: [{ name: userId, in: path, required: true, schema: { type: string, format: uuid } }]
+    post:
+      summary: Clear a person's authenticator and recovery codes and end all their sessions (hub admins; everyone else gets 404). They are emailed
+      responses:
+        "204": { description: Reset }
+        "404": { $ref: "#/components/responses/Error" }
   /admin/settings:
     get:
       summary: Hub settings; client secrets are never returned
@@ -354,10 +386,10 @@ components:
           type: object
           required: [code, message]
           properties:
-            code: { type: string, description: "e.g. validation, email_taken, unknown_email, wrong_password, invalid_token, rate_limited, csrf, not_found, two_factor_required (401, with next: enroll or verify), invalid_code, too_many_attempts" }
+            code: { type: string, description: "e.g. validation, two_factor_required, invalid_code, email_taken, unknown_email, wrong_password, invalid_token, rate_limited, csrf, not_found" }
             message: { type: string }
-            next: { type: string, enum: [enroll, verify], description: "With two_factor_required: what the pending session must do" }
             fields: { type: object, additionalProperties: { type: string }, description: "Inline message per field path, e.g. user.email" }
+            next: { type: string, enum: [enroll, verify], description: "With 401 two_factor_required: what the session must do" }
     ClaudeWindow:
       type: object
       required: [key, used_percent]
@@ -510,23 +542,6 @@ components:
             email: { type: string }
             password: { type: string, minLength: 8 }
             accept_terms: { type: boolean }
-    TwoFactorPending:
-      type: object
-      required: [two_factor]
-      properties: { two_factor: { type: string, enum: [enroll, verify], description: "Where to send the person: set up an authenticator, or enter a code" } }
-    TwoFactorSetup:
-      type: object
-      required: [secret, otpauth_url, qr_png]
-      properties:
-        secret: { type: string, description: "Base32 secret for manual entry" }
-        otpauth_url: { type: string }
-        qr_png: { type: string, description: "data: URL of the QR code" }
-    TwoFactorEnabled:
-      type: object
-      required: [recovery_codes, me]
-      properties:
-        recovery_codes: { type: array, items: { type: string } }
-        me: { $ref: "#/components/schemas/Me" }
     LoginRequest:
       type: object
       required: [email, password]
@@ -641,10 +656,35 @@ components:
           type: object
           description: Member id to the ids of the library skills attached to them
           additionalProperties: { type: array, items: { type: string, format: uuid } }
+    SignInResult:
+      type: object
+      required: [two_factor]
+      description: Every sign-in starts a session that can't use the API until its code is checked
+      properties:
+        two_factor: { type: string, enum: [enroll, verify], description: "enroll: set up an authenticator first (POST /auth/two-factor/setup then /enable). verify: enter a code (POST /auth/two-factor/verify)" }
+    TwoFactorState:
+      type: object
+      required: [next]
+      properties:
+        next: { type: string, enum: [enroll, verify, ""] }
+    TwoFactorSetup:
+      type: object
+      required: [secret, otpauth_url, qr_png]
+      properties:
+        secret: { type: string, description: Base32, for typing into an app }
+        otpauth_url: { type: string }
+        qr_png: { type: string, description: "data:image/png;base64,… QR code of otpauth_url" }
+    TwoFactorStatus:
+      type: object
+      required: [enabled_at, recovery_codes_left]
+      properties:
+        enabled_at: { type: [string, "null"], format: date-time }
+        recovery_codes_left: { type: integer }
     Me:
       type: object
-      required: [user, organizations, current_org_id]
+      required: [user, organizations, current_org_id, two_factor]
       properties:
+        two_factor: { $ref: "#/components/schemas/TwoFactorStatus" }
         user: { $ref: "#/components/schemas/User" }
         organizations: { type: array, items: { $ref: "#/components/schemas/OrgSummary" } }
         current_org_id: { type: [string, "null"], format: uuid, description: "Null: the user has no organization and should create one" }

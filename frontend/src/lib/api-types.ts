@@ -106,13 +106,13 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Signed in, but a two-factor code is still needed */
+                /** @description Signed in with a session that still needs its two-factor code */
                 201: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["TwoFactorPending"];
+                        "application/json": components["schemas"]["SignInResult"];
                     };
                 };
                 /** @description signups_closed */
@@ -166,228 +166,17 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Signed in, but a two-factor code is still needed */
+                /** @description Signed in with a session that still needs its two-factor code */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["TwoFactorPending"];
+                        "application/json": components["schemas"]["SignInResult"];
                     };
                 };
                 /** @description unknown_email, wrong_password or no_password */
                 401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorBody"];
-                    };
-                };
-                422: components["responses"]["Error"];
-                429: components["responses"]["Error"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/auth/two-factor": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** What the pending session must do next */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Next step */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @enum {string} */
-                            next: "enroll" | "verify" | "";
-                        };
-                    };
-                };
-                401: components["responses"]["Error"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/auth/two-factor/setup": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Make a new authenticator secret (only before enrollment finishes) */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Secret and QR code */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["TwoFactorSetup"];
-                    };
-                };
-                401: components["responses"]["Error"];
-                /** @description already_enrolled */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorBody"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/auth/two-factor/enable": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Check the first code, turn two-factor on and return the recovery codes once */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        code: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Enabled */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["TwoFactorEnabled"];
-                    };
-                };
-                /** @description too_many_attempts ends the session */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorBody"];
-                    };
-                };
-                /** @description setup_required or already_enrolled */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorBody"];
-                    };
-                };
-                422: components["responses"]["Error"];
-                429: components["responses"]["Error"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/auth/two-factor/verify": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Finish sign-in with an authenticator code or a recovery code */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        code?: string;
-                        recovery_code?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Verified */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Me"];
-                    };
-                };
-                /** @description too_many_attempts ends the session */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorBody"];
-                    };
-                };
-                /** @description not_enrolled */
-                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -553,13 +342,13 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Signed in, but a two-factor code is still needed */
+                /** @description Signed in with a session that still needs its two-factor code */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["TwoFactorPending"];
+                        "application/json": components["schemas"]["SignInResult"];
                     };
                 };
                 400: components["responses"]["Error"];
@@ -959,13 +748,13 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Signed in as hub admin, but a two-factor code is still needed */
+                /** @description Signed in as hub admin with a session that still needs its two-factor code */
                 201: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["TwoFactorPending"];
+                        "application/json": components["schemas"]["SignInResult"];
                     };
                 };
                 403: components["responses"]["Error"];
@@ -1208,6 +997,428 @@ export interface paths {
                 409: components["responses"]["Error"];
             };
         };
+        trace?: never;
+    };
+    "/auth/two-factor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What a session still has to do (open to a session that is waiting for its two-factor code) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description next is enroll, verify, or an empty string once the session is verified */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TwoFactorState"];
+                    };
+                };
+                401: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/two-factor/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make a new secret for someone who is not enrolled yet. The secret is only ever returned here */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Secret */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TwoFactorSetup"];
+                    };
+                };
+                401: components["responses"]["Error"];
+                /** @description already_enrolled */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                429: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/two-factor/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Turn two-factor on with the first code, verify the session and return the recovery codes (shown once) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description The 6-digit code from the authenticator app */
+                        code: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Recovery codes and the signed-in user */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            recovery_codes: string[];
+                            me: components["schemas"]["Me"];
+                        };
+                    };
+                };
+                /** @description too_many_attempts after 5 wrong codes ends the session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                /** @description already_enrolled or setup_required */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                /** @description invalid_code */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                429: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/two-factor/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify the session with an authenticator code or a single-use recovery code */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        code?: string;
+                        recovery_code?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Signed in */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Me"];
+                    };
+                };
+                /** @description too_many_attempts after 5 wrong codes ends the session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                /** @description not_enrolled */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                /** @description invalid_code */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                429: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invites/{token}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept an invitation (new people choose a name and password) and sign in */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        name?: string;
+                        password?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Signed in with a session that still needs its two-factor code */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SignInResult"];
+                    };
+                };
+                422: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/two-factor/recovery-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make 10 new recovery codes; the old ones stop working */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description The 6-digit code from the authenticator app */
+                        code: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description The new codes (shown once) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            recovery_codes: string[];
+                        };
+                    };
+                };
+                /** @description invalid_code */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                429: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/two-factor/change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clear the authenticator and recovery codes, end the other sessions and send this one back to enroll */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description The 6-digit code from the authenticator app */
+                        code: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Set up a new app now */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TwoFactorState"];
+                    };
+                };
+                /** @description invalid_code */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                429: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users/{userId}/two-factor/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clear a person's authenticator and recovery codes and end all their sessions (hub admins; everyone else gets 404). They are emailed */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Reset */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                404: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/admin/settings": {
@@ -1821,18 +2032,18 @@ export interface components {
     schemas: {
         ErrorBody: {
             error: {
-                /** @description e.g. validation, email_taken, unknown_email, wrong_password, invalid_token, rate_limited, csrf, not_found, two_factor_required (401, with next: enroll or verify), invalid_code, too_many_attempts */
+                /** @description e.g. validation, two_factor_required, invalid_code, email_taken, unknown_email, wrong_password, invalid_token, rate_limited, csrf, not_found */
                 code: string;
                 message: string;
-                /**
-                 * @description With two_factor_required: what the pending session must do
-                 * @enum {string}
-                 */
-                next?: "enroll" | "verify";
                 /** @description Inline message per field path, e.g. user.email */
                 fields?: {
                     [key: string]: string;
                 };
+                /**
+                 * @description With 401 two_factor_required: what the session must do
+                 * @enum {string}
+                 */
+                next?: "enroll" | "verify";
             };
         };
         ClaudeWindow: {
@@ -2017,24 +2228,6 @@ export interface components {
                 accept_terms: boolean;
             };
         };
-        TwoFactorPending: {
-            /**
-             * @description Where to send the person: set up an authenticator, or enter a code
-             * @enum {string}
-             */
-            two_factor: "enroll" | "verify";
-        };
-        TwoFactorSetup: {
-            /** @description Base32 secret for manual entry */
-            secret: string;
-            otpauth_url: string;
-            /** @description data: URL of the QR code */
-            qr_png: string;
-        };
-        TwoFactorEnabled: {
-            recovery_codes: string[];
-            me: components["schemas"]["Me"];
-        };
         LoginRequest: {
             email: string;
             password: string;
@@ -2156,7 +2349,32 @@ export interface components {
                 [key: string]: string[];
             };
         };
+        /** @description Every sign-in starts a session that can't use the API until its code is checked */
+        SignInResult: {
+            /**
+             * @description enroll: set up an authenticator first (POST /auth/two-factor/setup then /enable). verify: enter a code (POST /auth/two-factor/verify)
+             * @enum {string}
+             */
+            two_factor: "enroll" | "verify";
+        };
+        TwoFactorState: {
+            /** @enum {string} */
+            next: "enroll" | "verify" | "";
+        };
+        TwoFactorSetup: {
+            /** @description Base32 */
+            secret: string;
+            otpauth_url: string;
+            /** @description data:image/png;base64,… QR code of otpauth_url */
+            qr_png: string;
+        };
+        TwoFactorStatus: {
+            /** Format: date-time */
+            enabled_at: string | null;
+            recovery_codes_left: number;
+        };
         Me: {
+            two_factor: components["schemas"]["TwoFactorStatus"];
             user: components["schemas"]["User"];
             organizations: components["schemas"]["OrgSummary"][];
             /**

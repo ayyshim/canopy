@@ -60,6 +60,35 @@ func (q *Queries) ClaimTotpStep(ctx context.Context, arg ClaimTotpStepParams) (i
 	return result.RowsAffected(), nil
 }
 
+const clearUserTotp = `-- name: ClearUserTotp :exec
+UPDATE users SET totp_secret = NULL, totp_enabled_at = NULL, totp_last_step = NULL WHERE id = $1
+`
+
+func (q *Queries) ClearUserTotp(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, clearUserTotp, id)
+	return err
+}
+
+const countUnusedRecoveryCodes = `-- name: CountUnusedRecoveryCodes :one
+SELECT count(*) FROM user_recovery_codes WHERE user_id = $1 AND used_at IS NULL
+`
+
+func (q *Queries) CountUnusedRecoveryCodes(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countUnusedRecoveryCodes, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const deleteRecoveryCodes = `-- name: DeleteRecoveryCodes :exec
+DELETE FROM user_recovery_codes WHERE user_id = $1
+`
+
+func (q *Queries) DeleteRecoveryCodes(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteRecoveryCodes, userID)
+	return err
+}
+
 const enableUserTotp = `-- name: EnableUserTotp :execrows
 UPDATE users SET totp_enabled_at = now(), totp_last_step = $2
 WHERE id = $1 AND totp_enabled_at IS NULL AND totp_secret IS NOT NULL
@@ -90,6 +119,15 @@ type InsertRecoveryCodeParams struct {
 
 func (q *Queries) InsertRecoveryCode(ctx context.Context, arg InsertRecoveryCodeParams) error {
 	_, err := q.db.Exec(ctx, insertRecoveryCode, arg.ID, arg.UserID, arg.CodeHash)
+	return err
+}
+
+const markSessionPending = `-- name: MarkSessionPending :exec
+UPDATE auth_sessions SET two_factor_at = NULL, two_factor_failures = 0 WHERE id = $1
+`
+
+func (q *Queries) MarkSessionPending(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, markSessionPending, id)
 	return err
 }
 

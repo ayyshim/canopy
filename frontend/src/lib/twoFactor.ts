@@ -1,9 +1,9 @@
 import type { components } from "./api-types";
 
-export type TwoFactorPending = components["schemas"]["TwoFactorPending"];
-export type TwoFactorStep = components["schemas"]["TwoFactorPending"]["two_factor"];
+export type TwoFactorPending = components["schemas"]["SignInResult"];
+export type TwoFactorStep = components["schemas"]["SignInResult"]["two_factor"];
 export type TwoFactorSetup = components["schemas"]["TwoFactorSetup"];
-export type TwoFactorEnabled = components["schemas"]["TwoFactorEnabled"];
+export type TwoFactorEnabled = { recovery_codes: string[]; me: components["schemas"]["Me"] };
 
 export const CODE_LENGTH = 6;
 

@@ -419,3 +419,23 @@ finishes, and is never logged.
 **Trade-off.** The TOTP secret is stored unencrypted in `users.totp_secret` (the code check needs it); anyone
 with database read access can generate codes. Encrypting it needs a hub key that doesn't exist yet. There is
 no way yet to reset two-factor for someone who lost both their device and recovery codes.
+
+## Managing two-factor: recovery codes, change, reset
+
+`GET /me` carries `two_factor {enabled_at, recovery_codes_left}`. Making new recovery codes
+(`POST /me/two-factor/recovery-codes`) and changing the authenticator (`POST /me/two-factor/change`) ask for a
+current authenticator code, even though the session is already verified. New codes replace all old ones. Change
+clears the secret and codes, ends the person's other sessions and sends this session back to `enroll`, so the
+new app is set up right away. A hub admin can reset anyone (`POST /admin/users/{id}/two-factor/reset`) and the
+server operator can run `canopy-hub reset-two-factor EMAIL` (stop the hub first, like `migrate`); both clear the
+secret and codes and end every session, so the person enrolls at next sign-in. Everyone who isn't a hub admin
+gets 404 from the reset route (other `/admin` routes still answer 403).
+
+The person is emailed after an admin or command reset, and whenever a recovery code is used.
+
+**Audit rule.** `audit_events` wants an organization, so an event about a person is written once for each
+organization they are an active member of, and once at hub level when they have none. Organization admins see
+them; the actor is the hub admin, or empty when the command did it.
+
+**Trade-off.** Changing the authenticator needs a working code, so someone who lost their device uses a recovery
+code to sign in and then changes it, or asks a hub admin for a reset.
