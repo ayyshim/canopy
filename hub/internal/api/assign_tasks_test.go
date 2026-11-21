@@ -108,4 +108,56 @@ func TestAssignTasks(t *testing.T) {
 	}
 }
 
+// Admins can delete a goal's plan note; assign_tasks then writes a fresh one.
+func TestAssignTasksAfterPlanNoteDeleted(t *testing.T) {
+	e := newEnv(t)
+	owner, me := e.signup("Plan Gone Co")
+	org := currentOrg(me)
+	ws, d := e.createWorkspace(owner, org, setupPayload())
+	riley := uuid.MustParse(str(members(d)["Riley"]["id"]))
+	wsID, uid := uuid.MustParse(ws), uuid.MustParse(userID(me))
+	ctx := context.Background()
+	runnerID := uuid.MustParse(e.addRunner(org, userID(me), "Laptop", "computer"))
+	rn, err := e.store.GetRunner(ctx, runnerID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := &recorder{}
+	o := orch.New(e.srv.Core, rec, nil)
+	e.srv.Orch = o
+
+	g := owner.do("POST", "/api/v1/workspaces/"+ws+"/goals", map[string]any{"manager_id": riley.String(), "title": "CSV export", "draft": true})
+	goalID := uuid.MustParse(str(g.Body["goal"].(map[string]any)["id"]))
+	if _, err := e.store.UpdateGoal(ctx, db.UpdateGoalParams{ID: goalID, Status: ptr("active")}); err != nil {
+		t.Fatal(err)
+	}
+	assign := func(title string) {
+		r := owner.do("POST", "/api/v1/goals/"+goalID.String()+"/tasks", map[string]any{"title": title, "member_id": riley.String()})
+		triage := uuid.MustParse(str(r.Body["task"].(map[string]any)["id"]))
+		s, err := e.store.CreateAgentSession(ctx, db.CreateAgentSessionParams{ID: uuid.New(), WorkspaceID: wsID, MemberID: riley,
+			Status: "waiting", RunnerID: &runnerID, PersonID: &uid, TaskID: &triage})
+		if err != nil {
+			t.Fatal(err)
+		}
+		tasks := []map[string]any{{"key": "a", "title": title, "skill": "developer", "steps": []string{"Do it"}}}
+		if res := call(t, o, rn, rec, s.ID, protocol.ToolAssignTasks, map[string]any{"tasks": tasks}); res.IsError {
+			t.Fatalf("assign_tasks %q: %+v", title, res)
+		}
+	}
+
+	assign("First batch")
+	plan, err := e.store.GoalNote(ctx, db.GoalNoteParams{GoalID: &goalID, Kind: "plan"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r := owner.do("DELETE", "/api/v1/notes/"+plan.ID.String(), nil); r.Status != 204 {
+		t.Fatalf("delete plan note: %d", r.Status)
+	}
+	assign("Second batch")
+	fresh, err := e.store.GoalNote(ctx, db.GoalNoteParams{GoalID: &goalID, Kind: "plan"})
+	if err != nil || fresh.ID == plan.ID || !strings.Contains(fresh.Body, "Second batch") || strings.Contains(fresh.Body, "First batch") {
+		t.Errorf("fresh plan note: %v %+v", err, fresh)
+	}
+}
+
 func ptr[T any](v T) *T { return &v }

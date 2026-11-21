@@ -415,3 +415,58 @@ func TestMovingAStickySavesNoRevision(t *testing.T) {
 		}
 	}
 }
+
+func TestDeleteNote(t *testing.T) {
+	f := newStickyFixture(t)
+	ctx := context.Background()
+	revCount := func(id string) int {
+		revs, err := f.e.store.ListNoteRevisions(ctx, uuid.MustParse(id))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return len(revs)
+	}
+
+	// The author deletes their own note, and its revisions go with it.
+	mine := f.create(f.guest, map[string]any{"title": "Mine", "body": "a"})
+	mid := str(mine["id"])
+	f.guest.do("PATCH", "/api/v1/notes/"+mid, map[string]any{"body": "b"})
+	if revCount(mid) != 1 {
+		t.Fatalf("setup: want 1 revision")
+	}
+	if r := f.guest.do("DELETE", "/api/v1/notes/"+mid, nil); r.Status != 204 {
+		t.Fatalf("author delete: %d", r.Status)
+	}
+	if revCount(mid) != 0 || has(f.listIDs(f.guest), mid) {
+		t.Errorf("note or revisions left after delete")
+	}
+	if r := f.guest.do("DELETE", "/api/v1/notes/"+mid, nil); r.Status != 404 {
+		t.Errorf("second delete: %d", r.Status)
+	}
+
+	// An admin deletes a shared note written by an agent, and others hear about it.
+	agent, err := f.e.store.CreateNote(ctx, db.CreateNoteParams{ID: uuid.New(), WorkspaceID: f.wsID, GoalID: nil, Kind: "decision",
+		Title: "Agent note", Body: "x", AuthorMemberID: &f.dev, Visibility: "shared"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	aid := agent.ID.String()
+	guestSock, _ := f.dial(f.guest)
+
+	// Other staff may not delete it.
+	if r := f.guest.do("DELETE", "/api/v1/notes/"+aid, nil); r.Status != 403 {
+		t.Errorf("staff delete of agent note: %d, want 403", r.Status)
+	}
+	if r := f.owner.do("DELETE", "/api/v1/notes/"+aid, nil); r.Status != 204 {
+		t.Fatalf("admin delete: %d", r.Status)
+	}
+	if m := guestSock.next(3 * time.Second); m.Type != "note.deleted" || !strings.Contains(string(m.Data), aid) {
+		t.Errorf("note.deleted not sent: %+v", m)
+	}
+
+	// Someone else's private note is 404, even for an admin.
+	priv := f.create(f.guest, map[string]any{"title": "Secret", "body": "s", "visibility": "private"})
+	if r := f.owner.do("DELETE", "/api/v1/notes/"+str(priv["id"]), nil); r.Status != 404 {
+		t.Errorf("admin delete of private note: %d, want 404", r.Status)
+	}
+}

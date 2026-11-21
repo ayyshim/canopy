@@ -5,7 +5,7 @@ import { CopyId, IdTag } from "../IdTag";
 import { useEffect, useState } from "react";
 import { deleteNote, listRevisions, patchNote, restoreRevision, saveNote } from "@/lib/board/actions";
 import { camera } from "@/lib/board/camera";
-import { canChangeVisibility, canEditNote, centerSpot, isPinned, isPrivate } from "@/lib/stickies";
+import { canChangeVisibility, canDeleteNote, canEditNote, centerSpot, isPinned, isPrivate } from "@/lib/stickies";
 import type { NoteRevisionView } from "@/lib/core-types";
 import { ago, isAdmin, personName, visibleMember } from "@/lib/board/derive";
 import { useUI } from "@/lib/board/ui";
@@ -20,6 +20,12 @@ const KIND: Record<string, string> = { note: "Note", decision: "Decision", plan:
 export function NotesPanel({ id }: { id: string }) {
   const b = useB();
   const ui = useUI();
+  const { me } = useBoardCtx();
+  const admin = isAdmin(b);
+  const remove = async (n: NoteView) => {
+    if (!confirm(`Delete N-${n.number} “${n.title}”?`)) return;
+    await deleteNote(n.id);
+  };
   const note = id ? b.notes.find((n) => n.id === id) : undefined;
   const [editing, setEditing] = useState<NoteView | "new" | null>(null);
   const [filter, setFilter] = useState<"all" | "private" | "shared">("all");
@@ -39,13 +45,16 @@ export function NotesPanel({ id }: { id: string }) {
           </div>
         </div>
         {shown.map((n) => (
-          <button className="trow" key={n.id} onClick={() => ui.openSide({ type: "notes", id: n.id })}>
+          <div className="row" key={n.id} style={{ gap: 4 }}>
+          <button className="trow" style={{ flex: 1, minWidth: 0 }} onClick={() => ui.openSide({ type: "notes", id: n.id })}>
             <span className={`pill ${n.kind === "decision" ? "goal" : n.kind === "summary" ? "ok" : ""}`}>{KIND[n.kind]}</span>
             <IdTag kind="note" number={n.number} />
             {isPrivate(n) ? <span className="pill priv">Private</span> : <span className="pill">Shared</span>}
             {isPinned(n) && <span className="pill">On board</span>}
             <span className="spacer">{n.title}</span><span className="hint">{ago(n.updated_at)}</span>
           </button>
+          {canDeleteNote(n, me, admin) && <button type="button" className="btn btn-sm btn-danger" onClick={() => remove(n)} aria-label={`Delete N-${n.number}`}>Delete</button>}
+          </div>
         ))}
         {!shown.length && <p className="hint">{b.notes.length ? "No notes match." : "No notes yet."}</p>}
       </PanelBody>
@@ -59,7 +68,7 @@ function NoteView({ note, edit }: { note: NoteView; edit: () => void }) {
   const { me } = useBoardCtx();
   const ui = useUI();
   const author = note.author_member_id ? visibleMember(b, note.author_member_id)?.name : personName(b, note.author_user_id);
-  const mine = note.author_user_id === me || isAdmin(b);
+  const mine = canDeleteNote(note, me, isAdmin(b));
   const canEdit = canEditNote(note, me, isAdmin(b));
   const change = (p: Parameters<typeof patchNote>[1]) => patchNote(note.id, p).catch(() => ui.toast("Couldn’t change the note.", "error"));
   const pin = () => { const c = camera.get(); const s = centerSpot(c, c.w, c.h); change({ board: s }).then(() => ui.centerOn(note.id)); };
@@ -91,9 +100,11 @@ function NoteView({ note, edit }: { note: NoteView; edit: () => void }) {
         <History note={note} canEdit={canEdit} />
       </PanelBody>
       <PanelFoot>
-        {mine && <button className="btn btn-sm btn-danger" onClick={async () => { if (await deleteNote(note.id)) ui.openSide({ type: "notes" }); }}>Delete</button>}
+        {mine
+          ? <button className="btn btn-sm btn-danger" onClick={async () => { if (!confirm(`Delete N-${note.number} “${note.title}”?`)) return; if (await deleteNote(note.id)) ui.openSide({ type: "notes" }); }}>Delete</button>
+          : <span className="hint">Only the author or a workspace admin can delete this note.</span>}
         <span className="spacer" />
-        {mine && <button className="btn btn-sm btn-primary" onClick={edit}>Edit</button>}
+        {canEdit && <button className="btn btn-sm btn-primary" onClick={edit}>Edit</button>}
       </PanelFoot>
     </>
   );
