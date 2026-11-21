@@ -2026,6 +2026,498 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/workspaces/{wsId}/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the jobs the caller can see (those of managers they can see), with each job's last run */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    wsId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Jobs */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            jobs: components["schemas"]["Job"][];
+                        };
+                    };
+                };
+                404: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        /** Create a job. The schedule is cron or plain text; a continuous job gets its memory note. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    wsId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["JobInput"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JobResponse"];
+                    };
+                };
+                404: components["responses"]["Error"];
+                422: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/{jobId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One job (404 when the caller can't see its manager) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    jobId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Job */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JobResponse"];
+                    };
+                };
+                404: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Delete a job and its memory (owner or admin). Refused with run_in_progress while a run is going. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    jobId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                403: components["responses"]["Error"];
+                404: components["responses"]["Error"];
+                /** @description run_in_progress */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Edit a job (its owner or a workspace admin). Only admins change the owner. */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    jobId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["JobInput"];
+                };
+            };
+            responses: {
+                /** @description Saved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JobResponse"];
+                    };
+                };
+                403: components["responses"]["Error"];
+                404: components["responses"]["Error"];
+                422: components["responses"]["Error"];
+            };
+        };
+        trace?: never;
+    };
+    "/jobs/{jobId}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pause a job (owner or admin). A run that is going keeps going. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    jobId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Paused */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JobResponse"];
+                    };
+                };
+                403: components["responses"]["Error"];
+                404: components["responses"]["Error"];
+                /** @description job_ended */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/{jobId}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resume a paused job from now; nothing missed while paused is replayed */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    jobId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Resumed */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JobResponse"];
+                    };
+                };
+                403: components["responses"]["Error"];
+                404: components["responses"]["Error"];
+                /** @description not_paused or job_ended */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/{jobId}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a run now, outside the schedule. With test true it never writes memory. Neither moves the next run. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    jobId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        test?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Started */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            run: components["schemas"]["JobRun"];
+                        };
+                    };
+                };
+                403: components["responses"]["Error"];
+                404: components["responses"]["Error"];
+                /** @description run_in_progress */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/{jobId}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A job's runs, newest first, including skipped ones with their reason */
+        get: {
+            parameters: {
+                query?: {
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    jobId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Runs */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            runs: components["schemas"]["JobRun"][];
+                        };
+                    };
+                };
+                404: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/{jobId}/memory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The rolling summary of a continuous job (404 for a single run job) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    jobId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Memory */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JobMemory"];
+                    };
+                };
+                404: components["responses"]["Error"];
+            };
+        };
+        /** Replace the summary (owner or admin). Refused with run_in_progress while a run is going. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    jobId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        memory: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Saved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JobMemory"];
+                    };
+                };
+                403: components["responses"]["Error"];
+                404: components["responses"]["Error"];
+                /** @description run_in_progress */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                422: components["responses"]["Error"];
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/schedules/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Turn a cron expression or plain text such as "every weekday at 9" into a cron, a sentence and the next 5 run times */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        schedule: string;
+                        /** @description IANA zone; default is the workspace organization's */
+                        timezone?: string;
+                        /** Format: uuid */
+                        workspace_id?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Preview */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SchedulePreview"];
+                    };
+                };
+                422: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2432,6 +2924,171 @@ export interface components {
             /** Format: int64 */
             default_weekly_limit?: number;
             timezone?: string;
+        };
+        Job: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            workspace_id: string;
+            title: string;
+            /** @enum {string} */
+            kind: "single" | "continuous";
+            /** @enum {string} */
+            status: "active" | "paused" | "ended";
+            /** @enum {string} */
+            pause_reason: "" | "owner" | "failures" | "cap" | "owner_left";
+            brief: string;
+            /** Format: uuid */
+            owner_user_id?: string | null;
+            /** Format: uuid */
+            manager_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Null means the manager does the work
+             */
+            assignee_member_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Null means the owner's own computer
+             */
+            runner_id?: string | null;
+            cron: string;
+            timezone: string;
+            /** @description The schedule in words; empty if it can't be described */
+            schedule: string;
+            /** Format: date-time */
+            next_run_at?: string | null;
+            /** Format: date-time */
+            last_run_at?: string | null;
+            /** @enum {string} */
+            missed_policy: "skip" | "run_once";
+            catchup_window_secs: number;
+            run_timeout_secs: number;
+            /** Format: int64 */
+            token_cap_per_run?: number | null;
+            /** Format: int64 */
+            token_cap_per_month?: number | null;
+            /** @enum {string} */
+            notify: "attention" | "always" | "failures";
+            /** Format: date-time */
+            ends_at?: string | null;
+            max_runs?: number | null;
+            required_dirs: {
+                /** Format: uuid */
+                directory_id: string;
+                /** @enum {string} */
+                mode: "read" | "read_write";
+            }[];
+            /** Format: uuid */
+            memory_note_id?: string | null;
+            consecutive_failures: number;
+            /** Format: uuid */
+            created_by?: string | null;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+            last_run?: components["schemas"]["JobRun"];
+        };
+        JobResponse: {
+            job: components["schemas"]["Job"];
+        };
+        /** @description Create needs title, kind, brief, manager_id and schedule. Patch takes any of the rest; kind can't change. */
+        JobInput: {
+            title?: string;
+            /** @enum {string} */
+            kind?: "single" | "continuous";
+            brief?: string;
+            /** Format: uuid */
+            manager_id?: string;
+            /**
+             * Format: uuid
+             * @description The manager or one of their staff; null = the manager
+             */
+            assignee_member_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Your own computer or a shared one; null = your own
+             */
+            runner_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Admins only
+             */
+            owner_user_id?: string;
+            /** @description A 5-field cron expression or plain text such as "every weekday at 9" */
+            schedule?: string;
+            /** @description IANA zone; default is the organization's */
+            timezone?: string;
+            /** @enum {string} */
+            missed_policy?: "skip" | "run_once";
+            catchup_window_secs?: number;
+            run_timeout_secs?: number;
+            token_caps?: {
+                /** Format: int64 */
+                per_run?: number | null;
+                /** Format: int64 */
+                per_month?: number | null;
+            };
+            /** @enum {string} */
+            notify?: "attention" | "always" | "failures";
+            ends?: {
+                /** Format: date-time */
+                at?: string | null;
+                max_runs?: number | null;
+            };
+            /** @description The member doing the work must already have these grants */
+            required_dirs?: {
+                /** Format: uuid */
+                directory_id: string;
+                /** @enum {string} */
+                mode: "read" | "read_write";
+            }[];
+        };
+        JobRun: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            job_id: string;
+            number: number;
+            /** Format: date-time */
+            scheduled_for: string;
+            /** @enum {string} */
+            trigger: "schedule" | "manual" | "test";
+            /** @enum {string} */
+            status: "running" | "succeeded" | "failed" | "skipped" | "capped" | "cancelled";
+            skip_reason: string;
+            attempt: number;
+            /** Format: uuid */
+            goal_id?: string | null;
+            /** Format: date-time */
+            started_at?: string | null;
+            /** Format: date-time */
+            finished_at?: string | null;
+            /** Format: int64 */
+            tokens: number;
+            /** @enum {string} */
+            result: "" | "ok" | "attention" | "nothing_to_do";
+            title: string;
+            summary: string;
+            error: string;
+        };
+        JobMemory: {
+            memory: string;
+            /** Format: uuid */
+            note_id: string;
+            /** @description The note's N- number */
+            number: number;
+            /** Format: date-time */
+            updated_at: string;
+            max_chars: number;
+        };
+        SchedulePreview: {
+            cron: string;
+            sentence: string;
+            zone: string;
+            /** @description The next 5 run times in UTC */
+            next: string[];
         };
     };
     responses: {

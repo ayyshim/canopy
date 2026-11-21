@@ -45,7 +45,7 @@ export function TaskDialog({ goalId, memberId }: { goalId?: string; memberId?: s
   return (
     <form className="dialog" onSubmit={submit}>
       <h2>{g?.status === "ready" || goalClosed(g) ? "Add a follow-up task" : "New task"}</h2>
-      <p>{g?.status === "ready" || goalClosed(g) ? `This puts “${g.title}” back to work.` : "Most work comes from managers splitting goals. Add a task yourself when you want something specific done."}</p>
+      <p>{g?.status === "ready" || goalClosed(g) ? `This puts “${g?.title}” back to work.` : "Most work comes from managers splitting goals. Add a task yourself when you want something specific done."}</p>
       <label className="field"><span>Title</span>
         <RefAssist><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Add a saved-cards picker" autoComplete="off" autoFocus /></RefAssist></label>
       <label className="field"><span>Goal</span>
