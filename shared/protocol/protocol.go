@@ -296,8 +296,11 @@ type Usage struct {
 	AttributedUserID *uuid.UUID `json:"attributed_user_id,omitempty"`
 	CLI              string     `json:"cli"`
 	Model            string     `json:"model"`
-	TokensIn         int64      `json:"tokens_in"`
+	TokensIn         int64      `json:"tokens_in"` // fresh input plus cache writes
 	TokensOut        int64      `json:"tokens_out"`
+	CacheRead        int64      `json:"cache_read,omitempty"`
+	CacheWrite       int64      `json:"cache_write,omitempty"` // part of TokensIn
+	TaskID           *uuid.UUID `json:"task_id,omitempty"`     // the task the turn works on
 }
 
 // RateWindow is one limit window of the CLI's sign-in. Utilization is 0..1.

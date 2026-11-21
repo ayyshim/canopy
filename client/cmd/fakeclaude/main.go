@@ -60,7 +60,7 @@ func assistant(text string) {
 	}
 	emit(map[string]any{"type": "assistant", "session_id": sessionID, "message": map[string]any{
 		"id": fmt.Sprintf("msg_%s_%d", uuid.NewString()[:13], msgSeq), "model": model, "role": "assistant", "content": content,
-		"usage": map[string]any{"input_tokens": 120, "output_tokens": 40, "cache_creation_input_tokens": 0}}})
+		"usage": map[string]any{"input_tokens": 120, "output_tokens": 40, "cache_creation_input_tokens": 10, "cache_read_input_tokens": 300}}})
 }
 
 func toolUse(name string, input any) {

@@ -109,3 +109,15 @@ func TestArgsAndPermissionReply(t *testing.T) {
 		t.Errorf("deny reply: %s", got)
 	}
 }
+
+func TestUsageCacheTokens(t *testing.T) {
+	line := `{"type":"assistant","message":{"id":"m1","model":"claude-sonnet-5-5","content":[],"usage":{"input_tokens":10,"output_tokens":5,"cache_creation_input_tokens":200,"cache_read_input_tokens":3000}}}`
+	evs, err := Parse([]byte(line))
+	if err != nil || len(evs) != 1 {
+		t.Fatalf("parse: %v %v", evs, err)
+	}
+	e := evs[0]
+	if e.TokensIn != 210 || e.CacheWrite != 200 || e.CacheRead != 3000 || e.TokensOut != 5 {
+		t.Errorf("usage: %+v", e)
+	}
+}

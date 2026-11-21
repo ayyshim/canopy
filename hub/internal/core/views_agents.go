@@ -30,6 +30,7 @@ type GoalView struct {
 	ShowTasks   bool            `json:"show_tasks"`
 	DoneBy      *uuid.UUID      `json:"done_by"`
 	CreatedAt   time.Time       `json:"created_at"`
+	Usage       *UsageTotals    `json:"usage"` // tokens and cost so far; nil when not loaded
 }
 
 func ToGoal(g db.Goal) GoalView {
@@ -71,27 +72,28 @@ type DirNeed struct {
 }
 
 type TaskView struct {
-	ID               uuid.UUID   `json:"id"`
-	GoalID           *uuid.UUID  `json:"goal_id"`
-	MemberID         *uuid.UUID  `json:"member_id"`
-	Kind             string      `json:"kind"`
-	Title            string      `json:"title"`
-	Description      string      `json:"description"`
-	Skill            *string     `json:"skill"`
-	Status           string      `json:"status"`
-	Progress         int32       `json:"progress"`
-	DependsOn        []uuid.UUID `json:"depends_on"`
-	Steps            []Step      `json:"steps"`
-	CurrentStep      int32       `json:"current_step"`
-	RequiredDirs     []DirNeed   `json:"required_dirs"`
-	Borrowed         bool        `json:"borrowed"`
-	AttributedUserID *uuid.UUID  `json:"attributed_user_id"`
-	CreatedBy        *uuid.UUID  `json:"created_by"`
-	ParentTaskID     *uuid.UUID  `json:"parent_task_id"`
-	Summary          string      `json:"summary"`
-	StartedAt        *time.Time  `json:"started_at"`
-	FinishedAt       *time.Time  `json:"finished_at"`
-	CreatedAt        time.Time   `json:"created_at"`
+	ID               uuid.UUID    `json:"id"`
+	GoalID           *uuid.UUID   `json:"goal_id"`
+	MemberID         *uuid.UUID   `json:"member_id"`
+	Kind             string       `json:"kind"`
+	Title            string       `json:"title"`
+	Description      string       `json:"description"`
+	Skill            *string      `json:"skill"`
+	Status           string       `json:"status"`
+	Progress         int32        `json:"progress"`
+	DependsOn        []uuid.UUID  `json:"depends_on"`
+	Steps            []Step       `json:"steps"`
+	CurrentStep      int32        `json:"current_step"`
+	RequiredDirs     []DirNeed    `json:"required_dirs"`
+	Borrowed         bool         `json:"borrowed"`
+	AttributedUserID *uuid.UUID   `json:"attributed_user_id"`
+	CreatedBy        *uuid.UUID   `json:"created_by"`
+	ParentTaskID     *uuid.UUID   `json:"parent_task_id"`
+	Summary          string       `json:"summary"`
+	StartedAt        *time.Time   `json:"started_at"`
+	FinishedAt       *time.Time   `json:"finished_at"`
+	CreatedAt        time.Time    `json:"created_at"`
+	Usage            *UsageTotals `json:"usage"` // tokens and cost so far; nil when not loaded
 }
 
 func ToTask(t db.Task) TaskView {

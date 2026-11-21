@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { applyUsageWork, keepUsage } from "./usageEvents";
 import type {
   AccountView, AnyMember, Board, ChatMessageView, Cursor, GoalRepoView, GrantView, LogLineView, NoteView, OutputView,
   PresenceUser, SessionView, SignalView, SkillView, StaffProposalView,
@@ -90,11 +91,13 @@ function applyEvent(s: BoardState, type: string, data: unknown): Partial<BoardSt
       return nb({ workspace: d });
     case "task.created":
     case "task.updated":
-      return nb({ tasks: upsert(b.tasks, d, byId) });
+      return nb({ tasks: upsert(b.tasks, keepUsage(d, b.tasks), byId) });
     case "task.deleted":
       return nb({ tasks: b.tasks.filter((t) => t.id !== d.id) });
     case "goal.updated":
-      return nb({ goals: upsert(b.goals, d, byId) });
+      return nb({ goals: upsert(b.goals, keepUsage(d, b.goals), byId) });
+    case "usage.work":
+      return nb(applyUsageWork(b.tasks, b.goals, d));
     case "goal.deleted":
       return nb({ goals: b.goals.filter((g) => g.id !== d.id), goal_events: b.goal_events.filter((e) => e.goal_id !== d.id) });
     case "attachment.created":

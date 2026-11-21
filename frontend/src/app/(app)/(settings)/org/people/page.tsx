@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Avatar } from "@/components/board/icons";
 import { Denied, Section } from "@/components/PageShell";
+import { Card, EmptyState, TabPanel, Tabs, useTab } from "@/components/ui";
 import { api, ApiError, currentOrg, isOrgAdmin } from "@/lib/api";
 import { ago } from "@/lib/board/derive";
 import { useMe } from "@/lib/me";
@@ -23,6 +24,7 @@ export default function PeoplePage() {
   const [invites, setInvites] = useState<Invite[]>([]);
   const [usage, setUsage] = useState<Record<string, UsageRow["usage"]>>({});
   const [error, setError] = useState("");
+  const [tab, setTab] = useTab("org-people", "members", ["members", "invitations", "invite"]);
   const load = useCallback(() => {
     if (!org) return;
     api<{ people: Person[] }>("GET", `/orgs/${org.id}/people`).then((r) => setPeople(r.people));
@@ -46,12 +48,13 @@ export default function PeoplePage() {
     <>
       <h1>People</h1>
       <p className="lead">Everyone in {org.name}, their role and what they can see.</p>
-      <InviteForm orgId={org.id} onSent={load} />
+      <Tabs label="People sections" idBase="op" value={tab} onChange={setTab}
+        tabs={[{ id: "members", label: "Members", count: people.length }, { id: "invitations", label: "Invitations", count: invites.length }, { id: "invite", label: "Invite someone" }]} />
       {error && <div className="banner bad">{error}</div>}
-      <section className="card panel">
-        <h2>Members</h2>
+      <TabPanel id="invite" value={tab} idBase="op"><InviteForm orgId={org.id} onSent={() => { load(); setTab("invitations"); }} /></TabPanel>
+      <TabPanel id="members" value={tab} idBase="op"><Card>
         <div className="scroll-x">
-          <table className="table">
+          <table className="table stack-m">
             <thead><tr><th>Person</th><th>Role</th><th>Workspaces</th><th>Usage this week</th><th /></tr></thead>
             <tbody>
               {people.map((p) => {
@@ -60,7 +63,7 @@ export default function PeoplePage() {
                 return (
                   <tr key={p.id}>
                     <td><div className="row"><Avatar name={p.name} color={p.avatar_color} size={28} /><span>{p.name}<br /><span className="hint">{p.email}</span></span></div></td>
-                    <td>
+                    <td data-l="Role">
                       {p.role === "owner" || p.id === me.user.id ? <span className="pill">{p.role === "owner" ? "Owner" : p.role === "admin" ? "Admin" : "Member"}</span> : (
                         <select className="input" style={{ minHeight: 36, width: "auto" }} value={p.role}
                           onChange={(e) => act(() => api("PATCH", `/orgs/${org.id}/memberships/${p.id}`, { role: e.target.value }))}>
@@ -68,11 +71,11 @@ export default function PeoplePage() {
                         </select>
                       )}
                     </td>
-                    <td>
+                    <td data-l="Workspaces">
                       {p.workspaces.length ? p.workspaces.map((w) => <span key={w.id} className={`pill ${w.role === "admin" ? "ok" : ""}`} style={{ marginRight: 4 }}>{w.name} · {w.role === "admin" ? "Admin" : "Staff"}</span>)
                         : <span className="muted">{p.role === "member" ? "No workspace" : "Every workspace"}</span>}
                     </td>
-                    <td style={{ minWidth: 120 }}>
+                    <td data-l="Usage this week" style={{ minWidth: 120 }}>
                       <div className={`meter ${meterClass(wp)}`}><i style={{ width: `${wp}%` }} /></div>
                       <span className="hint tnum">{Math.round(wp)}% of weekly limit</span>
                     </td>
@@ -90,19 +93,18 @@ export default function PeoplePage() {
             </tbody>
           </table>
         </div>
-      </section>
-      <section className="card panel">
-        <h2>Invitations</h2>
+      </Card></TabPanel>
+      <TabPanel id="invitations" value={tab} idBase="op"><Card>
         {invites.length ? (
           <div className="scroll-x">
-            <table className="table">
+            <table className="table stack-m">
               <thead><tr><th>Email</th><th>Role</th><th>Workspaces</th><th>Sent</th><th /></tr></thead>
               <tbody>
                 {invites.map((i) => (
                   <tr key={i.id}>
-                    <td>{i.email}</td><td>{i.role === "admin" ? "Admin" : "Member"}</td>
-                    <td>{i.workspaces.length ? i.workspaces.map((w) => (w.role === "admin" ? "Admin" : "Staff")).join(", ") : "No workspace"}</td>
-                    <td>{ago(i.created_at)}{i.inviter_name ? ` by ${i.inviter_name}` : ""}</td>
+                    <td>{i.email}</td><td data-l="Role">{i.role === "admin" ? "Admin" : "Member"}</td>
+                    <td data-l="Workspaces">{i.workspaces.length ? i.workspaces.map((w) => (w.role === "admin" ? "Admin" : "Staff")).join(", ") : "No workspace"}</td>
+                    <td data-l="Sent">{ago(i.created_at)}{i.inviter_name ? ` by ${i.inviter_name}` : ""}</td>
                     <td><div className="row" style={{ justifyContent: "flex-end" }}>
                       <button className="btn btn-sm btn-danger" onClick={() => act(() => api("DELETE", `/orgs/${org.id}/invites/${i.id}`))}>Revoke</button>
                     </div></td>
@@ -111,9 +113,9 @@ export default function PeoplePage() {
               </tbody>
             </table>
           </div>
-        ) : <p className="hint">No open invitations.</p>}
+        ) : <EmptyState icon="✉" action={<button className="btn" onClick={() => setTab("invite")}>Invite someone</button>}>No open invitations.</EmptyState>}
         <span className="hint">Invitations expire after 7 days.</span>
-      </section>
+      </Card></TabPanel>
     </>
   );
 }

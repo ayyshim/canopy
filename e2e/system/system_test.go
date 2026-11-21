@@ -213,3 +213,43 @@ func abs(x int64) int64 {
 	}
 	return x
 }
+
+// Usage is totalled per task and goal on the board, and the totals match the raw events.
+func TestUsageTotalsMatchEvents(t *testing.T) {
+	h := startHub(t)
+	owner, org := h.setupOrg("Acme", "Riley Owner", "owner@acme.test")
+	mc := h.pair(owner, org, "computer", "Riley’s laptop", sandboxKind())
+	mc.start()
+	h.waitOnline(owner, org, mc.id, true)
+	code := filepath.Join(t.TempDir(), "payments-api")
+	writeFile(t, filepath.Join(code, "main.go"), "package main\n")
+	ws := str(m(owner.do("POST", "/api/v1/orgs/"+org+"/workspaces", workspacePayload(mc.id, code), 201)["workspace"])["id"])
+	goal := owner.goal(ws, memberID(owner.board(ws), "Riley"), "Ship the export [tasks:2]")
+	b := owner.waitGoalDone(ws, goal, 60*time.Second)
+
+	var goalCost, goalIn int64
+	for _, g := range list(b["goals"]) {
+		if str(m(g)["id"]) == goal {
+			u := m(m(g)["usage"])
+			goalCost, goalIn = int64(u["cost_micros"].(float64)), int64(u["tokens_in"].(float64))
+		}
+	}
+	var taskCost, taskIn int64
+	for _, x := range list(b["tasks"]) {
+		if tk := m(x); str(tk["goal_id"]) == goal {
+			u := m(tk["usage"])
+			taskCost += int64(u["cost_micros"].(float64))
+			taskIn += int64(u["tokens_in"].(float64))
+		}
+	}
+	var evCost, evIn int64
+	if err := h.db.QueryRow(context.Background(), `SELECT coalesce(sum(cost_micros), 0), coalesce(sum(tokens_in), 0) FROM usage_events WHERE goal_id::text = $1`, goal).Scan(&evCost, &evIn); err != nil {
+		t.Fatal(err)
+	}
+	if evIn == 0 || evCost == 0 {
+		t.Fatalf("no priced usage recorded for the goal: tokens %d, cost %d", evIn, evCost)
+	}
+	if goalIn != evIn || goalCost != evCost || taskIn != evIn || taskCost != evCost {
+		t.Errorf("board vs events: goal %d/%d, tasks %d/%d, events %d/%d", goalIn, goalCost, taskIn, taskCost, evIn, evCost)
+	}
+}

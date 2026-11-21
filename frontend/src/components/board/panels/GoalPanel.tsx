@@ -15,6 +15,9 @@ import { RunsOn, SignalBox, TaskRow, goalLabel } from "./bits";
 import { Attachments } from "./Attachments";
 import { DraftPanel } from "./DraftPanel";
 import { PanelBody, PanelFoot, PanelHead } from "./Panel";
+import { Tabs, TabPanel, useTab, EmptyState } from "../../ui";
+import { UsageBadge } from "../../ui";
+import { UsageTab } from "./UsageTab";
 import { OutputThumb } from "../OutputThumb";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -40,6 +43,8 @@ function GivenGoalPanel({ g }: { g: GoalView }) {
   const { me } = useBoardCtx();
   const ui = useUI();
   const [busy, setBusy] = useState("");
+  const ids = ["overview", "tasks", "outputs", "activity", "usage"];
+  const [tab, setTab] = useTab("goal", "overview", ids);
   const now = useNow(30000);
   const ts = goalTasks(b, g.id);
   const work = ts.filter((t) => t.kind !== "plan");
@@ -63,16 +68,24 @@ function GivenGoalPanel({ g }: { g: GoalView }) {
 
   return (
     <>
-      <PanelHead>
+      <PanelHead tabs={<Tabs label="Goal sections" idBase="goal" value={tab} onChange={setTab} tabs={[
+        { id: "overview", label: "Overview", count: sigs.length || undefined },
+        { id: "tasks", label: "Tasks", count: work.length },
+        { id: "outputs", label: "Outputs", count: outs.length },
+        { id: "activity", label: "Activity" },
+        { id: "usage", label: "Usage" },
+      ]} />}>
         <div className="row" style={{ alignItems: "flex-start" }}>
           <span className="gdot" style={{ background: g.color, width: 14, height: 14, marginTop: 4 }} />
           <div style={{ minWidth: 0 }}><span className="tag">Goal</span><h2>{g.title}</h2></div>
         </div>
       </PanelHead>
       <PanelBody>
+        <TabPanel id="overview" value={tab} idBase="goal"><div className="stack">
         <div className="row wrap">
           <span className={`pill ${g.status === "done" ? "ok" : g.status === "ready" ? "warn" : g.status === "planning" ? "" : "info"}`}>{goalLabel(b, g)}</span>
           <span className="hint">Given by {personName(b, g.created_by)} at {clock(g.created_at)}</span>
+          <span className="spacer" /><UsageBadge usage={g.usage} />
         </div>
         <div className="box" style={{ borderColor: g.color + "55", background: g.color + "14" }}>
           <div className="row" style={{ fontSize: 12, color: "var(--muted)" }}>
@@ -160,6 +173,8 @@ function GivenGoalPanel({ g }: { g: GoalView }) {
         {g.done_when && <div className="sb-sec"><span className="lbl">Done when</span><span style={{ fontSize: 13.5 }}>{g.done_when}</span></div>}
         <Attachments goalId={g.id} />
         {sigs.length > 0 && <div className="sb-sec"><span className="lbl">Waiting on you ({sigs.length})</span>{sigs.map((s) => <SignalBox key={s.id} s={s} />)}</div>}
+        </div></TabPanel>
+        <TabPanel id="tasks" value={tab} idBase="goal"><div className="stack">
         <div className="sb-sec">
           <span className="lbl">Tasks by member</span>
           {ts.length ? byMember.map((mid) => {
@@ -172,8 +187,10 @@ function GivenGoalPanel({ g }: { g: GoalView }) {
                 {ts.filter((t) => (t.member_id ?? "") === mid).map((t) => <TaskRow key={t.id} t={t} />)}
               </div>
             );
-          }) : <p className="hint">{m?.name ?? "The manager"} is reading the goal.</p>}
+          }) : <EmptyState icon="☐">{m?.name ?? "The manager"} is reading the goal. Tasks show up here once there is a plan.</EmptyState>}
         </div>
+        </div></TabPanel>
+        <TabPanel id="outputs" value={tab} idBase="goal"><div className="stack">
         {plan && (
           <div className="sb-sec">
             <span className="lbl">Plan</span>
@@ -182,7 +199,7 @@ function GivenGoalPanel({ g }: { g: GoalView }) {
           </div>
         )}
         <div className="sb-sec">
-          <span className="lbl">Outputs</span>
+          {outs.length > 0 && <span className="lbl">Outputs</span>}
           {outs.length ? (
             <div className="thumbs">
               {outs.map((o) => (
@@ -190,14 +207,17 @@ function GivenGoalPanel({ g }: { g: GoalView }) {
                   onClick={() => ui.openViewer(o.id)} title={o.title}><OutputThumb o={o} /></button>
               ))}
             </div>
-          ) : <p className="hint">Nothing yet.</p>}
+          ) : <EmptyState icon="▢">No outputs yet. Files the agents make show up here.</EmptyState>}
         </div>
-        <div className="sb-sec">
-          <span className="lbl">Timeline</span>
-          <ul className="timeline">
-            {events.map((e, i) => <li key={i}><span className="mono hint" style={{ fontSize: 11 }}>{clock(e.at)}</span> {e.summary}</li>)}
-          </ul>
-        </div>
+        </div></TabPanel>
+        <TabPanel id="activity" value={tab} idBase="goal">
+          {events.length ? (
+            <ul className="timeline">
+              {events.map((e, i) => <li key={i}><span className="mono hint" style={{ fontSize: 11 }}>{clock(e.at)}</span> {e.summary}</li>)}
+            </ul>
+          ) : <EmptyState icon="◷">Nothing has happened yet.</EmptyState>}
+        </TabPanel>
+        <TabPanel id="usage" value={tab} idBase="goal"><UsageTab usage={g.usage} tasks={ts} /></TabPanel>
       </PanelBody>
       <PanelFoot>
         <button className="btn btn-sm" onClick={() => ui.openDialog({ kind: "task", goalId: g.id })}>Add a task</button>
