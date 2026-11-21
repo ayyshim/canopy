@@ -92,11 +92,14 @@ func (q *Queries) AddAccountTokens(ctx context.Context, arg AddAccountTokensPara
 }
 
 const addUsageHourly = `-- name: AddUsageHourly :exec
-INSERT INTO usage_hourly (org_id, hour, user_id, member_id, workspace_id, model, tokens_in, tokens_out, calls)
-VALUES ($1, date_trunc('hour', $8::timestamptz), $2, $3, $4, $5, $6, $7, 1)
+INSERT INTO usage_hourly (org_id, hour, user_id, member_id, workspace_id, model, tokens_in, tokens_out, calls, cache_read, cache_write, cost_micros)
+VALUES ($1, date_trunc('hour', $11::timestamptz), $2, $3, $4, $5, $6, $7, 1, $8, $9, $10)
 ON CONFLICT (org_id, hour, user_id, member_id, workspace_id, model)
 DO UPDATE SET tokens_in = usage_hourly.tokens_in + excluded.tokens_in,
               tokens_out = usage_hourly.tokens_out + excluded.tokens_out,
+              cache_read = usage_hourly.cache_read + excluded.cache_read,
+              cache_write = usage_hourly.cache_write + excluded.cache_write,
+              cost_micros = usage_hourly.cost_micros + excluded.cost_micros,
               calls = usage_hourly.calls + 1
 `
 
@@ -108,6 +111,9 @@ type AddUsageHourlyParams struct {
 	Model       string
 	TokensIn    int64
 	TokensOut   int64
+	CacheRead   int64
+	CacheWrite  int64
+	CostMicros  int64
 	At          time.Time
 }
 
@@ -120,7 +126,47 @@ func (q *Queries) AddUsageHourly(ctx context.Context, arg AddUsageHourlyParams) 
 		arg.Model,
 		arg.TokensIn,
 		arg.TokensOut,
+		arg.CacheRead,
+		arg.CacheWrite,
+		arg.CostMicros,
 		arg.At,
+	)
+	return err
+}
+
+const addUsageWork = `-- name: AddUsageWork :exec
+INSERT INTO usage_work (goal_id, task_id, model, tokens_in, tokens_out, cache_read, cache_write, calls, cost_micros)
+VALUES ($1, $2, $3, $4, $5, $6, $7, 1, $8)
+ON CONFLICT (goal_id, task_id, model)
+DO UPDATE SET tokens_in = usage_work.tokens_in + excluded.tokens_in,
+              tokens_out = usage_work.tokens_out + excluded.tokens_out,
+              cache_read = usage_work.cache_read + excluded.cache_read,
+              cache_write = usage_work.cache_write + excluded.cache_write,
+              cost_micros = usage_work.cost_micros + excluded.cost_micros,
+              calls = usage_work.calls + 1
+`
+
+type AddUsageWorkParams struct {
+	GoalID     uuid.UUID
+	TaskID     uuid.UUID
+	Model      string
+	TokensIn   int64
+	TokensOut  int64
+	CacheRead  int64
+	CacheWrite int64
+	CostMicros int64
+}
+
+func (q *Queries) AddUsageWork(ctx context.Context, arg AddUsageWorkParams) error {
+	_, err := q.db.Exec(ctx, addUsageWork,
+		arg.GoalID,
+		arg.TaskID,
+		arg.Model,
+		arg.TokensIn,
+		arg.TokensOut,
+		arg.CacheRead,
+		arg.CacheWrite,
+		arg.CostMicros,
 	)
 	return err
 }
@@ -272,9 +318,10 @@ func (q *Queries) HubUsageRows(ctx context.Context, hour time.Time) ([]HubUsageR
 }
 
 const insertUsageEvent = `-- name: InsertUsageEvent :one
-INSERT INTO usage_events (org_id, workspace_id, member_id, attributed_user_id, session_id, cli, model, tokens_in, tokens_out)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, org_id, workspace_id, member_id, attributed_user_id, session_id, cli, model, tokens_in, tokens_out, at
+INSERT INTO usage_events (org_id, workspace_id, member_id, attributed_user_id, session_id, cli, model, tokens_in, tokens_out,
+  task_id, goal_id, cache_read, cache_write, cost_micros)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+RETURNING id, org_id, workspace_id, member_id, attributed_user_id, session_id, cli, model, tokens_in, tokens_out, at, task_id, goal_id, cache_read, cache_write, cost_micros
 `
 
 type InsertUsageEventParams struct {
@@ -287,6 +334,11 @@ type InsertUsageEventParams struct {
 	Model            string
 	TokensIn         int64
 	TokensOut        int64
+	TaskID           *uuid.UUID
+	GoalID           *uuid.UUID
+	CacheRead        int64
+	CacheWrite       int64
+	CostMicros       int64
 }
 
 func (q *Queries) InsertUsageEvent(ctx context.Context, arg InsertUsageEventParams) (UsageEvent, error) {
@@ -300,6 +352,11 @@ func (q *Queries) InsertUsageEvent(ctx context.Context, arg InsertUsageEventPara
 		arg.Model,
 		arg.TokensIn,
 		arg.TokensOut,
+		arg.TaskID,
+		arg.GoalID,
+		arg.CacheRead,
+		arg.CacheWrite,
+		arg.CostMicros,
 	)
 	var i UsageEvent
 	err := row.Scan(
@@ -314,8 +371,43 @@ func (q *Queries) InsertUsageEvent(ctx context.Context, arg InsertUsageEventPara
 		&i.TokensIn,
 		&i.TokensOut,
 		&i.At,
+		&i.TaskID,
+		&i.GoalID,
+		&i.CacheRead,
+		&i.CacheWrite,
+		&i.CostMicros,
 	)
 	return i, err
+}
+
+const listModelPrices = `-- name: ListModelPrices :many
+SELECT pattern, input, output, cache_read, cache_write FROM model_prices
+`
+
+func (q *Queries) ListModelPrices(ctx context.Context) ([]ModelPrice, error) {
+	rows, err := q.db.Query(ctx, listModelPrices)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ModelPrice
+	for rows.Next() {
+		var i ModelPrice
+		if err := rows.Scan(
+			&i.Pattern,
+			&i.Input,
+			&i.Output,
+			&i.CacheRead,
+			&i.CacheWrite,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listOrgWorkspacesUsingCLI = `-- name: ListOrgWorkspacesUsingCLI :many
@@ -961,7 +1053,7 @@ func (q *Queries) UpdateAccountState(ctx context.Context, arg UpdateAccountState
 }
 
 const usageRows = `-- name: UsageRows :many
-SELECT org_id, hour, user_id, member_id, workspace_id, model, tokens_in, tokens_out, calls FROM usage_hourly WHERE org_id = $1 AND hour >= $2 AND hour < $3
+SELECT org_id, hour, user_id, member_id, workspace_id, model, tokens_in, tokens_out, calls, cache_read, cache_write, cost_micros FROM usage_hourly WHERE org_id = $1 AND hour >= $2 AND hour < $3
   AND ($4::uuid IS NULL OR workspace_id = $4::uuid)
 `
 
@@ -996,6 +1088,114 @@ func (q *Queries) UsageRows(ctx context.Context, arg UsageRowsParams) ([]UsageHo
 			&i.TokensIn,
 			&i.TokensOut,
 			&i.Calls,
+			&i.CacheRead,
+			&i.CacheWrite,
+			&i.CostMicros,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const usageWorkForGoal = `-- name: UsageWorkForGoal :many
+SELECT goal_id, task_id, model, tokens_in, tokens_out, cache_read, cache_write, calls, cost_micros FROM usage_work WHERE goal_id = $1
+`
+
+// Every row of a goal, so the caller can total by goal or by task.
+func (q *Queries) UsageWorkForGoal(ctx context.Context, goalID uuid.UUID) ([]UsageWork, error) {
+	rows, err := q.db.Query(ctx, usageWorkForGoal, goalID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UsageWork
+	for rows.Next() {
+		var i UsageWork
+		if err := rows.Scan(
+			&i.GoalID,
+			&i.TaskID,
+			&i.Model,
+			&i.TokensIn,
+			&i.TokensOut,
+			&i.CacheRead,
+			&i.CacheWrite,
+			&i.Calls,
+			&i.CostMicros,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const usageWorkForTask = `-- name: UsageWorkForTask :many
+SELECT goal_id, task_id, model, tokens_in, tokens_out, cache_read, cache_write, calls, cost_micros FROM usage_work WHERE task_id = $1
+`
+
+func (q *Queries) UsageWorkForTask(ctx context.Context, taskID uuid.UUID) ([]UsageWork, error) {
+	rows, err := q.db.Query(ctx, usageWorkForTask, taskID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UsageWork
+	for rows.Next() {
+		var i UsageWork
+		if err := rows.Scan(
+			&i.GoalID,
+			&i.TaskID,
+			&i.Model,
+			&i.TokensIn,
+			&i.TokensOut,
+			&i.CacheRead,
+			&i.CacheWrite,
+			&i.Calls,
+			&i.CostMicros,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const usageWorkForWorkspace = `-- name: UsageWorkForWorkspace :many
+SELECT goal_id, task_id, model, tokens_in, tokens_out, cache_read, cache_write, calls, cost_micros FROM usage_work
+WHERE goal_id IN (SELECT g.id FROM goals g WHERE g.workspace_id = $1)
+   OR task_id IN (SELECT t.id FROM tasks t WHERE t.workspace_id = $1)
+`
+
+func (q *Queries) UsageWorkForWorkspace(ctx context.Context, workspaceID uuid.UUID) ([]UsageWork, error) {
+	rows, err := q.db.Query(ctx, usageWorkForWorkspace, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UsageWork
+	for rows.Next() {
+		var i UsageWork
+		if err := rows.Scan(
+			&i.GoalID,
+			&i.TaskID,
+			&i.Model,
+			&i.TokensIn,
+			&i.TokensOut,
+			&i.CacheRead,
+			&i.CacheWrite,
+			&i.Calls,
+			&i.CostMicros,
 		); err != nil {
 			return nil, err
 		}

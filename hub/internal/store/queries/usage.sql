@@ -1,15 +1,45 @@
 -- name: InsertUsageEvent :one
-INSERT INTO usage_events (org_id, workspace_id, member_id, attributed_user_id, session_id, cli, model, tokens_in, tokens_out)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+INSERT INTO usage_events (org_id, workspace_id, member_id, attributed_user_id, session_id, cli, model, tokens_in, tokens_out,
+  task_id, goal_id, cache_read, cache_write, cost_micros)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 RETURNING *;
 
 -- name: AddUsageHourly :exec
-INSERT INTO usage_hourly (org_id, hour, user_id, member_id, workspace_id, model, tokens_in, tokens_out, calls)
-VALUES ($1, date_trunc('hour', sqlc.arg(at)::timestamptz), $2, $3, $4, $5, $6, $7, 1)
+INSERT INTO usage_hourly (org_id, hour, user_id, member_id, workspace_id, model, tokens_in, tokens_out, calls, cache_read, cache_write, cost_micros)
+VALUES ($1, date_trunc('hour', sqlc.arg(at)::timestamptz), $2, $3, $4, $5, $6, $7, 1, $8, $9, $10)
 ON CONFLICT (org_id, hour, user_id, member_id, workspace_id, model)
 DO UPDATE SET tokens_in = usage_hourly.tokens_in + excluded.tokens_in,
               tokens_out = usage_hourly.tokens_out + excluded.tokens_out,
+              cache_read = usage_hourly.cache_read + excluded.cache_read,
+              cache_write = usage_hourly.cache_write + excluded.cache_write,
+              cost_micros = usage_hourly.cost_micros + excluded.cost_micros,
               calls = usage_hourly.calls + 1;
+
+-- name: AddUsageWork :exec
+INSERT INTO usage_work (goal_id, task_id, model, tokens_in, tokens_out, cache_read, cache_write, calls, cost_micros)
+VALUES ($1, $2, $3, $4, $5, $6, $7, 1, $8)
+ON CONFLICT (goal_id, task_id, model)
+DO UPDATE SET tokens_in = usage_work.tokens_in + excluded.tokens_in,
+              tokens_out = usage_work.tokens_out + excluded.tokens_out,
+              cache_read = usage_work.cache_read + excluded.cache_read,
+              cache_write = usage_work.cache_write + excluded.cache_write,
+              cost_micros = usage_work.cost_micros + excluded.cost_micros,
+              calls = usage_work.calls + 1;
+
+-- name: ListModelPrices :many
+SELECT * FROM model_prices;
+
+-- name: UsageWorkForGoal :many
+-- Every row of a goal, so the caller can total by goal or by task.
+SELECT * FROM usage_work WHERE goal_id = $1;
+
+-- name: UsageWorkForWorkspace :many
+SELECT * FROM usage_work
+WHERE goal_id IN (SELECT g.id FROM goals g WHERE g.workspace_id = sqlc.arg(workspace_id))
+   OR task_id IN (SELECT t.id FROM tasks t WHERE t.workspace_id = sqlc.arg(workspace_id));
+
+-- name: UsageWorkForTask :many
+SELECT * FROM usage_work WHERE task_id = $1;
 
 -- name: UserTokensSince :one
 SELECT coalesce(sum(tokens_in + tokens_out), 0)::bigint FROM usage_events
