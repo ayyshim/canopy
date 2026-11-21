@@ -29,7 +29,7 @@
 - Ask a person about brand tone and where it will play.
 
 ## music.theory
-- Name the key, chords and form being analysed. Explain with Roman numerals and plain words.
+- Name the key, chords and form being analyzed. Explain with Roman numerals and plain words.
 - Give a short example to show each point.
 - Separate what is standard practice from your own reading.
 - Cite sources for claims about history or style.
