@@ -64,15 +64,17 @@ type AuthProvider struct {
 }
 
 type AuthSession struct {
-	ID         uuid.UUID
-	UserID     uuid.UUID
-	TokenHash  []byte
-	ExpiresAt  time.Time
-	LastSeenAt time.Time
-	UserAgent  string
-	Ip         string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID                uuid.UUID
+	UserID            uuid.UUID
+	TokenHash         []byte
+	ExpiresAt         time.Time
+	LastSeenAt        time.Time
+	UserAgent         string
+	Ip                string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	TwoFactorAt       *time.Time
+	TwoFactorFailures int32
 }
 
 type ChatMessage struct {
@@ -646,6 +648,9 @@ type User struct {
 	IsHubAdmin    bool
 	Notifications []byte
 	DailySentOn   pgtype.Date
+	TotpSecret    *string
+	TotpEnabledAt *time.Time
+	TotpLastStep  *int64
 }
 
 type UserIdentity struct {
@@ -656,6 +661,14 @@ type UserIdentity struct {
 	Email     string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+type UserRecoveryCode struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	CodeHash  []byte
+	UsedAt    *time.Time
+	CreatedAt time.Time
 }
 
 type Workspace struct {

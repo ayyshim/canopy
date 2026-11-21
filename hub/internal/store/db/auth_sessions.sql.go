@@ -15,7 +15,7 @@ import (
 const createSession = `-- name: CreateSession :one
 INSERT INTO auth_sessions (id, user_id, token_hash, expires_at, user_agent, ip)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, user_id, token_hash, expires_at, last_seen_at, user_agent, ip, created_at, updated_at
+RETURNING id, user_id, token_hash, expires_at, last_seen_at, user_agent, ip, created_at, updated_at, two_factor_at, two_factor_failures
 `
 
 type CreateSessionParams struct {
@@ -47,6 +47,8 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (A
 		&i.Ip,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.TwoFactorAt,
+		&i.TwoFactorFailures,
 	)
 	return i, err
 }
@@ -98,7 +100,7 @@ func (q *Queries) ExtendSession(ctx context.Context, arg ExtendSessionParams) er
 }
 
 const getLiveSession = `-- name: GetLiveSession :one
-SELECT id, user_id, token_hash, expires_at, last_seen_at, user_agent, ip, created_at, updated_at FROM auth_sessions WHERE token_hash = $1 AND expires_at > now()
+SELECT id, user_id, token_hash, expires_at, last_seen_at, user_agent, ip, created_at, updated_at, two_factor_at, two_factor_failures FROM auth_sessions WHERE token_hash = $1 AND expires_at > now()
 `
 
 func (q *Queries) GetLiveSession(ctx context.Context, tokenHash []byte) (AuthSession, error) {
@@ -114,6 +116,8 @@ func (q *Queries) GetLiveSession(ctx context.Context, tokenHash []byte) (AuthSes
 		&i.Ip,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.TwoFactorAt,
+		&i.TwoFactorFailures,
 	)
 	return i, err
 }
