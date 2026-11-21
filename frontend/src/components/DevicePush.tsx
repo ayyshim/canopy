@@ -15,18 +15,24 @@ const STATUS: Record<Exclude<State, "loading">, string> = {
   ready: "Push is off for this device.",
 };
 
+async function checkDevice(): Promise<State> {
+  const a = pushAvailability(currentEnv());
+  if (a !== "ready") return a;
+  return (await currentSubscription().catch(() => null)) ? "on" : "off";
+}
+
 /** “This device”: turn push on or off for this browser and send a test. */
 export function DevicePush() {
   const [state, setState] = useState<State>("loading");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
-  const refresh = useCallback(async () => {
-    const a = pushAvailability(currentEnv());
-    if (a !== "ready") return setState(a);
-    setState((await currentSubscription().catch(() => null)) ? "on" : "off");
+  const refresh = useCallback(async () => setState(await checkDevice()), []);
+  useEffect(() => {
+    let live = true;
+    checkDevice().then((s) => live && setState(s));
+    return () => { live = false; };
   }, []);
-  useEffect(() => { void refresh(); }, [refresh]);
 
   async function run(fn: () => Promise<string | void>) {
     setBusy(true);

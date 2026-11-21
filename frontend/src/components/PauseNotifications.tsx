@@ -15,7 +15,7 @@ export function usePausedLabel(): string {
 
 /** Choices to pause push notifications, or resume them. */
 export function PauseNotifications({ onDone }: { onDone?: () => void }) {
-  const { me, setMe } = useMe();
+  const { setMe } = useMe();
   const [error, setError] = useState("");
   const label = usePausedLabel();
 
