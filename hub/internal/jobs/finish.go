@@ -77,5 +77,3 @@ func RunFinished(ctx context.Context, t *core.Tx, g db.Goal, now time.Time) (Out
 	out.Job, err = t.Q.UpdateJob(ctx, jp)
 	return out, err
 }
-
-func ptr[T any](v T) *T { return &v }

@@ -15,7 +15,7 @@ var (
 )
 
 // DiscordKinds are the events a workspace can send to Discord.
-var DiscordKinds = []string{"questions", "progress", "goal_ready", "errors"}
+var DiscordKinds = []string{"questions", "progress", "goal_ready", "errors", "jobs"}
 
 // ErrBadWebhook is returned for anything that isn't a Discord webhook URL.
 var ErrBadWebhook = errors.New("not a Discord webhook URL")

@@ -136,8 +136,8 @@ func MemoryText(ctx context.Context, q *db.Queries, job db.Job) (string, error) 
 	return b.String(), nil
 }
 
-// RunText is what job_run_read(n) shows for one earlier run.
-func RunText(ctx context.Context, q *db.Queries, job db.Job, number int32, outputs []string) (string, error) {
+// RunReadText is what job_run_read(n) shows for one earlier run.
+func RunReadText(ctx context.Context, q *db.Queries, job db.Job, number int32, outputs []string) (string, error) {
 	runs, err := q.LastJobRuns(ctx, db.LastJobRunsParams{JobID: job.ID, Limit: 100000})
 	if err != nil {
 		return "", err

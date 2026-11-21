@@ -804,7 +804,7 @@ func (o *Orch) toolJobRunRead(ctx context.Context, tc *toolCtx) error {
 			}
 		}
 	}
-	text, err := jobs.RunText(ctx, o.Store.Queries, job, in.N, names)
+	text, err := jobs.RunReadText(ctx, o.Store.Queries, job, in.N, names)
 	if err != nil {
 		return toolError(err.Error())
 	}

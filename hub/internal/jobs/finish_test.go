@@ -52,14 +52,14 @@ func testStore(t *testing.T) *store.Store {
 	return s
 }
 
-type fixture struct {
+type finFixture struct {
 	s    *store.Store
 	job  db.Job
 	note uuid.UUID
 	n    int32
 }
 
-func newFixture(t *testing.T, kind string) *fixture {
+func newFinFixture(t *testing.T, kind string) *finFixture {
 	t.Helper()
 	s := testStore(t)
 	ctx := context.Background()
@@ -77,7 +77,7 @@ func newFixture(t *testing.T, kind string) *fixture {
 	exec(`INSERT INTO organizations (id, name, slug, size, owner_user_id, default_session_limit, default_weekly_limit) VALUES ($1, 'O', 'o', 'just_me', $2, 1, 1)`, ids["org"], ids["user"])
 	exec(`INSERT INTO workspaces (id, org_id, name) VALUES ($1, $2, 'W')`, ids["ws"], ids["org"])
 	exec(`INSERT INTO jobs (id, workspace_id, title, kind, cron, brief) VALUES ($1, $2, 'J', $3, '0 9 * * *', 'Write an episode')`, ids["job"], ids["ws"], kind)
-	f := &fixture{s: s, note: ids["note"]}
+	f := &finFixture{s: s, note: ids["note"]}
 	if kind == "continuous" {
 		exec(`INSERT INTO notes (id, workspace_id, kind, title, body, number, job_id) VALUES ($1, $2, 'job_memory', 'Memory', 'old memory', 1, $3)`, ids["note"], ids["ws"], ids["job"])
 		exec(`UPDATE jobs SET memory_note_id = $1 WHERE id = $2`, ids["note"], ids["job"])
@@ -90,7 +90,7 @@ func newFixture(t *testing.T, kind string) *fixture {
 }
 
 // start makes a running run with its goal.
-func (f *fixture) start(t *testing.T, trigger string) (db.JobRun, db.Goal) {
+func (f *finFixture) start(t *testing.T, trigger string) (db.JobRun, db.Goal) {
 	t.Helper()
 	ctx := context.Background()
 	f.n++
@@ -112,13 +112,13 @@ func (f *fixture) start(t *testing.T, trigger string) (db.JobRun, db.Goal) {
 	return run, g
 }
 
-func (f *fixture) report(t *testing.T, run db.JobRun, mem string) error {
+func (f *finFixture) report(t *testing.T, run db.JobRun, mem string) error {
 	t.Helper()
 	_, err := SaveReport(context.Background(), f.s.Queries, f.job, run, Report{Title: "Ep", Summary: "did it", Result: "ok", NewMemory: &mem})
 	return err
 }
 
-func (f *fixture) finish(t *testing.T, g db.Goal) Outcome {
+func (f *finFixture) finish(t *testing.T, g db.Goal) Outcome {
 	t.Helper()
 	var out Outcome
 	err := f.s.Tx(context.Background(), func(q *db.Queries) (err error) {
@@ -131,7 +131,7 @@ func (f *fixture) finish(t *testing.T, g db.Goal) Outcome {
 	return out
 }
 
-func (f *fixture) memory(t *testing.T) string {
+func (f *finFixture) memory(t *testing.T) string {
 	t.Helper()
 	m, err := Memory(context.Background(), f.s.Queries, f.job)
 	if err != nil {
@@ -141,7 +141,7 @@ func (f *fixture) memory(t *testing.T) string {
 }
 
 func TestMemorySavedOnSuccess(t *testing.T) {
-	f := newFixture(t, "continuous")
+	f := newFinFixture(t, "continuous")
 	run, g := f.start(t, "schedule")
 	if err := f.report(t, run, "new memory"); err != nil {
 		t.Fatal(err)
@@ -163,7 +163,7 @@ func TestMemorySavedOnSuccess(t *testing.T) {
 }
 
 func TestFailedRunKeepsMemory(t *testing.T) {
-	f := newFixture(t, "continuous")
+	f := newFinFixture(t, "continuous")
 	run, g := f.start(t, "schedule")
 	// Memory is held, but the run never reports a result.
 	if _, err := f.s.UpdateJobRun(context.Background(), db.UpdateJobRunParams{ID: run.ID, SetPending: true, PendingMemory: ptr("lost")}); err != nil {
@@ -176,7 +176,7 @@ func TestFailedRunKeepsMemory(t *testing.T) {
 }
 
 func TestTestRunNeverWritesMemory(t *testing.T) {
-	f := newFixture(t, "continuous")
+	f := newFinFixture(t, "continuous")
 	run, g := f.start(t, "test")
 	if err := f.report(t, run, "from a test"); err != nil {
 		t.Fatal(err)
@@ -188,7 +188,7 @@ func TestTestRunNeverWritesMemory(t *testing.T) {
 }
 
 func TestMemoryTooLongRefused(t *testing.T) {
-	f := newFixture(t, "continuous")
+	f := newFinFixture(t, "continuous")
 	run, _ := f.start(t, "schedule")
 	if err := f.report(t, run, strings.Repeat("é", MaxMemoryChars)); err != nil {
 		t.Fatalf("exactly the cap should pass: %v", err)
@@ -200,7 +200,7 @@ func TestMemoryTooLongRefused(t *testing.T) {
 }
 
 func TestSingleJobRefusesMemory(t *testing.T) {
-	f := newFixture(t, "single")
+	f := newFinFixture(t, "single")
 	run, _ := f.start(t, "schedule")
 	if err := f.report(t, run, "x"); err == nil {
 		t.Fatal("single job accepted memory")
@@ -211,7 +211,7 @@ func TestSingleJobRefusesMemory(t *testing.T) {
 }
 
 func TestAutoPauseAfterThreeFailures(t *testing.T) {
-	f := newFixture(t, "single")
+	f := newFinFixture(t, "single")
 	for i := 1; i <= 3; i++ {
 		_, g := f.start(t, "schedule")
 		out := f.finish(t, g)
@@ -231,7 +231,7 @@ func TestAutoPauseAfterThreeFailures(t *testing.T) {
 }
 
 func TestSuccessResetsFailures(t *testing.T) {
-	f := newFixture(t, "single")
+	f := newFinFixture(t, "single")
 	for i := 0; i < 2; i++ {
 		_, g := f.start(t, "schedule")
 		f.finish(t, g)
