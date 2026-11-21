@@ -104,7 +104,7 @@ func (q *Queries) DeleteDraftGoal(ctx context.Context, id uuid.UUID) (int64, err
 }
 
 const getGoal = `-- name: GetGoal :one
-SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description FROM goals WHERE id = $1
+SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at FROM goals WHERE id = $1
 `
 
 func (q *Queries) GetGoal(ctx context.Context, id uuid.UUID) (Goal, error) {
@@ -278,7 +278,7 @@ func (q *Queries) ListGoalRepos(ctx context.Context, goalID uuid.UUID) ([]GoalRe
 }
 
 const listGoals = `-- name: ListGoals :many
-SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description FROM goals WHERE workspace_id = $1 ORDER BY created_at, id
+SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at FROM goals WHERE workspace_id = $1 ORDER BY created_at, id
 `
 
 func (q *Queries) ListGoals(ctx context.Context, workspaceID uuid.UUID) ([]Goal, error) {
@@ -327,7 +327,7 @@ func (q *Queries) ListGoals(ctx context.Context, workspaceID uuid.UUID) ([]Goal,
 }
 
 const listGoalsMovedSince = `-- name: ListGoalsMovedSince :many
-SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description FROM goals WHERE workspace_id = $1 AND updated_at >= $2 ORDER BY updated_at DESC LIMIT 20
+SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at FROM goals WHERE workspace_id = $1 AND updated_at >= $2 ORDER BY updated_at DESC LIMIT 20
 `
 
 type ListGoalsMovedSinceParams struct {

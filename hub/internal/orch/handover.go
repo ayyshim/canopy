@@ -49,6 +49,9 @@ func (o *Orch) readBrief(ctx context.Context, t *core.Tx, outID uuid.UUID) strin
 			latest = v
 		}
 	}
+	if o.Blobs == nil {
+		return ""
+	}
 	rc, _, err := o.Blobs.Get(ctx, latest.BlobKey)
 	if err != nil {
 		return ""

@@ -53,11 +53,10 @@ func (o *Orch) finishGoals(ctx context.Context, t *core.Tx, st *wsState) error {
 			continue
 		}
 		if g.HandoverApprovedAt == nil {
-			if briefOpen || g.ManagerID == nil {
-				continue
-			}
-			if err := o.addHandoverTask(ctx, t, st, g); err != nil {
-				return err
+			if !briefOpen && g.ManagerID != nil {
+				if err := o.addHandoverTask(ctx, t, st, g); err != nil {
+					return err
+				}
 			}
 			if g.Status == "ready" {
 				if err := o.backToActive(ctx, t, st, g); err != nil {
