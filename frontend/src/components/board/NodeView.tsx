@@ -78,9 +78,9 @@ export function NodeView({ n }: { n: Node }) {
       const mName = m && "name" in m ? m.name : "Manager";
       const mColor = m && "avatar_color" in m ? m.avatar_color : "var(--line)";
       return (
-        <div className={`node goal${goalClosed(g) ? " done" : g.status === "ready" ? " ready" : g.status === "draft" ? " draft" : ""}${sel ? " sel" : ""}${focusGoal && !sel ? " dim" : ""}${glow}`}
+        <div className={`node goal${goalClosed(g) ? " done" : g.status === "ready" ? " ready" : g.status === "draft" ? " draft" : ""}${g.status === "stopped" ? " stopped" : ""}${sel ? " sel" : ""}${focusGoal && !sel ? " dim" : ""}${glow}`}
           style={style} role="button" tabIndex={0} onClick={open} onKeyDown={keyOpen(open)}>
-          <span className="gt" title={g.title}><span className="gdot" style={{ background: g.color }} /><span><IdTag kind="goal" number={g.number} />{g.title}</span></span>
+          <span className="gt" title={g.title}><span className="gdot" style={{ background: g.color }} /><span><IdTag kind="goal" number={g.number} />{g.title}{g.job_run_id && <span className="pill goal jobtag" title="A run of a scheduled job">Job</span>}</span></span>
           <span className="gb">
             <span className="gm" title={mName}><i style={{ background: mColor }}>{mName.slice(0, 1)}</i><span>{mName}</span></span>
             <span className="tr"><i style={{ width: `${goalProgress(b, g)}%`, background: g.color }} /></span>

@@ -242,6 +242,7 @@ export function TopBar() {
         {shown.map((p) => <span key={p.id} className="pav on" style={{ background: p.avatar_color }} title={p.name + (p.id === me ? " (you)" : "")}>{initials(p.name)}</span>)}
         {presence.length > shown.length && <span className="pav more">+{presence.length - shown.length}</span>}
       </button>
+      <Link className="btn" href={`/w/${wsId}/jobs`} aria-label="Jobs"><span aria-hidden="true">⏱</span><span className="hide-s">Jobs</span></Link>
       <button className="btn out-btn" onClick={() => ui.setTray(!ui.tray)} aria-haspopup="dialog" aria-expanded={ui.tray}><GridIcon /><span className="hide-s">Outputs</span>{newOutputs > 0 && <span className="bdg">{newOutputs}</span>}</button>
       <button className="btn hide-xs" onClick={() => { const c = camera.get(); ui.startSticky(centerSpot(c, c.w, c.h)); }} title="Add a sticky note to the board" aria-label="Add a sticky note"><span aria-hidden="true">+</span><span className="hide-s">Sticky note</span></button>
       <button className="btn btn-primary" onClick={() => ui.openDialog({ kind: "goal" })}><span aria-hidden="true">+</span><span className="hide-s">Give a goal</span></button>
