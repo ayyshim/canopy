@@ -84,6 +84,7 @@ function Manager() {
   const filtered = isFiltered(fm);
 
   const close = () => ui.setTray(false);
+  const keyRef = useRef<(e: KeyboardEvent) => void>(() => {});
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (useUI.getState().viewer) return;
@@ -95,9 +96,14 @@ function Manager() {
         else close();
       } else if (e.key === "/" && !typing) { e.preventDefault(); searchRef.current?.focus(); }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    keyRef.current = onKey;
   });
+  // Registered once: a re-register would miss the key when an earlier handler re-renders mid-event.
+  useEffect(() => {
+    const fn = (e: KeyboardEvent) => keyRef.current(e);
+    window.addEventListener("keydown", fn);
+    return () => window.removeEventListener("keydown", fn);
+  }, []);
 
   const showOnTree = (r: Row) => { close(); if (r.taskId) { ui.centerOn(r.taskId); ui.setGlow(r.taskId); } };
   const reset = (p: Partial<Fm> = {}) => { setFm((f) => ({ ...clearFilters(f), ...p })); setSel(null); setNav(false); };
