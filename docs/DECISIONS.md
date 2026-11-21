@@ -542,3 +542,12 @@ them; the actor is the hub admin, or empty when the command did it.
 
 **Trade-off.** Changing the authenticator needs a working code, so someone who lost their device uses a recovery
 code to sign in and then changes it, or asks a hub admin for a reset.
+
+## "Good at" guides in the staff prompt
+
+Each skill key has a short working guide, kept as markdown in `hub/internal/domain/guides/<category key>.md`
+(`general.md` holds the five base roles). A guide is a `## <skill key>` line followed by a few plain bullets.
+The files are embedded in the hub, read by `domain.SkillGuide(key)`, and are not part of the catalog JSON the
+web app gets. `systemPrompt` adds "How you work as <base label>:" and, when the skill is a subcategory,
+"How you work as <skill label>:", before "Instructions from your admins", so admin instructions come last.
+`TestGuidesMatchCatalog` fails and lists every catalog key that has no guide, or any guide with an unknown key.
