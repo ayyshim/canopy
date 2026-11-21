@@ -41,8 +41,8 @@ export function NodeView({ n }: { n: Node }) {
       return (
         <div className={`node team${ui.side?.type === "ws" ? " sel" : ""}${glow}`} style={style} role="button" tabIndex={0} onClick={open} onKeyDown={keyOpen(open)}
           aria-label={`Workspace ${b.workspace.name}`}>
-          <h2>{b.workspace.name}</h2>
-          <p>{b.workspace.about}</p>
+          <h2 title={b.workspace.name}>{b.workspace.name}</h2>
+          <p title={b.workspace.about}>{b.workspace.about}</p>
           <div className="bar">
             <span className="tr"><i style={{ width: `${(done / all) * 100}%` }} /></span>
             <span>{mg} manager{mg === 1 ? "" : "s"}, {b.members.length - mg} staff, {b.goals.length} goal{b.goals.length === 1 ? "" : "s"}</span>
@@ -79,9 +79,9 @@ export function NodeView({ n }: { n: Node }) {
       return (
         <div className={`node goal${g.status === "done" ? " done" : g.status === "ready" ? " ready" : g.status === "draft" ? " draft" : ""}${sel ? " sel" : ""}${focusGoal && !sel ? " dim" : ""}${glow}`}
           style={style} role="button" tabIndex={0} onClick={open} onKeyDown={keyOpen(open)}>
-          <span className="gt"><span className="gdot" style={{ background: g.color }} /><span><IdTag kind="goal" number={g.number} />{g.title}</span></span>
+          <span className="gt" title={g.title}><span className="gdot" style={{ background: g.color }} /><span><IdTag kind="goal" number={g.number} />{g.title}</span></span>
           <span className="gb">
-            <span className="gm"><i style={{ background: mColor }}>{mName.slice(0, 1)}</i>{mName}</span>
+            <span className="gm" title={mName}><i style={{ background: mColor }}>{mName.slice(0, 1)}</i><span>{mName}</span></span>
             <span className="tr"><i style={{ width: `${goalProgress(b, g)}%`, background: g.color }} /></span>
             <span>{status}</span>
             <UsageBadge usage={g.usage} compact />
@@ -110,7 +110,7 @@ export function NodeView({ n }: { n: Node }) {
             return (
               <span className="dr" key={d.id}>
                 <span className={`dot ${r?.online ? "done" : "need"}`} />
-                <code>{d.name}</code>
+                <code title={d.name}>{d.name}</code>
                 <span className="muted">{firstName(b, d.owner_user_id)}</span>
                 <span className="spacer" />
                 {d.is_repo ? <span className="pill">git</span> : q ? <span className="pill info">{q} waiting</span> : r?.online ? <span className="pill ok">synced</span> : <span className="pill warn">owner offline</span>}
@@ -128,7 +128,7 @@ export function NodeView({ n }: { n: Node }) {
         return (
           <div className="node acct" style={style}>
             <span className="ah">Usage limit</span>
-            <b>{signInLabel(b, p.runner_id)} is paused</b>
+            <b title={signInLabel(b, p.runner_id)}>{signInLabel(b, p.runner_id)} is paused</b>
             <span className="ab">Goals on {p.runner_name} wait until {clock(p.resets_at)}. Everyone else’s keep going.</span>
             {canAct && (
               <span className="bs">
@@ -143,7 +143,7 @@ export function NodeView({ n }: { n: Node }) {
       return (
         <div className="node acct" style={style}>
           <span className="ah">{full ? "Cap reached" : "Nearing the daily cap"}</span>
-          <b>{p.runner_name}, {Math.round((p.used / Math.max(1, p.cap)) * 100)}% used</b>
+          <b title={p.runner_name}>{p.runner_name}, {Math.round((p.used / Math.max(1, p.cap)) * 100)}% used</b>
           <span className="ab">{full ? "Goals on it are paused. Raise the cap to continue." : "Goals on it pause when it reaches the cap."}</span>
           {canAct && (
             <span className="bs">
@@ -180,7 +180,7 @@ export function NodeView({ n }: { n: Node }) {
           onClick={open} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), open(e))} aria-label={`${m.name}, ${s.t}`}>
           <Avatar name={m.name} color={m.avatar_color} />
           <span style={{ minWidth: 0 }}>
-            <span className="nm">{m.name}{m.kind === "manager" ? <span className="tag">MANAGER</span> : !m.reports_to ? <span className="tag ind">INDEPENDENT</span> : null}{m.isolated && <span className="tag ind" title="Isolated: only its creator can chat, managers can’t borrow it" aria-label="Isolated">🔒</span>}</span>
+            <span className="nm" title={m.name}><span className="nmt">{m.name}</span>{m.kind === "manager" ? <span className="tag">MANAGER</span> : !m.reports_to ? <span className="tag ind">INDEPENDENT</span> : null}{m.isolated && <span className="tag ind" title="Isolated: only its creator can chat, managers can’t borrow it" aria-label="Isolated">🔒</span>}</span>
             <span className="md" title={skillNames(b.member_skills?.[m.id], b.skills ?? []).join(", ") || undefined}>{m.kind === "staff" && m.skill ? skillLabel(m.skill) + ", " : ""}{m.model}{(b.member_skills?.[m.id]?.length ?? 0) > 0 ? ` · ${b.member_skills[m.id].length} skill${b.member_skills[m.id].length === 1 ? "" : "s"}` : ""}</span>
             <span className={`stat${warn ? " warn" : s.k === "error" ? " err" : ""}`}><span className={`dot ${s.k}`} />{s.t}</span>
           </span>
@@ -247,7 +247,7 @@ export function NodeView({ n }: { n: Node }) {
       return (
         <div className={`node task ${t.status}${red ? " blocked" : ""}${dimFor(t.id)}${sel ? " sel" : ""}${glow}`} style={{ ...style, ["--gc" as string]: g?.color ?? "transparent" }}
           role="button" tabIndex={0} onClick={openTask} onKeyDown={keyOpen(openTask)} aria-label={`Task ${t.title}`}>
-          <span className="tt"><IdTag kind="task" number={t.number} />{t.title}</span><span className="ft">{t.kind === "handover" && <span className="tag">Handover</span>}{ft}<UsageBadge usage={t.usage} compact /></span>
+          <span className="tt" title={t.title}><IdTag kind="task" number={t.number} />{t.title}</span><span className="ft">{t.kind === "handover" && <span className="tag">Handover</span>}{ft}<UsageBadge usage={t.usage} compact /></span>
           {q && <span className="pin" aria-label="Open question">?</span>}
         </div>
       );
