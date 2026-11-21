@@ -380,3 +380,22 @@ lasts across the pages of one preview and is lost when the viewer reloads the fr
 
 **Trade-off.** Preview pages can call any https site (`connect-src https:`), so they can send what they know
 elsewhere. They know nothing of the hub, but people should still only preview work from their own team.
+
+## Notification outbox and workspace Discord
+
+Notifications are rows in `notification_outbox`, written by `notify.Enqueue` in the same transaction as the
+change that causes them, so a rolled-back change sends nothing. Signals that need a person queue a row where
+`signal.opened` is emitted; plans, finished tasks, done goals and staff drafts queue their own. Kinds reuse the
+account rows (`questions`, `progress`, `goal_ready`, `errors`); `progress` is new and off by default. Each
+row stores its recipients, picked with the same authz check as email, so a push can never reach someone who
+can't see the work.
+
+A `Dispatcher` sends each row once per channel (Discord, push). It claims rows with `FOR UPDATE SKIP LOCKED`,
+retries up to 5 times with doubling backoff, keeps the last error and deletes rows after 30 days. Channels
+must keep webhook URLs out of the errors they return. Push in `Pref` follows the desktop choice until set.
+
+Each workspace has one Discord webhook. Only workspace and org admins can read or change it (others get 404),
+the API only returns a masked URL, and only `discord.com`, `ptb.`, `canary.` and `discordapp.com` webhook URLs
+are accepted, so the hub can't be aimed at other hosts. The webhook is stored in the database in plain text
+because the hub must send with it; it is not a provider key. Git problems have no signal of their own yet; only
+agent errors reach the `errors` kind.
