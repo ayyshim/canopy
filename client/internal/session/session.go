@@ -370,6 +370,8 @@ func (s *Session) launch(resume string) error {
 	if s.m.Sandbox == "none" && !spec.UseAPIKey {
 		cmd.Env = withoutVar(cmd.Env, "ANTHROPIC_API_KEY")
 	}
+	// An inherited value would switch Artifact off.
+	cmd.Env = withoutVar(cmd.Env, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
