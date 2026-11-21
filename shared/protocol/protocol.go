@@ -347,6 +347,7 @@ const (
 	ToolSubmitOutput   = "submit_output"
 	ToolCompleteTask   = "complete_task"
 	ToolSubmitPlan     = "submit_plan"
+	ToolAssignTasks    = "assign_tasks"
 	ToolAnswerQuestion = "answer_question"
 	ToolOwnerChange    = "request_owner_change"
 	ToolReadNotes      = "read_notes"

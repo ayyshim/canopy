@@ -45,6 +45,8 @@ func systemPrompt(st *wsState, m db.Member, mounts []protocol.Mount, notes []db.
 	b.WriteString("- write_note(title, body, kind): record a decision or something the next person should know.\n")
 	if m.Kind == "manager" {
 		b.WriteString("- submit_plan(tasks): for plan tasks, your structured plan.\n")
+		b.WriteString("- assign_tasks(tasks): for triage tasks, hand the work to staff. Same task shape as submit_plan.\n")
+		b.WriteString("- Triage tasks are notes or change requests from people. Never do their work yourself: split them into tasks for staff with assign_tasks, then complete_task.\n")
 		b.WriteString("- answer_question(signal_id, answer): when people ask you to decide a staff member's question.\n")
 		b.WriteString("- assign_skill(member, skill, remove): give one of your staff a skill from the workspace skill library.\n")
 		b.WriteString("- propose_staff(name, role, instructions, reason, skills): draft a new staff member for an admin to approve. Do this only when your team truly lacks someone for the work; check your current staff first. Skills: first search the web (WebSearch, WebFetch) for a fitting skill markdown file and pass its text with source_url; if none fits, write a short one yourself. You are told when an admin approves or rejects it; do not repeat a rejected draft.\n")
@@ -132,37 +134,7 @@ func planPrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Note)
 	b.WriteString(attachmentsLine(taskAttachments(st, t)))
 	b.WriteString("\nPlan this goal. Call read_notes first if earlier plans or decisions could help.\n")
 	b.WriteString("Then call submit_plan with tasks. Each task: key (short id), title, skill (developer, reviewer, researcher, designer or writer), steps (3–6 short steps), depends_on (keys), directories it needs ({path, mode: read or read_write}).\n")
-	b.WriteString("\nYour staff:\n")
-	staff := 0
-	for _, s := range st.members {
-		if s.Kind != "staff" {
-			continue
-		}
-		if s.ReportsTo != nil && *s.ReportsTo == m.ID {
-			fmt.Fprintf(&b, "- %s (%s)%s\n", s.Name, deref(s.Skill), skillNames(st, s.ID))
-			staff++
-		}
-	}
-	if staff == 0 {
-		b.WriteString("- none yet\n")
-	}
-	b.WriteString("Independent staff you can borrow:\n")
-	ind := 0
-	for _, s := range st.members {
-		if s.Kind == "staff" && s.ReportsTo == nil && !s.Isolated {
-			fmt.Fprintf(&b, "- %s (%s)%s\n", s.Name, deref(s.Skill), skillNames(st, s.ID))
-			ind++
-		}
-	}
-	if ind == 0 {
-		b.WriteString("- none\n")
-	}
-	if len(st.skills) > 0 {
-		b.WriteString("\nSkill library (give a skill to your staff with assign_skill):\n")
-		for _, sk := range st.skills {
-			fmt.Fprintf(&b, "- %s\n", sk.Name)
-		}
-	}
+	writeTeam(&b, st, m)
 	b.WriteString("\nWorkspace directories:\n")
 	for _, d := range st.dirs {
 		yours := st.grantMode(m.ID, d.ID)
@@ -180,6 +152,90 @@ func planPrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Note)
 	return b.String()
 }
 
+// triagePrompt asks a manager to turn a person's note or change request into tasks for staff.
+func triagePrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Note) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "Triage task: %s\n", t.Title)
+	if t.Description != "" {
+		fmt.Fprintf(&b, "\n%s\n", t.Description)
+	}
+	b.WriteString(attachmentsLine(taskAttachments(st, t)))
+	b.WriteString("\nThis is a change request or note from a person, not work for you to do.\n")
+	fmt.Fprintf(&b, "\nGoal: %s\n", g.Title)
+	if g.Description != "" {
+		fmt.Fprintf(&b, "Description: %s\n", g.Description)
+	}
+	for _, n := range notes {
+		if n.GoalID != nil && *n.GoalID == g.ID && n.Kind == "plan" {
+			fmt.Fprintf(&b, "The plan is in the note “%s” (read_notes).\n", n.Title)
+			break
+		}
+	}
+	b.WriteString("\nTasks on this goal:\n")
+	any := false
+	for _, x := range st.tasks {
+		if x.GoalID == nil || *x.GoalID != g.ID || x.ID == t.ID || x.Kind == "plan" {
+			continue
+		}
+		who := "unassigned"
+		if x.MemberID != nil {
+			if mm, ok := st.member[*x.MemberID]; ok {
+				who = mm.Name
+			}
+		}
+		line := fmt.Sprintf("- %s (%s, %s)", x.Title, x.Status, who)
+		if x.Status == "done" && x.Summary != "" {
+			line += ": " + x.Summary
+		}
+		b.WriteString(line + "\n")
+		any = true
+	}
+	if !any {
+		b.WriteString("- none yet\n")
+	}
+	b.WriteString("\nRead the request, the goal, its plan note and the finished tasks. Then split the request into tasks for your staff and call assign_tasks. ")
+	b.WriteString("Each task: key (short id), title, skill (developer, reviewer, researcher, designer or writer), steps (3–6 short steps), depends_on (keys), directories it needs ({path, mode: read or read_write}).\n")
+	b.WriteString("Do NOT edit code, write files or do the work yourself. Your job is only to hand it to staff.\n")
+	writeTeam(&b, st, m)
+	b.WriteString("\nAfter assign_tasks succeeds, call complete_task with a one-line summary of who got what. If the request needs no work, call complete_task with no_work_reason.\n")
+	return b.String()
+}
+
+// writeTeam lists the manager's staff, borrowable independent staff and the skill library.
+func writeTeam(b *strings.Builder, st *wsState, m db.Member) {
+	b.WriteString("\nYour staff:\n")
+	staff := 0
+	for _, s := range st.members {
+		if s.Kind != "staff" {
+			continue
+		}
+		if s.ReportsTo != nil && *s.ReportsTo == m.ID {
+			fmt.Fprintf(b, "- %s (%s)%s\n", s.Name, deref(s.Skill), skillNames(st, s.ID))
+			staff++
+		}
+	}
+	if staff == 0 {
+		b.WriteString("- none yet\n")
+	}
+	b.WriteString("Independent staff you can borrow:\n")
+	ind := 0
+	for _, s := range st.members {
+		if s.Kind == "staff" && s.ReportsTo == nil && !s.Isolated {
+			fmt.Fprintf(b, "- %s (%s)%s\n", s.Name, deref(s.Skill), skillNames(st, s.ID))
+			ind++
+		}
+	}
+	if ind == 0 {
+		b.WriteString("- none\n")
+	}
+	if len(st.skills) > 0 {
+		b.WriteString("\nSkill library (give a skill to your staff with assign_skill):\n")
+		for _, sk := range st.skills {
+			fmt.Fprintf(b, "- %s\n", sk.Name)
+		}
+	}
+}
+
 // taskPrompt hands a task to a member.
 func taskPrompt(st *wsState, m db.Member, t db.Task, comments []db.Comment, mounts []protocol.Mount) string {
 	var b strings.Builder
@@ -195,6 +251,9 @@ func taskPrompt(st *wsState, m db.Member, t db.Task, comments []db.Comment, moun
 	}
 	if t.Kind == "owner_change" {
 		b.WriteString("\nAnother person asked for this change in a folder its owner controls. The owner approved it.\n")
+	}
+	if t.Kind == "triage" {
+		b.WriteString("\nA person gave you this as a note or request. Do not do the work yourself: analyze it and call assign_tasks to hand it to the right staff, then complete_task. If no work is needed, call complete_task with no_work_reason.\n")
 	}
 	if t.Description != "" {
 		fmt.Fprintf(&b, "\n%s\n", t.Description)

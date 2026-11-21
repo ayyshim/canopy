@@ -302,8 +302,12 @@ func (s *Server) handleCreateTask(w http.ResponseWriter, r *http.Request) error 
 				return err
 			}
 		}
+		kind := "work"
+		if goalID != nil && m.Kind == "manager" {
+			kind = "triage"
+		}
 		var err error
-		task, err = t.Q.CreateTask(ctx, db.CreateTaskParams{ID: newID(), WorkspaceID: wsID, GoalID: goalID, MemberID: &m.ID, Kind: "work",
+		task, err = t.Q.CreateTask(ctx, db.CreateTaskParams{ID: newID(), WorkspaceID: wsID, GoalID: goalID, MemberID: &m.ID, Kind: kind,
 			Title: in.Title, Description: in.Description, Skill: m.Skill, Status: "waiting", DependsOn: in.DependsOn, Steps: stepsJSON,
 			RequiredDirs: []byte("[]"), AttributedUserID: &uid, CreatedBy: &uid})
 		if err != nil {
