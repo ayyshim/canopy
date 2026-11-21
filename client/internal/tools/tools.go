@@ -37,6 +37,8 @@ var Defs = []Def{
 		`{"type":"object","properties":{"directory":{"type":"string"},"title":{"type":"string"},"description":{"type":"string"}},"required":["directory","description"]}`},
 	{protocol.ToolReadNotes, "Read the workspace's notes: plans, decisions, goal summaries and notes people wrote. Pass a query to search.",
 		`{"type":"object","properties":{"query":{"type":"string"}}}`},
+	{protocol.ToolReadItem, "Read one goal, task or note by its ID, such as G-12, T-34 or N-5: title, status, owner, description or steps, summary, note body and outputs.",
+		`{"type":"object","properties":{"ref":{"type":"string","description":"G-12, T-34 or N-5"}},"required":["ref"]}`},
 	{protocol.ToolWriteNote, "Save a note for the workspace: a decision, or something the next person or agent should know.",
 		`{"type":"object","properties":{"title":{"type":"string"},"body":{"type":"string"},"kind":{"type":"string","enum":["note","decision"]}},"required":["title","body"]}`},
 	{protocol.ToolAssignSkill, "Managers: give one of your staff a skill from the workspace skill library (or take it away with remove). Skills are listed in your planning prompt.",

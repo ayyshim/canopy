@@ -299,7 +299,7 @@ func (o *Orch) Resolve(ctx context.Context, signalID uuid.UUID, by *uuid.UUID, r
 				toolReply(protocol.ToolResult{Text: "Approved by " + who + ". Finish the task."})
 				summary = "Approved “" + fmt.Sprint(payload["title"]) + "”"
 			} else {
-				toolReply(protocol.ToolResult{Text: "Changes requested by " + who + ": " + r.Note + "\nMake the changes, save a new version of the same file and call submit_output again."})
+				toolReply(protocol.ToolResult{Text: "Changes requested by " + who + ": " + r.Note + o.ReferencedItems(ctx, ws, by, r.Note) + "\nMake the changes, save a new version of the same file and call submit_output again."})
 				summary = "Asked for changes to “" + fmt.Sprint(payload["title"]) + "”: " + r.Note
 			}
 			if err := resumeSession(); err != nil {
@@ -552,6 +552,7 @@ func (o *Orch) sendTurn(ctx context.Context, wsID uuid.UUID, k sessKey, turn pro
 // SendChat hands a person's chat message to a member. Chat runs on the chatting person's
 // computer; the reply comes back as a chat message and the tokens are the chatter's.
 func (o *Orch) SendChat(ctx context.Context, wsID, memberID, userID uuid.UUID, who, text string) {
+	text += o.referencedFor(ctx, wsID, &userID, text)
 	o.sendTurn(ctx, wsID, personKey(memberID, userID), protocol.Turn{TurnID: newID().String(), Kind: "chat", AttributedUserID: &userID,
 		Text: "Message from " + who + " in Canopy chat:\n\n" + text + "\n\nReply briefly to them."})
 }
@@ -565,6 +566,7 @@ func (o *Orch) SendComment(ctx context.Context, wsID, memberID, taskID, userID u
 	}
 	k := taskKey(task)
 	k.member = memberID
+	text += o.referencedFor(ctx, wsID, &userID, text)
 	o.sendTurn(ctx, wsID, k, protocol.Turn{TurnID: newID().String(), Kind: "comment", AttributedUserID: &userID,
 		Text:          "Comment from " + who + " on the task “" + title + "”:\n\n" + text + "\n\nReply briefly; your reply is posted in the task’s comments.",
 		CommentTaskID: &taskID})

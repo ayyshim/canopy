@@ -16,7 +16,7 @@ import (
 // summaries per goal, decisions and free notes. Agents read and write them with tools.
 
 // saveNote writes a note. A goal has one plan and one summary, so those are replaced.
-func (o *Orch) saveNote(ctx context.Context, t *core.Tx, ws db.Workspace, goalID *uuid.UUID, kind, title, body string, byUser, byMember *uuid.UUID) error {
+func (o *Orch) saveNote(ctx context.Context, t *core.Tx, ws db.Workspace, goalID *uuid.UUID, kind, title, body string, byUser, byMember *uuid.UUID) (db.Note, error) {
 	var n db.Note
 	var err error
 	if goalID != nil && (kind == "plan" || kind == "summary") {
@@ -34,9 +34,9 @@ func (o *Orch) saveNote(ctx context.Context, t *core.Tx, ws db.Workspace, goalID
 			AuthorUserID: byUser, AuthorMemberID: byMember})
 	}
 	if err != nil {
-		return err
+		return n, err
 	}
-	return t.Emit(ctx, core.WS(ws.OrgID, ws.ID, "note.saved"), core.ToNote(n))
+	return n, t.Emit(ctx, core.WS(ws.OrgID, ws.ID, "note.saved"), core.ToNote(n))
 }
 
 var errNoNote = fmt.Errorf("no note")
@@ -59,7 +59,7 @@ func (o *Orch) toolReadNotes(ctx context.Context, tc *toolCtx) error {
 		if q != "" && !strings.Contains(strings.ToLower(n.Title+"\n"+n.Body), q) {
 			continue
 		}
-		fmt.Fprintf(&b, "## %s (%s, %s)\n\n%s\n\n", n.Title, n.Kind, n.UpdatedAt.Format("Jan 2"), strings.TrimSpace(n.Body))
+		fmt.Fprintf(&b, "## %s (%s, %s)\n\n%s\n\n", noteLabel(n), n.Kind, n.UpdatedAt.Format("Jan 2"), strings.TrimSpace(n.Body))
 		shown++
 		if b.Len() > 40000 {
 			b.WriteString("(more notes left out; search with a query)\n")
@@ -93,12 +93,14 @@ func (o *Orch) toolWriteNote(ctx context.Context, tc *toolCtx) error {
 	if tc.task != nil {
 		goalID = tc.task.GoalID
 	}
-	err := o.Core.Tx(ctx, func(t *core.Tx) error {
-		return o.saveNote(ctx, t, tc.ws, goalID, in.Kind, in.Title, in.Body, nil, &tc.member.ID)
+	var saved db.Note
+	err := o.Core.Tx(ctx, func(t *core.Tx) (err error) {
+		saved, err = o.saveNote(ctx, t, tc.ws, goalID, in.Kind, in.Title, in.Body, nil, &tc.member.ID)
+		return err
 	})
 	if err != nil {
 		return err
 	}
-	o.reply(tc, "Saved the note “"+in.Title+"”.", false)
+	o.reply(tc, "Saved the note "+noteLabel(saved)+".", false)
 	return nil
 }

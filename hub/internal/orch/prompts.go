@@ -46,6 +46,7 @@ func systemPrompt(st *wsState, m db.Member, mounts []protocol.Mount, notes []db.
 	b.WriteString("- complete_task(summary): when the task is done. Always call it; a task isn't finished until you do.\n")
 	b.WriteString("- request_owner_change(directory, description): when a change is needed in a folder you can only read; its owner decides.\n")
 	b.WriteString("- read_notes(query): the workspace's plans, decisions and notes. Read them before you start.\n")
+	b.WriteString("- read_item(ref): read a goal, task or note by its ID (G-12, T-34, N-5).\n")
 	b.WriteString("- write_note(title, body, kind): record a decision or something the next person should know.\n")
 	if m.Kind == "manager" {
 		b.WriteString("- submit_plan(tasks): for plan tasks, your structured plan.\n")
@@ -88,7 +89,7 @@ func systemPrompt(st *wsState, m db.Member, mounts []protocol.Mount, notes []db.
 			if i == 8 {
 				break
 			}
-			fmt.Fprintf(&b, "- %s (%s)\n", n.Title, n.Kind)
+			fmt.Fprintf(&b, "- %s (%s)\n", noteLabel(n), n.Kind)
 		}
 	}
 	if m.Instructions != "" {
@@ -128,7 +129,7 @@ func goalOf(st *wsState, t db.Task) *db.Goal {
 // planPrompt asks a manager to plan a goal (SPEC "Orchestration loop" step 1).
 func planPrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Note) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "New goal: %s\n", g.Title)
+	fmt.Fprintf(&b, "New goal: %s\n", goalLabel(g))
 	if g.Description != "" {
 		fmt.Fprintf(&b, "Description: %s\n", g.Description)
 	}
@@ -160,19 +161,19 @@ func planPrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Note)
 // triagePrompt asks a manager to turn a person's note or change request into tasks for staff.
 func triagePrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Note) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Triage task: %s\n", t.Title)
+	fmt.Fprintf(&b, "Triage task: %s\n", taskLabel(t))
 	if t.Description != "" {
 		fmt.Fprintf(&b, "\n%s\n", t.Description)
 	}
 	b.WriteString(attachmentsLine(taskAttachments(st, t)))
 	b.WriteString("\nThis is a change request or note from a person, not work for you to do.\n")
-	fmt.Fprintf(&b, "\nGoal: %s\n", g.Title)
+	fmt.Fprintf(&b, "\nGoal: %s\n", goalLabel(g))
 	if g.Description != "" {
 		fmt.Fprintf(&b, "Description: %s\n", g.Description)
 	}
 	for _, n := range notes {
 		if n.GoalID != nil && *n.GoalID == g.ID && n.Kind == "plan" {
-			fmt.Fprintf(&b, "The plan is in the note “%s” (read_notes).\n", n.Title)
+			fmt.Fprintf(&b, "The plan is in the note %s (read_notes).\n", noteLabel(n))
 			break
 		}
 	}
@@ -188,7 +189,7 @@ func triagePrompt(st *wsState, m db.Member, t db.Task, g db.Goal, notes []db.Not
 				who = mm.Name
 			}
 		}
-		line := fmt.Sprintf("- %s (%s, %s)", x.Title, x.Status, who)
+		line := fmt.Sprintf("- %s (%s, %s)", taskLabel(x), x.Status, who)
 		if x.Status == "done" && x.Summary != "" {
 			line += ": " + x.Summary
 		}
@@ -245,9 +246,9 @@ func writeTeam(b *strings.Builder, st *wsState, m db.Member) {
 // taskPrompt hands a task to a member.
 func taskPrompt(st *wsState, m db.Member, t db.Task, comments []db.Comment, mounts []protocol.Mount) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Task: %s\n", t.Title)
+	fmt.Fprintf(&b, "Task: %s\n", taskLabel(t))
 	if g := goalOf(st, t); g != nil {
-		fmt.Fprintf(&b, "Goal: %s\n", g.Title)
+		fmt.Fprintf(&b, "Goal: %s\n", goalLabel(*g))
 		if g.Description != "" {
 			fmt.Fprintf(&b, "Goal description: %s\n", g.Description)
 		}
@@ -290,7 +291,7 @@ func taskPrompt(st *wsState, m db.Member, t db.Task, comments []db.Comment, moun
 	}
 	for _, depID := range t.DependsOn {
 		if dep, ok := st.task[depID]; ok && dep.Summary != "" {
-			fmt.Fprintf(&b, "\nResult of “%s”: %s\n", dep.Title, dep.Summary)
+			fmt.Fprintf(&b, "\nResult of %s: %s\n", taskLabel(dep), dep.Summary)
 		}
 	}
 	if len(comments) > 0 {
@@ -326,11 +327,11 @@ func handoff(st *wsState, k sessKey, notes []db.Note) string {
 		return ""
 	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "You are picking up the goal “%s” in a new session. Done so far:\n", g.Title)
+	fmt.Fprintf(&b, "You are picking up the goal %s in a new session. Done so far:\n", goalLabel(g))
 	any := false
 	for _, t := range st.tasks {
 		if t.GoalID != nil && *t.GoalID == g.ID && t.Status == "done" && t.Kind != "plan" {
-			fmt.Fprintf(&b, "- %s: %s\n", t.Title, firstNonEmpty(t.Summary, "done"))
+			fmt.Fprintf(&b, "- %s: %s\n", taskLabel(t), firstNonEmpty(t.Summary, "done"))
 			any = true
 		}
 	}
@@ -339,7 +340,7 @@ func handoff(st *wsState, k sessKey, notes []db.Note) string {
 	}
 	for _, n := range notes {
 		if n.GoalID != nil && *n.GoalID == g.ID && n.Kind == "plan" {
-			fmt.Fprintf(&b, "The plan is in the note “%s” (read_notes).\n", n.Title)
+			fmt.Fprintf(&b, "The plan is in the note %s (read_notes).\n", noteLabel(n))
 			break
 		}
 	}

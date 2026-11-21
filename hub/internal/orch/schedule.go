@@ -211,6 +211,7 @@ func (o *Orch) startTask(ctx context.Context, t *core.Tx, st *wsState, runner uu
 			text = triagePrompt(st, m, task, *g, notes)
 		}
 	}
+	text += o.taskReferences(ctx, st, task)
 	nt, err := q.UpdateTask(ctx, db.UpdateTaskParams{ID: task.ID, Status: ptr("doing"), SetStarted: task.StartedAt == nil})
 	if err != nil {
 		return err
