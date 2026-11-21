@@ -48,7 +48,7 @@ Key point: **a new goal starts a new session with no conversation history.** The
 | **Goal summary note** | `goalTasksDone` and `approveHandover` write a "Summary: <title>" note per goal | One summary per goal. A job could read the last N run summaries. |
 | **Goal handover** | `goals.handover_*`, `orch/handover.go` | A reviewed brief per goal; becomes the goal summary. Useful as a run report, but blocks on a person (section 5). |
 | **Task summaries** | `tasks.summary`, shown in `handoff` and dependent tasks | Short result per task. |
-| **Outputs and versions** | `outputs`, `output_versions` (`00005`), `orch/outputs.go` | Files per task, versioned by name. Stored in blob storage. Unique per `(task_id, name)`, so a new run cannot add a version to an old run's output. A job needs its own link table. |
+| **Outputs and versions** | `outputs`, `output_versions` (`00005`), `orch/outputs.go` | Files per task, versioned by name. Stored in blob storage. Unique per `(task_id, name)`, so each run makes its own outputs. A run reaches them through its goal and tasks, so no link table is needed. |
 | **Attachments** | `attachments` (`00015`) | Tied to a goal or a task (exactly one). Good for a fixed brief or reference files per run. |
 | **Refs** | `hub/internal/refs`, `orch/items.go` | `G-/T-/N-` numbers, per workspace, never reused. Text with a ref gets a "Referenced items" block automatically, so a job brief can say "continue from N-70" and the agent gets it. `read_item` reads any ref. |
 | **Chat messages** | `chat_messages` | Per member and person. Not suited for memory. |
@@ -88,7 +88,7 @@ Recommendation: start with **A**, and let a job optionally skip the plan task (c
 - `notify.Notifier.Run` (`notify/notify.go`): 1 min loop with a daily send at `DailyHour` (8). It already handles "once per day per person" logic and is the closest example of time-of-day work. Check it for time zone handling before copying.
 - `cmd/hub/main.go` ~L476: 30s loop for `DrainQueue` and hourly pruning.
 
-No cron parser or time zone library for schedules exists in the repo yet. Organization time zone is mentioned in SPEC (weekly limit reset) but not used for schedules.
+No cron parser exists in the repo yet. Time zones do exist: `organizations.timezone` sets the weekly limit reset (`api/limits.go`) and the daily summary uses the user's time zone (`notify/notify.go`). Neither is used for schedules yet.
 
 ## 7. Questions this raises for the plan doc
 
