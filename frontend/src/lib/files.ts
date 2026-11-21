@@ -8,7 +8,10 @@ export type Picked<T> = { accepted: T[]; tooBig: string[]; extra: number };
 export function pickFiles<T extends { name: string; size: number }>(incoming: T[], have = 0, maxMB = MAX_FILE_MB, maxFiles = MAX_FILES): Picked<T> {
   const tooBig: string[] = [];
   const fit: T[] = [];
-  for (const f of incoming) (f.size > maxMB * 1024 * 1024 ? tooBig.push(f.name) : fit.push(f));
+  for (const f of incoming) {
+    if (f.size > maxMB * 1024 * 1024) tooBig.push(f.name);
+    else fit.push(f);
+  }
   const room = Math.max(0, maxFiles - have);
   return { accepted: fit.slice(0, room), tooBig, extra: Math.max(0, fit.length - room) };
 }

@@ -4,9 +4,12 @@ import { useRef, useState } from "react";
 import { attachFiles, removeAttachment } from "@/lib/board/actions";
 import { isAdmin, personName, visibleMember } from "@/lib/board/derive";
 import type { AttachmentView } from "@/lib/types";
+import { DropZone } from "@/components/DropZone";
+import { MAX_FILE_MB, pickFiles, pickMessage } from "@/lib/files";
+import { useUI } from "@/lib/board/ui";
 import { useB, useBoardCtx } from "../context";
 
-export const MAX_FILE_MB = 25;
+export { MAX_FILE_MB };
 
 export function fileSize(n: number) {
   if (n >= 1 << 20) return `${(n / (1 << 20)).toFixed(1)} MB`;
@@ -25,15 +28,23 @@ export function Attachments({ goalId, taskId, canAdd = true }: { goalId?: string
   const list = (b.attachments ?? []).filter((a) => (goalId && a.goal_id === goalId) || (taskId && a.task_id === taskId));
   const who = (a: AttachmentView) => (a.member_id ? visibleMember(b, a.member_id)?.name ?? "An agent" : personName(b, a.user_id));
 
-  const add = async (files: FileList | null) => {
-    if (!files?.length) return;
+  const add = async (files: File[]) => {
+    if (!files.length || busy) return;
     setBusy(true);
-    await attachFiles(goalId ? { goalId } : { taskId: taskId! }, [...files]);
+    await attachFiles(goalId ? { goalId } : { taskId: taskId! }, files);
     setBusy(false);
     if (input.current) input.current.value = "";
   };
 
-  return (
+  // The button path goes through the same size and count rules as a drop.
+  const pick = (list: FileList | null) => {
+    const r = pickFiles([...(list ?? [])]);
+    const msg = pickMessage(r);
+    if (msg) useUI.getState().toast(msg, "warn");
+    add(r.accepted);
+  };
+
+  const body = (
     <div className="sb-sec">
       <span className="lbl">Attachments</span>
       {list.length ? (
@@ -51,20 +62,27 @@ export function Attachments({ goalId, taskId, canAdd = true }: { goalId?: string
       ) : <p className="hint">No files yet. Agents can download attached files and share their own.</p>}
       {canAdd && (
         <>
-          <input ref={input} type="file" multiple hidden onChange={(e) => add(e.target.files)} />
+          <input ref={input} type="file" multiple hidden onChange={(e) => pick(e.target.files)} />
           <button className="btn btn-sm" style={{ alignSelf: "flex-start" }} disabled={busy} onClick={() => input.current?.click()}>{busy ? "Uploading…" : "Attach files"}</button>
         </>
       )}
     </div>
   );
+  return canAdd ? <DropZone onFiles={add} busy={busy}>{body}</DropZone> : body;
 }
 
 /** FilePicker holds files chosen in a form until the goal or task exists. */
 export function FilePicker({ files, onChange }: { files: File[]; onChange: (f: File[]) => void }) {
   const input = useRef<HTMLInputElement>(null);
-  const tooBig = files.filter((f) => f.size > MAX_FILE_MB << 20);
+  const add = (list: File[]) => onChange([...files, ...list]);
+  const pick = (list: FileList | null) => {
+    const r = pickFiles([...(list ?? [])], files.length);
+    const msg = pickMessage(r);
+    if (msg) useUI.getState().toast(msg, "warn");
+    add(r.accepted);
+  };
   return (
-    <div className="field"><span>Attachments <span style={{ fontWeight: 500 }}>(optional)</span></span>
+    <DropZone onFiles={add} have={files.length} className="field"><span>Attachments <span style={{ fontWeight: 500 }}>(optional)</span></span>
       {files.length > 0 && (
         <ul className="files">
           {files.map((f, i) => (
@@ -75,10 +93,9 @@ export function FilePicker({ files, onChange }: { files: File[]; onChange: (f: F
           ))}
         </ul>
       )}
-      <input ref={input} type="file" multiple hidden onChange={(e) => { onChange([...files, ...(e.target.files ?? [])]); e.target.value = ""; }} />
+      <input ref={input} type="file" multiple hidden onChange={(e) => { pick(e.target.files); e.target.value = ""; }} />
       <button type="button" className="btn btn-sm" style={{ alignSelf: "flex-start" }} onClick={() => input.current?.click()}>Add files</button>
-      <span className="hint">Images, documents or data, up to {MAX_FILE_MB} MB each. Agents can open them.</span>
-      {tooBig.length > 0 && <span className="err">{tooBig.map((f) => f.name).join(", ")} {tooBig.length > 1 ? "are" : "is"} over {MAX_FILE_MB} MB.</span>}
-    </div>
+      <span className="hint">Drop, paste or add files: images, documents or data, up to {MAX_FILE_MB} MB each. Agents can open them.</span>
+    </DropZone>
   );
 }

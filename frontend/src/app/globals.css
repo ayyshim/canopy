@@ -229,6 +229,9 @@ code,.mono{font-family:var(--font-mono);font-size:.92em}
 .node.addm:hover,.node.addgoal:hover{border-color:var(--green);color:var(--green);background:var(--green-soft)}
 .node.goal{border-radius:var(--r-lg);background:var(--surface);border:1px solid var(--edge);padding:var(--sp-3);box-shadow:var(--shadow);display:flex;flex-direction:column;justify-content:space-between}
 .node.goal.done{opacity:.72}
+.dropzone{position:relative;border-radius:var(--r-md)}
+.dropzone.drag{outline:2px dashed var(--accent);outline-offset:4px;background:var(--accent-soft)}
+.dz-hint{position:absolute;inset:0;display:grid;place-items:center;border-radius:inherit;background:color-mix(in srgb,var(--card) 82%,transparent);color:var(--accent);font-weight:600;font-size:var(--t-sm);pointer-events:none;text-align:center}
 .files{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
 .files li{display:flex;align-items:center;gap:8px;font-size:13px;min-width:0}
 .files li>:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%}
