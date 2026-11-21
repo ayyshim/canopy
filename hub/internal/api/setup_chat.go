@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"canopy/hub/internal/authz"
+	"canopy/hub/internal/domain"
 	"canopy/hub/internal/httpx"
 	"canopy/shared/protocol"
 )
@@ -39,13 +40,12 @@ type setupChatReply struct {
 	Team  *chatTeam `json:"team"`
 }
 
-var staffSkills = map[string]bool{"developer": true, "reviewer": true, "designer": true, "writer": true, "researcher": true}
-
-const setupChatSystem = `You help someone set up a team of AI workers in Canopy. A manager takes goals and leads staff. Staff do tasks.
+var setupChatSystem = `You help someone set up a team of AI workers in Canopy. A manager takes goals and leads staff. Staff do tasks.
 Talk in short, plain sentences. Ask at most one question if you really need to. Do not use jargon.
 Always answer with ONE JSON object and nothing else:
-{"reply": "what you say to the person", "team": null or {"members": [{"key": "m1", "name": "...", "kind": "manager" or "staff", "skill": "developer|reviewer|designer|writer|researcher (staff only, else empty)", "reports_to_key": "key of a manager, or empty", "instructions": "2 to 5 plain lines on how this person should work", "skill_keys": ["keys from the given skills list that fit"]}]}}
-Rules: include at least one manager. Give every member a short first name. Only use skill keys from the list given. Staff with no manager help everyone. Send a team whenever you can suggest one; send the full team each time.`
+{"reply": "what you say to the person", "team": null or {"members": [{"key": "m1", "name": "...", "kind": "manager" or "staff", "skill": "a catalog key such as developer, marketing.seo or film.screenwriting (staff only, else empty)", "reports_to_key": "key of a manager, or empty", "instructions": "2 to 5 plain lines on how this person should work", "skill_keys": ["keys from the given skills list that fit"]}]}}
+Rules: include at least one manager. Give every member a short first name. For a staff member's skill pick the closest key from the catalog (a plain role like developer also works):
+` + domain.CatalogSummary() + `Only use skill_keys from the list given. Staff with no manager help everyone. Send a team whenever you can suggest one; send the full team each time.`
 
 // parseSetupChat reads Claude's answer. It tolerates text around the JSON and drops anything
 // invalid (unknown skills, unknown managers, empty names) instead of failing.
@@ -69,7 +69,7 @@ func parseSetupChat(text string, skillKeys map[string]bool) setupChatReply {
 		keys[m.Key] = true
 		if m.Kind == "manager" {
 			m.Skill = ""
-		} else if !staffSkills[m.Skill] {
+		} else if !domain.ValidSkill(m.Skill) {
 			m.Skill = "developer"
 		}
 		sk := []string{}

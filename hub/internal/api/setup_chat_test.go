@@ -35,3 +35,12 @@ func TestParseSetupChatPlainText(t *testing.T) {
 		t.Fatalf("team without manager should be dropped: %+v", out)
 	}
 }
+
+func TestParseSetupChatSubcategory(t *testing.T) {
+	out := parseSetupChat(`{"reply":"ok","team":{"members":[`+
+		`{"key":"m1","name":"Atlas","kind":"manager"},`+
+		`{"key":"m2","name":"Sia","kind":"staff","skill":"marketing.seo","reports_to_key":"m1"}]}}`, nil)
+	if out.Team == nil || out.Team.Members[1].Skill != "marketing.seo" {
+		t.Fatalf("subcategory skill dropped: %+v", out)
+	}
+}

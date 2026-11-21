@@ -9,6 +9,13 @@ info:
 servers:
   - url: /api/v1
 paths:
+  /clis:
+    get:
+      summary: List the CLIs Canopy can drive and the catalog of staff "good at" skills
+      responses:
+        "200":
+          description: CLIs, base roles and the categorized skill catalog
+          content: { application/json: { schema: { type: object, required: [clis, skills, catalog], properties: { clis: { type: array, items: { type: object } }, skills: { type: array, description: The base roles, items: { type: string, enum: [developer, reviewer, researcher, designer, writer] } }, catalog: { type: array, items: { $ref: "#/components/schemas/SkillCategory" } } } } } }
   /auth/csrf:
     get:
       summary: Issue or return the CSRF token
@@ -535,6 +542,22 @@ components:
         role: { type: string, enum: [developer, reviewer, researcher, designer, writer] }
         instructions: { type: string }
         skills: { type: array, items: { $ref: "#/components/schemas/DraftSkill" } }
+    SkillCategory:
+      type: object
+      required: [key, label, subs]
+      properties:
+        key: { type: string, example: marketing }
+        label: { type: string, example: Marketing }
+        subs:
+          type: array
+          items:
+            type: object
+            required: [key, label, desc, base]
+            properties:
+              key: { type: string, example: marketing.seo }
+              label: { type: string }
+              desc: { type: string }
+              base: { type: string, enum: [developer, reviewer, researcher, designer, writer], description: Drives default folder access and planning }
     Skill:
       type: object
       required: [id, name, source_kind, source_url, content, updated_at]

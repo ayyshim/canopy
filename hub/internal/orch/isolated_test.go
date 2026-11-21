@@ -42,3 +42,30 @@ func TestPromptsHideIsolated(t *testing.T) {
 		t.Errorf("board lists isolated staff")
 	}
 }
+
+func TestAssignMatchesSubcategoryAndBaseRole(t *testing.T) {
+	seo, content, dev := "marketing.seo", "marketing.content", "developer"
+	mgr := db.Member{ID: uuid.New(), Name: "Maya", Kind: "manager"}
+	mk := func(name string, skill *string) db.Member {
+		return db.Member{ID: uuid.New(), Name: name, Kind: "staff", Skill: skill, ReportsTo: &mgr.ID}
+	}
+	seoer, writer, coder := mk("Seo", &seo), mk("Writer", &content), mk("Coder", &dev)
+	st := &wsState{members: []db.Member{mgr, coder, writer, seoer}}
+	load := map[uuid.UUID]int{seoer.ID: 9}
+	if id, _ := assign(st, mgr, "marketing.seo", load); id != seoer.ID {
+		t.Errorf("exact key should win even when busier")
+	}
+	if id, _ := assign(st, mgr, "writer", load); id != writer.ID {
+		t.Errorf("base role writer should reach the content marketer")
+	}
+	if id, _ := assign(st, mgr, "marketing.email", load); id != coder.ID {
+		// no match for an unmatched key: falls back to any own staff (least busy, first listed)
+		t.Errorf("unmatched key should fall back to own staff, got %v", id)
+	}
+	if errs := validatePlan([]planTask{{Key: "a", Title: "A", Skill: "marketing.seo"}}, nil); len(errs) != 0 {
+		t.Errorf("subcategory key rejected: %v", errs)
+	}
+	if errs := validatePlan([]planTask{{Key: "a", Title: "A", Skill: "wizard"}}, nil); len(errs) == 0 {
+		t.Error("unknown skill accepted")
+	}
+}

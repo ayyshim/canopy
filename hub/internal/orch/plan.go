@@ -54,7 +54,7 @@ func validatePlan(tasks []planTask, dirs []db.Directory) []string {
 			problems = append(problems, fmt.Sprintf("Task %q has no title.", t.Key))
 		}
 		if !domain.ValidSkill(t.Skill) {
-			problems = append(problems, fmt.Sprintf("Task %q: skill %q doesn’t exist (use developer, reviewer, researcher, designer or writer).", t.Key, t.Skill))
+			problems = append(problems, fmt.Sprintf("Task %q: skill %q doesn’t exist (use a catalog key such as developer or marketing.seo).", t.Key, t.Skill))
 		}
 		for _, d := range t.Directories {
 			if findDirectory(dirs, d.Path) == nil {
@@ -109,8 +109,10 @@ func validatePlan(tasks []planTask, dirs []db.Directory) []string {
 }
 
 // assign follows SPEC "Assignment": own staff with the skill → independent staff with the
-// skill (borrowed) → any own staff → the manager itself. Least busy first.
+// skill (borrowed) → any own staff → the manager itself. A skill matches by exact key or by
+// base role; an exact key wins, then the least busy.
 func assign(st *wsState, manager db.Member, skill string, load map[uuid.UUID]int) (uuid.UUID, bool) {
+	exact := func(m db.Member) bool { return m.Skill != nil && *m.Skill == skill }
 	pick := func(match func(db.Member) bool) *db.Member {
 		var best *db.Member
 		for i := range st.members {
@@ -118,14 +120,14 @@ func assign(st *wsState, manager db.Member, skill string, load map[uuid.UUID]int
 			if m.Kind != "staff" || m.Isolated || !match(*m) {
 				continue
 			}
-			if best == nil || load[m.ID] < load[best.ID] {
+			if best == nil || (exact(*m) && !exact(*best)) || (exact(*m) == exact(*best) && load[m.ID] < load[best.ID]) {
 				best = m
 			}
 		}
 		return best
 	}
 	own := func(m db.Member) bool { return m.ReportsTo != nil && *m.ReportsTo == manager.ID }
-	hasSkill := func(m db.Member) bool { return m.Skill != nil && *m.Skill == skill }
+	hasSkill := func(m db.Member) bool { return m.Skill != nil && domain.SkillMatches(*m.Skill, skill) }
 	if m := pick(func(m db.Member) bool { return own(m) && hasSkill(m) }); m != nil {
 		return m.ID, false
 	}
