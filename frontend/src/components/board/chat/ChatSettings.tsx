@@ -148,7 +148,7 @@ export function DirAccess({ m }: { m: MemberView }) {
   const pool = b.directories.filter((d) => !boss || boss.includes(d.id));
   const suggested = [...mine.values()].every((g) => g.source === "suggested");
   const byName = m.reports_to ? visibleMember(b, m.reports_to)?.name ?? "Their manager" : "Canopy";
-  const writes = m.kind === "manager" || ["developer", "designer", "writer"].includes(m.skill ?? "");
+  const writes = m.kind === "manager" || ["developer", "designer", "writer"].includes(baseRole(m.skill));
   const toggle = (dirId: string, on: boolean) => {
     const next = [...mine.values()].filter((g) => g.directory_id !== dirId).map((g) => ({ directory_id: g.directory_id, mode: g.mode }));
     if (on) next.push({ directory_id: dirId, mode: writes ? "read_write" : "read" });
