@@ -343,3 +343,17 @@ person who added one, or an admin, removes it. Agents get two tools: `get_attach
 the files on their goal and on every task of that goal into `./attachments`, and `attach_file`
 shares a file to the goal (default) or their task, so agents on a goal share files with each
 other. Prompts list the attached file names. Board events: `attachment.created`, `attachment.deleted`.
+
+## Tools agents get (2026-11-21)
+
+Agents run Claude Code with `--mcp-config` (without `--strict-mcp-config`) and
+`--setting-sources user,project,local`. Canopy's own MCP server is added next to whatever the
+person already has, so claude.ai connectors (`mcp__claude_ai_*`), their own MCP servers, user
+plugins and skills, and Artifact publishing are available to managers and staff. Before this,
+`--setting-sources project` hid user skills (15 vs 24 in the init list on a real check) and
+`--strict-mcp-config` hid connectors. The session still signs in with the person's Claude account;
+an API key is set only when the person chose one for the computer.
+
+**Trade-off.** Agents now see the person's user-level settings and MCP servers, not just the
+project's. Connectors that need a browser sign-in or an interactive prompt can't finish that in
+print mode; the person must connect them in Claude first.

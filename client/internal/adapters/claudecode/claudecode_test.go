@@ -94,10 +94,13 @@ func TestLimitMessages(t *testing.T) {
 
 func TestArgsAndPermissionReply(t *testing.T) {
 	a := strings.Join(Args(Params{Model: "sonnet", MCPConfig: "/x.json", Resume: "abc", AddDirs: []string{"/a", "/b"}}), " ")
-	for _, want := range []string{"--input-format stream-json", "--permission-prompt-tool mcp__canopy__permission", "--strict-mcp-config", "--resume abc", "--add-dir /a --add-dir /b", "--model sonnet"} {
+	for _, want := range []string{"--input-format stream-json", "--permission-prompt-tool mcp__canopy__permission", "--setting-sources user,project,local", "--resume abc", "--add-dir /a --add-dir /b", "--model sonnet"} {
 		if !strings.Contains(a, want) {
 			t.Errorf("args missing %q: %s", want, a)
 		}
+	}
+	if strings.Contains(a, "--strict-mcp-config") {
+		t.Errorf("--strict-mcp-config hides claude.ai connectors: %s", a)
 	}
 	if got := PermissionReply(true, []byte(`{"command":"ls"}`), ""); got != `{"behavior":"allow","updatedInput":{"command":"ls"}}` {
 		t.Errorf("allow reply: %s", got)

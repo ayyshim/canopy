@@ -130,12 +130,6 @@ func decode(raw json.RawMessage, v any) error {
 
 // ---- permission (Claude Code's --permission-prompt-tool) ----
 
-// readOnlyCommands run without a gate: they can't change anything outside the sandbox.
-var readOnlyCommands = map[string]bool{"ls": true, "cat": true, "head": true, "tail": true, "wc": true, "grep": true, "rg": true,
-	"find": true, "pwd": true, "echo": true, "tree": true, "stat": true, "file": true, "diff": true, "sort": true, "uniq": true, "which": true}
-
-var readOnlyGit = map[string]bool{"status": true, "diff": true, "log": true, "show": true, "branch": true, "blame": true}
-
 // actionKind groups calls for "Always" rules: the tool, and for shell commands the program.
 func actionKind(tool string, input map[string]any) (kind, summary string) {
 	switch tool {
@@ -166,23 +160,14 @@ func actionKind(tool string, input map[string]any) (kind, summary string) {
 	}
 }
 
+// autoAllowed lets everything through except destructive shell commands.
+// The sandbox already limits what other tools can reach.
 func autoAllowed(tool string, input map[string]any) bool {
 	if tool != "Bash" {
-		// Reads and edits stay inside the sandbox's mounts; the sandbox enforces them.
-		return tool != "WebFetch" && tool != "WebSearch"
+		return true
 	}
 	cmd, _ := input["command"].(string)
-	if strings.ContainsAny(cmd, ";&|><`$") {
-		return false
-	}
-	f := strings.Fields(cmd)
-	if len(f) == 0 {
-		return false
-	}
-	if f[0] == "git" {
-		return len(f) > 1 && readOnlyGit[f[1]]
-	}
-	return readOnlyCommands[path.Base(f[0])]
+	return !isDestructive(cmd)
 }
 
 func (o *Orch) toolPermission(ctx context.Context, tc *toolCtx) error {

@@ -25,10 +25,10 @@ const PermissionTool = "mcp__canopy__permission"
 // Args are Claude Code's flags for a Canopy session.
 func Args(p Params) []string {
 	a := []string{"-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
-		"--strict-mcp-config", "--mcp-config", p.MCPConfig,
+		"--mcp-config", p.MCPConfig, // merged with the user's own MCP servers and claude.ai connectors
 		"--permission-prompt-tool", PermissionTool, "--permission-mode", "acceptEdits",
 		"--allowedTools", "mcp__canopy", // Canopy's own tools never need a gate
-		"--setting-sources", "project"}
+		"--setting-sources", "user,project,local"}
 	if p.Model != "" {
 		a = append(a, "--model", p.Model)
 	}
