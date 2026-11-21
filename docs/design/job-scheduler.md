@@ -19,8 +19,8 @@ Short answer for the design:
 - The only difference between the two types is **what goes into the run's prompt** and **whether the run may write memory**.
 - Memory is a **note** (so it has revisions, shows up in the UI and can be edited by people) plus a **run log** built from the run rows.
 
-Nothing in the agent runtime changes. The new parts are a timer loop, three tables, a few
-changes to goal finishing, five agent tools and a Jobs page.
+Nothing in the agent runtime changes. The new parts are a timer loop, two tables (`jobs`, `job_runs`) plus two columns, a few
+changes to goal finishing, three agent tools in the MVP and a Jobs page.
 
 ## 2. Core ideas
 
@@ -103,7 +103,7 @@ jobs (
   assignee_member_id   uuid,  -- who does the work; null = the manager plans each run
   runner_id            uuid,  -- null = owner's own computer, else a shared one
   cron                 text,
-  timezone             text,  -- IANA, default: owner's time zone (users.timezone)
+  timezone             text,  -- IANA, default: the organization's time zone
   next_run_at          timestamptz,
   last_run_at          timestamptz,
   missed_policy        text,  -- 'skip' | 'run_once'
@@ -145,7 +145,7 @@ goals.job_run_id uuid null references job_runs on delete set null
 
 Notes:
 
-- **Memory note.** A continuous job owns one note, kind `job_memory`, with the job's id on it (add `notes.job_id`, and allow the new kind in the `notes.kind` check; check the current constraint when building). That gives revisions (`note_revisions`, last 20), the editor trail, the `N-` ID, and `read_notes`/`read_item` for free. `memory_after` on each run keeps the full history even after 20 revisions.
+- **Memory note.** A continuous job owns one note, kind `job_memory`, with the job's id on it (add `notes.job_id`, and widen the `notes.kind` check from migration 00009, which today allows only `note`, `plan`, `decision`, `summary`). That gives revisions (`note_revisions`, last 20), the editor trail, the `N-` ID, and `read_notes`/`read_item` for free. `memory_after` on each run keeps the full history even after 20 revisions.
 - **Outputs need no new table.** Run → goal → tasks → outputs already links a run to its files. (The findings doc said a link table was needed; it is not, because `job_runs.goal_id` gives the path.)
 - **Retries** reuse the same run row. Each attempt is a new goal, so several goals can point to one run. `goals.job_run_id` is many-to-one.
 - **Attachments** for a job (reference files): add `job_id` to `attachments` so the CHECK becomes "exactly one of goal, task, job", and let `taskAttachments` (`orch/attachments.go`) include the job's. Phase 2.
@@ -170,7 +170,7 @@ for each job, in one transaction:
 
 Rules, each from the research doc:
 
-- **Cron plus zone.** Parse 5-field cron (add one small dependency such as `robfig/cron/v3`'s parser, or write about 80 lines; the stdlib has none). Compute next time in the job's zone, store UTC. Defaults come from `users.timezone`, then `organizations.timezone`; both already exist.
+- **Cron plus zone.** Parse 5-field cron (add one small dependency such as `robfig/cron/v3`'s parser, or write about 80 lines; the stdlib has none). Compute next time in the job's zone, store UTC. The default is `organizations.timezone`, which already exists. Users have no time zone of their own (the notifier reads the organization's), so the create dialog must let the person pick a zone, and a per-user zone is a later option.
 - **Daylight saving.** A time that does not exist (spring forward) runs at the next valid moment. A time that happens twice (fall back) runs once. The library's default may skip the missing time, so the wrapper needs tests for both cases and for a zone like `Asia/Kathmandu` (+05:45).
 - **Missed runs.** After a hub outage, the first tick finds `next_run_at` in the past. If the miss is inside the window, `run_once` starts one run now. Otherwise it records `skipped: too late`. Never replay a pile. Defaults: single run `skip` with a 1 hour window; continuous `run_once` with a 6 hour window.
 - **No overlap.** Step 3 plus the partial unique index. If two hubs ever ran, the index stops a second run.
@@ -205,10 +205,10 @@ What changes in existing code:
 | `orch/goals.go` `goalTasksDone` | For job goals, do not open the "goal ready" card; the run record replaces it. |
 | `orch/tools.go` | New tools (section 8). `complete_task` stays as is. |
 | `orch/prompts.go` `systemPrompt` | List the job tools only for sessions working on a job goal. |
-| `api/limits.go` | Reuse `personUsage` for the limit check in step 5 of the tick. Do not queue job runs; a late run is skipped, not delayed. |
-| `core/goals.go` | `NewGoal` gets `JobRunID`. |
+| `api/limits.go` | `personUsage` is a method on `api.Server`, so `jobs` cannot call it without importing `api`. Move the limit math (`personUsage`, `WeekStart`) into `core` or a small `limits` package and use it from both. Do not queue job runs; a late run is skipped, not delayed. |
+| `core/goals.go` | `CreateGoal` always creates a `planning` goal today. `NewGoal` gets `JobRunID` and a `Direct` flag so the goal starts `active` with its work task. |
 | `cmd/hub/main.go` | Start `jobs.Engine`. |
-| `notify/notify.go` | One new kind `jobs` (section 10). |
+| `notify/notify.go` | One new kind `jobs` (section 10). `KindOf` maps signal types to the kinds, so add job signal types (for example `job_attention`, `job_failed`) and map them to `jobs`. |
 
 Who works the run: the goal's owner computer, signed in with the owner's account (`placeGoals`, DECISIONS "Where work runs"). If the owner's computer is off, the goal waits and the run times out as `skipped: computer off`. A job can be set to a shared computer (API-key, with a daily cap) so it runs when laptops are off. Only the owner or an admin can choose a shared computer, as for goals.
 
@@ -287,7 +287,7 @@ A `nothing_to_do` or `ok` single run is silent, so a daily check that finds noth
 
 **Cost caps.** Canopy counts tokens, not money (subscription accounts have no price). Caps are in tokens:
 
-- `token_cap_per_run`: the tick sums usage events of the run's goal tasks (`usage_by_task`, migration 00022). Over the cap, the run is stopped and marked `capped`.
+- `token_cap_per_run`: the tick sums the tokens of the run's goal (`usage_events.goal_id` and the `usage_work` totals, migration 00022). Over the cap, the run is stopped and marked `capped`.
 - `token_cap_per_month` (phase 2): the sum of `job_runs.tokens` for the month. Over the cap, the job pauses with reason `cap`.
 - Org and personal limits still apply on top.
 
@@ -297,6 +297,7 @@ A `nothing_to_do` or `ok` single run is silent, so a daily check that finds noth
 | --- | --- |
 | Hub down at the due time | First tick after restart: run once if inside the window, else `skipped: too late`. |
 | Owner's computer is off | Goal waits. If no task starts before the timeout, run is `skipped: computer off`. Does not count as a failure. |
+| Hub restarts while a run is going | The run row and its goal are in the database, so the run continues. The tick still applies the run timeout. |
 | Agent crashes | Existing recovery restarts the session. Counts only if the run ends failed. |
 | Run fails halfway | Run `failed`, memory unchanged, outputs of the attempt stay visible. Counts toward auto-pause. |
 | Agent asks a question anyway | The question shows on the board as usual. No one answers, so the run times out and fails. The footer makes this rare. |
@@ -370,7 +371,7 @@ Agents propose jobs, model-based schedule text, zero-token pre-check on the runn
 2. **Goal per run or a lighter task?** *Recommend:* goal per run. It reuses everything. "Direct" mode removes the plan cost.
 3. **Skip the handover brief for job runs?** *Recommend:* yes. The run summary is the record. Keep an option later to require review on jobs that publish something outward.
 4. **Where does memory live?** *Recommend:* one note per continuous job, plus snapshots on runs. Not a new table.
-5. **Which time zone by default?** *Recommend:* the owner's (`users.timezone`), else the org's, always shown on screen.
+5. **Which time zone by default?** *Recommend:* the organization's (`organizations.timezone`), changeable per job in the dialog, always shown on screen. There is no per-user time zone today.
 6. **Who owns a job when the owner leaves?** *Recommend:* auto-pause with `owner_left`; an admin picks a new owner.
 7. **Can people edit memory during a run?** *Recommend:* no (disabled with a short reason).
 8. **Cancelled run: which goal status?** Today a goal is `planning`, `active`, `ready` or `done`. *Recommend:* add `stopped` so a cancelled or capped run does not look like a finished goal. Check goal status constraints and board code first.
