@@ -14,6 +14,7 @@ import { skillNames } from "@/lib/skills";
 import { useB, useBoardCtx } from "./context";
 import { Avatar, KIND_LABEL } from "./icons";
 import { SignalCard } from "./SignalCard";
+import { Sticky } from "./Sticky";
 import { OutputThumb } from "./OutputThumb";
 
 /** NodeView draws one card on the tree. */
@@ -29,6 +30,8 @@ export function NodeView({ n }: { n: Node }) {
   const keyOpen = (fn: () => void) => (e: React.KeyboardEvent) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), fn());
 
   switch (n.type) {
+    case "sticky":
+      return <Sticky note={n.note} />;
     case "ws": {
       const mg = b.members.filter((m) => m.kind === "manager").length;
       const done = b.tasks.filter((t) => t.status === "done").length;

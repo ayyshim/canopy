@@ -11,6 +11,8 @@ import { isHidden, type Board, type MemberView } from "@/lib/types";
 import { useB, useBoardCtx } from "./context";
 import { NodeView } from "./NodeView";
 import { Minimap, useMinimapOpen } from "./Minimap";
+import { StickyDraft } from "./Sticky";
+import { STICKY_H, STICKY_W } from "@/lib/stickies";
 
 type Cam = { x: number; y: number; z: number; auto: boolean };
 
@@ -19,6 +21,7 @@ export function Canvas() {
   const b = useB();
   const { send } = useBoardCtx();
   const side = useUI((s) => s.side);
+  const draft = useUI((s) => s.sticky);
   const tray = useUI((s) => s.tray);
   const focus = useUI((s) => s.focus);
   const openSide = useUI((s) => s.openSide);
@@ -111,7 +114,7 @@ export function Canvas() {
     const ptr = new Map<number, { x: number; y: number }>();
     let drag: { id: number; x: number; y: number; cx: number; cy: number; moved: boolean; onNode: boolean } | null = null;
     let pinch: { d: number; z: number; mx: number; my: number; cx: number; cy: number } | null = null;
-    const skip = "button, input, select, textarea, a, .zoomctl, .minimap, .sidebar, .chat, .tray, .hintcard, .banner, .menu";
+    const skip = "button, input, select, textarea, a, .sticky, .zoomctl, .minimap, .sidebar, .chat, .tray, .hintcard, .banner, .menu";
     const down = (e: PointerEvent) => {
       const t = e.target as HTMLElement;
       if (t.closest(skip) && !t.closest(".node")) return;
@@ -186,6 +189,13 @@ export function Canvas() {
       const over = (e.target as HTMLElement).closest<HTMLElement>("[data-member]")?.dataset.member ?? null;
       send("presence.cursor", { x: (e.clientX - r.left - c.x) / c.z, y: (e.clientY - r.top - c.y) / c.z, over_member_id: over });
     };
+    // Double-click on empty canvas starts a sticky note at that spot.
+    const dbl = (e: MouseEvent) => {
+      if ((e.target as HTMLElement).closest(`${skip}, .nw, .cursor`)) return;
+      const r = el.getBoundingClientRect(), c = cam.current;
+      useUI.getState().startSticky({ x: Math.round((e.clientX - r.left - c.x) / c.z - STICKY_W / 2), y: Math.round((e.clientY - r.top - c.y) / c.z - STICKY_H / 2) });
+    };
+    el.addEventListener("dblclick", dbl);
     el.addEventListener("pointerdown", down);
     el.addEventListener("pointermove", move);
     el.addEventListener("pointermove", cursor);
@@ -195,6 +205,7 @@ export function Canvas() {
     const resize = () => cam.current.auto && fit(true);
     window.addEventListener("resize", resize);
     return () => {
+      el.removeEventListener("dblclick", dbl);
       el.removeEventListener("pointerdown", down);
       el.removeEventListener("pointermove", move);
       el.removeEventListener("pointermove", cursor);
@@ -229,6 +240,7 @@ export function Canvas() {
             <div className="nw" key={n.id} data-member={n.type === "member" ? n.memberId : undefined}><NodeView n={n} /></div>
           ))}
         </div>
+        {draft && <StickyDraft at={draft} />}
         <Cursors />
       </div>
       <div className="zoomctl">

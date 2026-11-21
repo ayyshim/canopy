@@ -1,7 +1,8 @@
 // Board geometry (SPEC "Layout rules"): the workspace card on top with its goals beside it,
 // managers in a row below with their staff to the right, independent staff last. Each member's
 // column holds its tasks (with outputs and questions), approvals and its sessions.
-import type { Board, GoalView, MemberView, OutputView, SessionView, SignalView, TaskView } from "../types";
+import type { Board, GoalView, MemberView, NoteView, OutputView, SessionView, SignalView, TaskView } from "../types";
+import { isPinned, STICKY_H, STICKY_W } from "../stickies";
 import { isHidden } from "../types";
 import { blockedOnPerson, hiddenTask, independentStaff, isAdmin, managers, outputsOf, staffOf, task } from "./derive";
 
@@ -17,6 +18,7 @@ export type Node =
   | { id: string; type: "pool"; n: number; x: number; y: number; w: number; h: number }
   | { id: string; type: "addm"; mode: "manager" | "staff" | "pool"; boss?: MemberView; x: number; y: number; w: number; h: number }
   | { id: string; type: "session"; m: MemberView; s: SessionView; x: number; y: number; w: number; h: number }
+  | { id: string; type: "sticky"; note: NoteView; x: number; y: number; w: number; h: number }
   | { id: string; type: "task"; t: TaskView; x: number; y: number; w: number; h: number }
   | { id: string; type: "fruit"; o: OutputView; taskId: string; x: number; y: number; w: number; h: number }
   | { id: string; type: "more"; n: number; taskId: string; x: number; y: number; w: number; h: number }
@@ -219,6 +221,10 @@ export function layout(b: Board, heights: Record<string, number>, focusGoal: str
       const opacity = focusGoal && t.goal_id !== focusGoal ? 0.18 : dt.status === "done" ? 0.45 : undefined;
       edges.push({ cls: red ? "e-red" : "e-dep", d, marker: red ? "red" : "vi", opacity });
     }
+  }
+  // Notes with a board position sit on the canvas as stickies.
+  for (const n of b.notes) {
+    if (isPinned(n)) add({ id: n.id, type: "sticky", note: n, x: n.board_x!, y: n.board_y!, w: STICKY_W, h: STICKY_H });
   }
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
   for (const n of nodes) {

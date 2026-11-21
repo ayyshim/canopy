@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { camera } from "@/lib/board/camera";
 import type { Layout } from "@/lib/board/layout";
 import { useUI } from "@/lib/board/ui";
+import { stickyColor } from "@/lib/stickies";
 import { fitMap, mapBounds, mapToWorld, minimapDefault, viewRect, type Fit } from "@/lib/minimap";
 import { useB } from "./context";
 
@@ -48,6 +49,7 @@ function rects(L: Layout, goalColor: Map<string, string>): Rect[] {
       case "task": c = (n.t.goal_id && goalColor.get(n.t.goal_id)) || TOKEN.plain; break;
       case "member": case "pool": c = TOKEN.member; break;
       case "session": c = TOKEN.session; break;
+      case "sticky": c = `--n-${stickyColor(n.note.color)}`; break;
       case "fruit": case "more": c = TOKEN.out; break;
       case "acct": c = TOKEN.ask; break;
       case "sig": c = n.kind === "errc" ? TOKEN.err : TOKEN.ask; break;
