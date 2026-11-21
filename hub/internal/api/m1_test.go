@@ -19,6 +19,7 @@ func TestSignupCreatesOrgOwnerMembershipAndLimits(t *testing.T) {
 	if r.Status != http.StatusCreated {
 		t.Fatalf("status %d %v", r.Status, r.Body)
 	}
+	r.Body = e.finishSignIn(c, email, r.Body)
 	orgID := currentOrg(r.Body)
 	if orgID == "" {
 		t.Fatal("no current org after signup")
@@ -149,8 +150,11 @@ func TestLoginDistinctErrors(t *testing.T) {
 
 	c := e.client()
 	ok := c.do("POST", "/api/v1/auth/login", map[string]any{"email": "  " + email + " ", "password": "correct horse"})
-	if ok.Status != 200 || currentOrg(ok.Body) == "" {
+	if ok.Status != 200 || ok.Body["two_factor"] != "verify" {
 		t.Fatalf("login: %d %v", ok.Status, ok.Body)
+	}
+	if currentOrg(e.finishSignIn(c, email, ok.Body)) == "" {
+		t.Fatal("no current org after login")
 	}
 	ck := c.cookie(auth.SessionCookie)
 	if ck == nil {
@@ -176,6 +180,9 @@ func TestPasswordResetWorksOnceWithin30Minutes(t *testing.T) {
 	if r.Status != 200 || c.cookie(auth.SessionCookie) == nil {
 		t.Fatalf("reset: %d %v", r.Status, r.Body)
 	}
+	if r.Body["two_factor"] != "verify" {
+		t.Errorf("reset must not skip the code: %v", r.Body)
+	}
 	// Single use.
 	again := e.client().do("POST", "/api/v1/auth/reset", map[string]any{"token": token, "password": "another pass 2"})
 	if again.Status != 400 || again.errCode() != "invalid_token" {
@@ -191,9 +198,7 @@ func TestPasswordResetWorksOnceWithin30Minutes(t *testing.T) {
 	if r := e.client().do("POST", "/api/v1/auth/login", map[string]any{"email": email, "password": "correct horse"}); r.errCode() != "wrong_password" {
 		t.Errorf("old password: %d %v", r.Status, r.Body)
 	}
-	if r := e.client().do("POST", "/api/v1/auth/login", map[string]any{"email": email, "password": "brand new pass"}); r.Status != 200 {
-		t.Errorf("new password: %d %v", r.Status, r.Body)
-	}
+	e.login(e.client(), email, "brand new pass")
 }
 
 func TestPasswordResetExpiresAfter30Minutes(t *testing.T) {
@@ -252,8 +257,8 @@ func TestOrgSwitchingAndNoCrossOrgLeaks(t *testing.T) {
 		t.Errorf("switch: %d %v", r.Status, r.Body)
 	}
 	// Switching survives a fresh sign-in.
-	again := e.client().do("POST", "/api/v1/auth/login", map[string]any{"email": userEmail(me), "password": "correct horse"})
-	if currentOrg(again.Body) != alpha {
+	again := e.login(e.client(), userEmail(me), "correct horse")
+	if currentOrg(again) != alpha {
 		t.Errorf("last org not restored on sign-in")
 	}
 

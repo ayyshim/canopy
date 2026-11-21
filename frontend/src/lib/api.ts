@@ -24,6 +24,7 @@ export class ApiError extends Error {
     public code: string,
     message: string,
     public fields: Record<string, string> = {},
+    public next?: string,
   ) {
     super(message);
   }
@@ -65,7 +66,7 @@ export async function api<T>(method: Method, path: string, body?: unknown, retri
   if (!res.ok) {
     const err = data?.error ?? {};
     if (err.code === "csrf" && !retried) return api<T>(method, path, body, true);
-    throw new ApiError(res.status, err.code ?? "internal", err.message ?? "Something went wrong. Try again.", err.fields ?? {});
+    throw new ApiError(res.status, err.code ?? "internal", err.message ?? "Something went wrong. Try again.", err.fields ?? {}, err.next);
   }
   return data as T;
 }
@@ -82,7 +83,7 @@ export async function uploadFile<T>(path: string, file: File, method: "PUT" | "P
   if (!res.ok) {
     const err = data?.error ?? {};
     if (err.code === "csrf" && !retried) return uploadFile<T>(path, file, method, true);
-    throw new ApiError(res.status, err.code ?? "internal", err.message ?? "Something went wrong. Try again.", err.fields ?? {});
+    throw new ApiError(res.status, err.code ?? "internal", err.message ?? "Something went wrong. Try again.", err.fields ?? {}, err.next);
   }
   return data as T;
 }

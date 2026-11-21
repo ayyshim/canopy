@@ -6,10 +6,12 @@ import { useRef, useState } from "react";
 import { Field, focusFirstInvalid } from "@/components/Field";
 import { api, ApiError, hardNavigate, landingPath, type Me } from "@/lib/api";
 import { useHub } from "@/lib/hub";
+import { pendingStep, twoFactorPath, type TwoFactorPending } from "@/lib/twoFactor";
 
 const OAUTH_ERRORS: Record<string, string> = {
   oauth_failed: "We couldn’t sign you in with that provider. Try again.",
   oauth_unverified: "Verify your email with that provider first, then try again.",
+  too_many_codes: "Too many wrong codes, so we signed you out. Sign in again to try once more.",
   oauth_no_account: "No Canopy account uses that email yet. Create an organization to get started.",
 };
 
@@ -34,8 +36,9 @@ export function LoginForm() {
     if (Object.keys(e).length) return focusFirstInvalid(form.current);
     setBusy(true);
     try {
-      const me = await api<Me>("POST", "/auth/login", { email, password });
-      hardNavigate(landingPath(me));
+      const res = await api<Me | TwoFactorPending>("POST", "/auth/login", { email, password });
+      const step = pendingStep(res);
+      hardNavigate(step ? twoFactorPath(step) : landingPath(res as Me));
     } catch (err) {
       setBusy(false);
       if (err instanceof ApiError && Object.keys(err.fields).length) {

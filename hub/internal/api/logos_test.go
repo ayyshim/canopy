@@ -49,9 +49,11 @@ func TestLogosOrgAndWorkspace(t *testing.T) {
 	}
 	token := strings.TrimPrefix(str(r.Body["link"]), "http://canopy.test/invite/")
 	staff := e.client()
-	if acc := staff.do("POST", "/api/v1/invites/"+token+"/accept", map[string]any{"name": "Sam", "password": "staff password"}); acc.Status != 200 {
+	acc := staff.do("POST", "/api/v1/invites/"+token+"/accept", map[string]any{"name": "Sam", "password": "staff password"})
+	if acc.Status != 200 {
 		t.Fatalf("accept: %d %v", acc.Status, acc.Body)
 	}
+	e.finishSignIn(staff, "", acc.Body)
 
 	for _, tc := range []struct{ name, path string }{{"org", "/api/v1/orgs/" + org + "/logo"}, {"workspace", "/api/v1/workspaces/" + ws + "/logo"}} {
 		t.Run(tc.name, func(t *testing.T) {

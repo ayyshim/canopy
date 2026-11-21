@@ -65,6 +65,10 @@ Usage:
   canopy-hub migrate status      show the data's version and what an upgrade would change
   canopy-hub migrate up          upgrade the data now (the hub also does this on start)
   canopy-hub backup              copy the database (stop the hub first)
+  canopy-hub reset-two-factor EMAIL [--data DIR]
+                                 clear that person's two-factor setup and sign them out everywhere,
+                                 so they set up a new authenticator at next sign-in (stop the hub
+                                 first). For a hub admin who is locked out; they get an email.
   canopy-hub version
 
 Serve flags (each also readable from the environment, shown in brackets):
@@ -123,6 +127,8 @@ func main() {
 		err = migrateCmd(args)
 	case "backup":
 		err = backupCmd(args)
+	case "reset-two-factor":
+		err = resetTwoFactorCmd(args)
 	case "version", "--version":
 		fmt.Printf("canopy-hub %s (schema %d, PostgreSQL %s)\n", version, store.LatestSchema(), pgserver.Major)
 	case "help", "-h", "--help":
@@ -609,6 +615,48 @@ func migrateCmd(args []string) error {
 		return d.upgrade(ctx, o)
 	}
 	return fmt.Errorf("usage: canopy-hub migrate status|up")
+}
+
+func resetTwoFactorCmd(args []string) error {
+	if len(args) == 0 || strings.HasPrefix(args[0], "-") {
+		return fmt.Errorf("usage: canopy-hub reset-two-factor EMAIL [--data DIR]")
+	}
+	email := args[0]
+	o, err := parseFlags("reset-two-factor", args[1:])
+	if err != nil {
+		return err
+	}
+	if switched, err := runAsDataOwner(o.data); switched {
+		return err
+	}
+	if os.Geteuid() == 0 && os.Getenv("DATABASE_URL") == "" {
+		return errRootPostgres
+	}
+	cfg, err := config.FromEnv()
+	if err != nil {
+		return err
+	}
+	unlock, err := lockData(o.data)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	ctx := context.Background()
+	o.noAutoMigrate = true
+	d, err := openDatabase(ctx, o)
+	if err != nil {
+		return err
+	}
+	defer d.close()
+	var mailer mail.Sender = mail.Log{}
+	if cfg.SMTPAddr != "" {
+		mailer = mail.SMTP{Addr: cfg.SMTPAddr, From: cfg.SMTPFrom}
+	}
+	if err := api.ResetTwoFactorByEmail(ctx, d.st, mailer, email); err != nil {
+		return err
+	}
+	fmt.Println("Two-factor reset for", email+". They will set up a new authenticator at next sign-in.")
+	return nil
 }
 
 func backupCmd(args []string) error {

@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError, type Me } from "./api";
+import { unauthorizedPath } from "./twoFactor";
 
 type MeState = { me: Me; setMe: (me: Me) => void; refresh: () => Promise<void> };
 
@@ -17,7 +18,7 @@ export function MeProvider({ children }: { children: React.ReactNode }) {
   const load = useCallback(
     () =>
       api<Me>("GET", "/me").then(setMe, (e) => {
-        if (e instanceof ApiError && e.status === 401) router.replace("/login");
+        if (e instanceof ApiError && e.status === 401) router.replace(unauthorizedPath(e));
         else setFailed(true);
       }),
     [router],
@@ -29,7 +30,7 @@ export function MeProvider({ children }: { children: React.ReactNode }) {
       (m) => live && setMe(m),
       (e) => {
         if (!live) return;
-        if (e instanceof ApiError && e.status === 401) router.replace("/login");
+        if (e instanceof ApiError && e.status === 401) router.replace(unauthorizedPath(e));
         else setFailed(true);
       },
     );

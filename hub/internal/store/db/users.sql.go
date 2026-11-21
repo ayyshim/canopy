@@ -16,7 +16,7 @@ import (
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, email, name, password_hash, avatar_color, last_org_id)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, email, name, password_hash, avatar_color, last_org_id, created_at, updated_at, is_hub_admin, notifications, daily_sent_on, snooze_until
+RETURNING id, email, name, password_hash, avatar_color, last_org_id, created_at, updated_at, is_hub_admin, notifications, daily_sent_on, snooze_until, totp_secret, totp_enabled_at, totp_last_step
 `
 
 type CreateUserParams struct {
@@ -51,12 +51,15 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Notifications,
 		&i.DailySentOn,
 		&i.SnoozeUntil,
+		&i.TotpSecret,
+		&i.TotpEnabledAt,
+		&i.TotpLastStep,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, name, password_hash, avatar_color, last_org_id, created_at, updated_at, is_hub_admin, notifications, daily_sent_on, snooze_until FROM users WHERE email = $1
+SELECT id, email, name, password_hash, avatar_color, last_org_id, created_at, updated_at, is_hub_admin, notifications, daily_sent_on, snooze_until, totp_secret, totp_enabled_at, totp_last_step FROM users WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -75,12 +78,15 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Notifications,
 		&i.DailySentOn,
 		&i.SnoozeUntil,
+		&i.TotpSecret,
+		&i.TotpEnabledAt,
+		&i.TotpLastStep,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, name, password_hash, avatar_color, last_org_id, created_at, updated_at, is_hub_admin, notifications, daily_sent_on, snooze_until FROM users WHERE id = $1
+SELECT id, email, name, password_hash, avatar_color, last_org_id, created_at, updated_at, is_hub_admin, notifications, daily_sent_on, snooze_until, totp_secret, totp_enabled_at, totp_last_step FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -99,12 +105,15 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.Notifications,
 		&i.DailySentOn,
 		&i.SnoozeUntil,
+		&i.TotpSecret,
+		&i.TotpEnabledAt,
+		&i.TotpLastStep,
 	)
 	return i, err
 }
 
 const listDailySummaryUsers = `-- name: ListDailySummaryUsers :many
-SELECT u.id, u.email, u.name, u.password_hash, u.avatar_color, u.last_org_id, u.created_at, u.updated_at, u.is_hub_admin, u.notifications, u.daily_sent_on, u.snooze_until, coalesce(o.timezone, 'UTC')::text AS timezone FROM users u
+SELECT u.id, u.email, u.name, u.password_hash, u.avatar_color, u.last_org_id, u.created_at, u.updated_at, u.is_hub_admin, u.notifications, u.daily_sent_on, u.snooze_until, u.totp_secret, u.totp_enabled_at, u.totp_last_step, coalesce(o.timezone, 'UTC')::text AS timezone FROM users u
 LEFT JOIN organizations o ON o.id = u.last_org_id
 WHERE (u.notifications -> 'daily' ->> 'email')::boolean IS TRUE
 `
@@ -122,6 +131,9 @@ type ListDailySummaryUsersRow struct {
 	Notifications []byte
 	DailySentOn   pgtype.Date
 	SnoozeUntil   *time.Time
+	TotpSecret    *string
+	TotpEnabledAt *time.Time
+	TotpLastStep  *int64
 	Timezone      string
 }
 
@@ -148,6 +160,9 @@ func (q *Queries) ListDailySummaryUsers(ctx context.Context) ([]ListDailySummary
 			&i.Notifications,
 			&i.DailySentOn,
 			&i.SnoozeUntil,
+			&i.TotpSecret,
+			&i.TotpEnabledAt,
+			&i.TotpLastStep,
 			&i.Timezone,
 		); err != nil {
 			return nil, err
@@ -221,7 +236,7 @@ UPDATE users
 SET name = coalesce($1, name),
     avatar_color = coalesce($2, avatar_color)
 WHERE id = $3
-RETURNING id, email, name, password_hash, avatar_color, last_org_id, created_at, updated_at, is_hub_admin, notifications, daily_sent_on, snooze_until
+RETURNING id, email, name, password_hash, avatar_color, last_org_id, created_at, updated_at, is_hub_admin, notifications, daily_sent_on, snooze_until, totp_secret, totp_enabled_at, totp_last_step
 `
 
 type UpdateUserProfileParams struct {
@@ -246,6 +261,9 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		&i.Notifications,
 		&i.DailySentOn,
 		&i.SnoozeUntil,
+		&i.TotpSecret,
+		&i.TotpEnabledAt,
+		&i.TotpLastStep,
 	)
 	return i, err
 }

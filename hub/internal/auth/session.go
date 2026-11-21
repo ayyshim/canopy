@@ -19,6 +19,21 @@ const SessionCookie = "canopy_session"
 type Identity struct {
 	UserID    uuid.UUID
 	SessionID uuid.UUID
+	// TwoFactor is true once this session has passed the code check.
+	TwoFactor bool
+	// Enrolled is true when the person already has an authenticator set up.
+	Enrolled bool
+}
+
+// Next is what a pending session must do: "enroll", "verify", or "" when it is done.
+func (i Identity) Next() string {
+	switch {
+	case i.TwoFactor:
+		return ""
+	case i.Enrolled:
+		return "verify"
+	}
+	return "enroll"
 }
 
 type ctxKey struct{}
@@ -66,7 +81,17 @@ func (s *Sessions) Start(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return Identity{}, err
 	}
 	s.setCookie(w, raw)
-	return Identity{UserID: userID, SessionID: sess.ID}, nil
+	return s.pending(ctx, q, Identity{UserID: userID, SessionID: sess.ID})
+}
+
+// pending fills in whether the person has an authenticator, which decides enroll or verify.
+func (s *Sessions) pending(ctx context.Context, q *db.Queries, id Identity) (Identity, error) {
+	u, err := q.GetUserByID(ctx, id.UserID)
+	if err != nil {
+		return Identity{}, err
+	}
+	id.Enrolled = u.TotpEnabledAt != nil
+	return id, nil
 }
 
 func (s *Sessions) setCookie(w http.ResponseWriter, raw string) {
@@ -107,12 +132,21 @@ func (s *Sessions) Middleware(next http.Handler) http.Handler {
 				s.setCookie(w, c.Value)
 			}
 		}
-		next.ServeHTTP(w, r.WithContext(WithIdentity(r.Context(), Identity{UserID: sess.UserID, SessionID: sess.ID})))
+		id := Identity{UserID: sess.UserID, SessionID: sess.ID, TwoFactor: sess.TwoFactorAt != nil}
+		if !id.TwoFactor {
+			if id, err = s.pending(r.Context(), s.Store.Queries, id); err != nil {
+				slog.ErrorContext(r.Context(), "load user for session", "err", err)
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+		next.ServeHTTP(w, r.WithContext(WithIdentity(r.Context(), id)))
 	})
 }
 
-// RequireUser rejects requests without a signed-in user.
-func RequireUser(next http.Handler) http.Handler {
+// RequireSession rejects requests without a session, but lets one that still needs its
+// two-factor code through. Only the two-factor endpoints use it.
+func RequireSession(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := FromContext(r.Context()); !ok {
 			httpx.Fail(w, r, httpx.ErrUnauthorized)
@@ -120,6 +154,21 @@ func RequireUser(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// RequireUser rejects requests without a signed-in user whose session passed the code check.
+// A pending session gets 401 two_factor_required with next=enroll or next=verify.
+func RequireUser(next http.Handler) http.Handler {
+	return RequireSession(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, _ := FromContext(r.Context())
+		if n := id.Next(); n != "" {
+			e := httpx.NewError(http.StatusUnauthorized, "two_factor_required", "Enter your two-factor code to continue.")
+			e.Next = n
+			httpx.Fail(w, r, e)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}))
 }
 
 func truncate(s string, n int) string {

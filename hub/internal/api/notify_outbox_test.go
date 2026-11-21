@@ -291,9 +291,11 @@ func TestDiscordSettingsAPI(t *testing.T) {
 		"workspace_grants": []any{map[string]any{"workspace_id": ws, "role": "staff", "manager_ids": []string{}}}})
 	token := strings.TrimPrefix(str(r.Body["link"]), "http://canopy.test/invite/")
 	staff := e.client()
-	if acc := staff.do("POST", "/api/v1/invites/"+token+"/accept", map[string]any{"name": "Sam", "password": "staff password"}); acc.Status != 200 {
+	acc := staff.do("POST", "/api/v1/invites/"+token+"/accept", map[string]any{"name": "Sam", "password": "staff password"})
+	if acc.Status != 200 {
 		t.Fatalf("accept: %d", acc.Status)
 	}
+	e.finishSignIn(staff, "", acc.Body)
 	for name, c := range map[string]*client{"staff": staff, "outsider": outsider} {
 		for _, m := range []string{"GET", "PUT", "DELETE"} {
 			if got := c.do(m, path, map[string]any{"webhook": goodHook}).Status; got != http.StatusNotFound {

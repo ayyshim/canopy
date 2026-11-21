@@ -503,3 +503,42 @@ task per hour and 20 per member per day; past them the agent is told to use `com
 Files are output names and must belong to the same task or another task on the same goal, so an agent can't
 attach another goal's work. Links must be https. The prompt says not to use it for routine steps or for what
 questions, outputs and task completion already send.
+
+## Two-factor sign-in (TOTP)
+
+Every person must set up an authenticator app. Every sign-in (login, OAuth, signup, hub setup, invite accept,
+password reset) creates a *pending* session (`auth_sessions.two_factor_at` is null). `RequireUser`, `/admin`
+and the board WebSocket refuse pending sessions with 401 `two_factor_required` and `next` = `enroll` or
+`verify`. Password reset and OAuth never skip the code. Sessions that existed when migration 00026 ran are
+pending too, so people already signed in enroll on their next request. Sign-in responses are
+`{"two_factor": "enroll"|"verify"}` instead of `me`.
+
+Codes are RFC 6238 (SHA1, 6 digits, 30 s, one step of drift either side), written by hand with `crypto/hmac`.
+A time step that was accepted once is stored (`users.totp_last_step`) and never accepted again. Ten recovery
+codes are made at enrollment, shown once, stored as SHA-256 hashes like tokens, and each works once. Five wrong
+codes end the session. The setup secret is returned only by `POST /auth/two-factor/setup` before enrollment
+finishes, and is never logged.
+
+**Trade-off.** The TOTP secret is stored unencrypted in `users.totp_secret` (the code check needs it); anyone
+with database read access can generate codes. Encrypting it needs a hub key that doesn't exist yet. There is
+no way yet to reset two-factor for someone who lost both their device and recovery codes.
+
+## Managing two-factor: recovery codes, change, reset
+
+`GET /me` carries `two_factor {enabled_at, recovery_codes_left}`. Making new recovery codes
+(`POST /me/two-factor/recovery-codes`) and changing the authenticator (`POST /me/two-factor/change`) ask for a
+current authenticator code, even though the session is already verified. New codes replace all old ones. Change
+clears the secret and codes, ends the person's other sessions and sends this session back to `enroll`, so the
+new app is set up right away. A hub admin can reset anyone (`POST /admin/users/{id}/two-factor/reset`) and the
+server operator can run `canopy-hub reset-two-factor EMAIL` (stop the hub first, like `migrate`); both clear the
+secret and codes and end every session, so the person enrolls at next sign-in. Everyone who isn't a hub admin
+gets 404 from the reset route (other `/admin` routes still answer 403).
+
+The person is emailed after an admin or command reset, and whenever a recovery code is used.
+
+**Audit rule.** `audit_events` wants an organization, so an event about a person is written once for each
+organization they are an active member of, and once at hub level when they have none. Organization admins see
+them; the actor is the hub admin, or empty when the command did it.
+
+**Trade-off.** Changing the authenticator needs a working code, so someone who lost their device uses a recovery
+code to sign in and then changes it, or asks a hub admin for a reset.

@@ -9,6 +9,7 @@ import { Section } from "@/components/PageShell";
 import { PushDevice } from "@/components/PushDevice";
 import { api, ApiError, hardNavigate, ROLE_LABEL, type Me } from "@/lib/api";
 import { useMe } from "@/lib/me";
+import { TwoStepSection } from "./TwoStepSection";
 import { setTheme, useTheme, type Theme } from "@/lib/theme";
 
 const PREFS: [string, string][] = [["questions", "Questions and approvals"], ["progress", "Progress updates"], ["errors", "Errors"], ["goal_ready", "Goal ready"], ["daily", "Daily summary"]];
@@ -131,6 +132,7 @@ export function Account() {
         </form>
         {pwSaved && <span className="hint" role="status">Password changed</span>}
       </Section>
+      <TwoStepSection />
       <Section title="Organizations">
         {me.organizations.map((o) => (
           <div className="trow" style={{ cursor: "default" }} key={o.id}>

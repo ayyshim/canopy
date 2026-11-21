@@ -5,7 +5,11 @@ package system
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha1"
+	"encoding/base32"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -214,6 +218,26 @@ func (c *client) do(method, path string, body any, want int) map[string]any {
 	return out
 }
 
+// enroll finishes a pending sign-in: it sets up two-factor with a code computed from the
+// secret (RFC 6238) and returns /me.
+func (c *client) enroll() map[string]any {
+	c.t.Helper()
+	secret := str(c.do("POST", "/api/v1/auth/two-factor/setup", nil, 200)["secret"])
+	key, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(secret)
+	if err != nil {
+		c.t.Fatal(err)
+	}
+	var msg [8]byte
+	binary.BigEndian.PutUint64(msg[:], uint64(time.Now().Unix()/30))
+	mac := hmac.New(sha1.New, key)
+	mac.Write(msg[:])
+	sum := mac.Sum(nil)
+	off := sum[len(sum)-1] & 0x0f
+	n := binary.BigEndian.Uint32(sum[off:off+4]) & 0x7fffffff
+	code := fmt.Sprintf("%06d", n%1_000_000)
+	return m(c.do("POST", "/api/v1/auth/two-factor/enable", map[string]any{"code": code}, 200)["me"])
+}
+
 func str(v any) string { s, _ := v.(string); return s }
 
 func m(v any) map[string]any { x, _ := v.(map[string]any); return x }
@@ -225,9 +249,11 @@ func (h *hub) setupOrg(org, name, email string) (*client, string) {
 	admin := h.client()
 	admin.do("POST", "/api/v1/hub/setup", map[string]any{"token": "system-test", "hub": map[string]any{"name": "Test hub"},
 		"admin": map[string]any{"name": "Hub Admin", "email": "admin@hub.test", "password": "admin-pass-1"}}, 201)
+	admin.enroll()
 	owner := h.client()
-	me := owner.do("POST", "/api/v1/auth/signup", map[string]any{"org": map[string]any{"name": org, "size": "2_10"},
+	owner.do("POST", "/api/v1/auth/signup", map[string]any{"org": map[string]any{"name": org, "size": "2_10"},
 		"user": map[string]any{"name": name, "email": email, "password": "owner-pass-1", "accept_terms": true}}, 201)
+	me := owner.enroll()
 	owner.me = me
 	return owner, str(me["current_org_id"])
 }

@@ -431,7 +431,7 @@ func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) erro
 			return err
 		}
 	}
-	var me meView
+	var next string
 	err = s.Core.Tx(ctx, func(t *core.Tx) error {
 		q := t.Q
 		if _, err := q.MarkInviteAccepted(ctx, inv.ID); store.IsNotFound(err) {
@@ -473,17 +473,14 @@ func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) erro
 		if err := s.audit(ctx, q, &inv.OrgID, &userID, "people.joined", inv.Email+" accepted the invitation"); err != nil {
 			return err
 		}
-		if _, err := s.Sessions.Start(ctx, w, r, q, userID); err != nil {
-			return err
-		}
-		var err error
-		me, err = s.buildMe(ctx, q, userID)
+		id, err := s.Sessions.Start(ctx, w, r, q, userID)
+		next = id.Next()
 		return err
 	})
 	if err != nil {
 		return err
 	}
-	httpx.JSON(w, http.StatusOK, me)
+	httpx.JSON(w, http.StatusOK, twoFactorNext(next))
 	return nil
 }
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, ApiError, hardNavigate, type Me } from "@/lib/api";
+import { pendingStep, twoFactorPath, type TwoFactorPending } from "@/lib/twoFactor";
 
 type Info = {
   email: string; organization: string; inviter: string; role: string; account_exists: boolean;
@@ -30,7 +31,13 @@ export function Invite() {
     e.preventDefault();
     setErrors({});
     try {
-      setMe(await api<Me>("POST", `/invites/${token}/accept`, { name, password }));
+      const res = await api<Me | TwoFactorPending>("POST", `/invites/${token}/accept`, { name, password });
+      const step = pendingStep(res);
+      if (step) {
+        const ws = info?.workspaces[0];
+        return hardNavigate(twoFactorPath(step, ws ? `/w/${ws.id}` : "/board"));
+      }
+      setMe(res as Me);
       setState("joined");
     } catch (err) {
       setErrors(err instanceof ApiError ? (Object.keys(err.fields).length ? err.fields : { form: err.message }) : { form: "Something went wrong. Try again." });
