@@ -1,6 +1,6 @@
 -- name: CreateGoal :one
-INSERT INTO goals (id, workspace_id, manager_id, title, done_when, color, created_by, runner_id, base, branch, snapshot, description, status, number)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, next_item_number($2, 'goal'))
+INSERT INTO goals (id, workspace_id, manager_id, title, done_when, color, created_by, runner_id, base, branch, snapshot, description, status, job_run_id, number)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, next_item_number($2, 'goal'))
 RETURNING *;
 
 -- name: UpdateDraftGoal :one

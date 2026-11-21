@@ -24,8 +24,8 @@ func (q *Queries) CountGoals(ctx context.Context, workspaceID uuid.UUID) (int64,
 }
 
 const createGoal = `-- name: CreateGoal :one
-INSERT INTO goals (id, workspace_id, manager_id, title, done_when, color, created_by, runner_id, base, branch, snapshot, description, status, number)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, next_item_number($2, 'goal'))
+INSERT INTO goals (id, workspace_id, manager_id, title, done_when, color, created_by, runner_id, base, branch, snapshot, description, status, job_run_id, number)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, next_item_number($2, 'goal'))
 RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number, discord_thread_id, job_run_id
 `
 
@@ -43,6 +43,7 @@ type CreateGoalParams struct {
 	Snapshot    bool
 	Description string
 	Status      string
+	JobRunID    *uuid.UUID
 }
 
 func (q *Queries) CreateGoal(ctx context.Context, arg CreateGoalParams) (Goal, error) {
@@ -60,6 +61,7 @@ func (q *Queries) CreateGoal(ctx context.Context, arg CreateGoalParams) (Goal, e
 		arg.Snapshot,
 		arg.Description,
 		arg.Status,
+		arg.JobRunID,
 	)
 	var i Goal
 	err := row.Scan(
