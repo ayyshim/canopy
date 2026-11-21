@@ -154,6 +154,10 @@ func (s *Server) setupRoutes(r chi.Router) {
 			r.Use(auth.RequireUser)
 			r.Get("/me", httpx.Handler(s.handleGetMe))
 			r.Patch("/me", httpx.Handler(s.handlePatchMe))
+			r.With(auth.RateLimit(s.Limiter, "two-factor", s.Cfg.AuthRateLimit, s.Cfg.TrustProxy)).Group(func(r chi.Router) {
+				r.Post("/me/two-factor/recovery-codes", httpx.Handler(s.handleNewRecoveryCodes))
+				r.Post("/me/two-factor/change", httpx.Handler(s.handleChangeTwoFactor))
+			})
 			r.Post("/orgs", httpx.Handler(s.handleCreateOrg))
 			r.Get("/orgs/{orgID}", httpx.Handler(s.handleGetOrg))
 			r.Patch("/orgs/{orgID}", httpx.Handler(s.handlePatchOrg))
@@ -171,6 +175,7 @@ func (s *Server) setupRoutes(r chi.Router) {
 			r.Get("/users", httpx.Handler(s.handleAdminListUsers))
 			r.Get("/users/{userID}", httpx.Handler(s.handleAdminGetUser))
 			r.Patch("/users/{userID}", httpx.Handler(s.handleAdminPatchUser))
+			r.Post("/users/{userID}/two-factor/reset", httpx.Handler(s.handleAdminResetTwoFactor))
 			r.Get("/settings", httpx.Handler(s.handleAdminGetSettings))
 			r.Patch("/settings", httpx.Handler(s.handleAdminPatchSettings))
 		})

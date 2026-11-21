@@ -24,3 +24,15 @@ UPDATE auth_sessions SET two_factor_at = now(), two_factor_failures = 0 WHERE id
 -- name: AddSessionTwoFactorFailure :one
 UPDATE auth_sessions SET two_factor_failures = two_factor_failures + 1 WHERE id = $1
 RETURNING two_factor_failures;
+
+-- name: CountUnusedRecoveryCodes :one
+SELECT count(*) FROM user_recovery_codes WHERE user_id = $1 AND used_at IS NULL;
+
+-- name: DeleteRecoveryCodes :exec
+DELETE FROM user_recovery_codes WHERE user_id = $1;
+
+-- name: ClearUserTotp :exec
+UPDATE users SET totp_secret = NULL, totp_enabled_at = NULL, totp_last_step = NULL WHERE id = $1;
+
+-- name: MarkSessionPending :exec
+UPDATE auth_sessions SET two_factor_at = NULL, two_factor_failures = 0 WHERE id = $1;
