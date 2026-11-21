@@ -74,7 +74,8 @@ function Main() {
   const side = useUI((s) => s.side);
   // A link with ?outputs=1 comes back to the file manager.
   useEffect(() => {
-    if (fromSearch(window.location.search)) useUI.getState().setTray(true);
+    const link = fromSearch(window.location.search);
+    if (link) useUI.getState().openOutputs(link);
   }, []);
   return (
     <div className={"main" + (side ? " side-open" : "")}>
