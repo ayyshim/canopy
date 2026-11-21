@@ -201,6 +201,10 @@ func TestDispatcherRetries(t *testing.T) {
 	ws, _ := e.createWorkspace(owner, currentOrg(me), setupPayload())
 	wsID := uuid.MustParse(ws)
 	ctx := context.Background()
+	// The test database is shared; drop other tests' rows so one batch reaches ours.
+	if _, err := e.store.Pool.Exec(ctx, `DELETE FROM notification_outbox WHERE workspace_id <> $1`, wsID); err != nil {
+		t.Fatal(err)
+	}
 	w, _ := e.store.GetWorkspace(ctx, wsID)
 	for i := 0; i < 2; i++ {
 		if err := e.srv.Core.Tx(ctx, func(tx *core.Tx) error {
