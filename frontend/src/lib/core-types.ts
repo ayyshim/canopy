@@ -132,6 +132,7 @@ export interface CloneView {
 }
 export interface NoteView {
   id: string /* uuid */;
+  number: number /* int32 */;
   goal_id?: string /* uuid */;
   kind: string;
   title: string;
@@ -212,6 +213,7 @@ export interface StaffProposalView {
 
 export interface GoalView {
   id: string /* uuid */;
+  number: number /* int32 */;
   manager_id?: string /* uuid */;
   title: string;
   done_when: string;
@@ -256,6 +258,7 @@ export interface DirNeed {
 }
 export interface TaskView {
   id: string /* uuid */;
+  number: number /* int32 */;
   goal_id?: string /* uuid */;
   member_id?: string /* uuid */;
   kind: string;

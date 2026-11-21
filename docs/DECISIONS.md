@@ -380,3 +380,17 @@ lasts across the pages of one preview and is lost when the viewer reloads the fr
 
 **Trade-off.** Preview pages can call any https site (`connect-src https:`), so they can send what they know
 elsewhere. They know nothing of the hub, but people should still only preview work from their own team.
+
+## Item numbers and references (2026-11-21)
+
+Goals, tasks and notes get a number per workspace and type, written G-12, T-34, N-5. The number is a column
+with `unique (workspace_id, number)`, handed out by `next_item_number()` from the `item_counters` table inside
+the insert statement. The counter row stays locked until the transaction ends, so concurrent inserts queue and
+never clash; numbers are never reused after a delete. Migration 00023 backfills old rows by `created_at, id`.
+
+`hub/internal/refs` parses refs (`G-12`, `#t-34`, any case, not glued to other words, not in code) and resolves
+them with the board snapshot's rules: a goal or task is visible when its manager or owner is, a note when it has
+no goal or its goal is. Hidden and unknown refs look the same: nothing, or 404 over REST. Agents see everything
+in the workspace (as with `read_notes`); text written by a person is expanded only with what that person sees.
+Expansion adds a "Referenced items" block (max 10 items, about 1500 characters each) to goal and task prompts,
+chat messages, task comments and review change requests. The `read_item` tool shows one item in full.
