@@ -296,6 +296,13 @@ code,.mono{font-family:var(--font-mono);font-size:.92em}
 .zoomctl button{border:0;background:transparent;width:38px;height:38px;border-radius:9px;font-size:17px;color:var(--ink)}
 .zoomctl button:hover{background:var(--soft)}
 .zoomctl .zl{width:auto;padding:0 8px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.zoomctl .mapbtn{display:grid;place-items:center;color:var(--muted)}
+.zoomctl .mapbtn[aria-pressed="true"]{color:var(--ink);background:var(--soft)}
+.minimap{position:absolute;right:14px;bottom:14px;z-index:5;background:var(--card);border:1px solid var(--edge);border-radius:12px;padding:4px;box-shadow:var(--shadow);transition:right .15s}
+.minimap.shifted{right:454px}
+.minimap canvas{display:block;width:200px;height:130px;border-radius:8px;background:var(--paper);cursor:crosshair;touch-action:none}
+@media (max-width:900px){.minimap.shifted{right:14px}}
+@media (max-width:640px){.minimap canvas{width:120px;height:78px}}
 .cursor{position:absolute;left:0;top:0;z-index:8;pointer-events:none;transition:transform .12s linear}
 .cursor svg{display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))}
 .cursor span{position:absolute;left:14px;top:16px;padding:2px 8px;border-radius:6px 99px 99px 99px;color:#fff;font-size:11.5px;font-weight:600;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.2)}
