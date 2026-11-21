@@ -26,7 +26,7 @@ paths:
       summary: Create an organization, then its owner, and sign in
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/SignupRequest" } } } }
       responses:
-        "201": { description: Signed in, content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        "201": { description: "Signed in, but a two-factor code is still needed", content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorPending" } } } }
         "403": { description: signups_closed, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
         "409": { description: "email_taken, or setup_required before hub setup", content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
         "422": { $ref: "#/components/responses/Error" }
@@ -36,8 +36,41 @@ paths:
       summary: Sign in with email and password
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LoginRequest" } } } }
       responses:
-        "200": { description: Signed in, content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        "200": { description: "Signed in, but a two-factor code is still needed", content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorPending" } } } }
         "401": { description: "unknown_email, wrong_password or no_password", content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/two-factor:
+    get:
+      summary: What the pending session must do next
+      responses:
+        "200": { description: Next step, content: { application/json: { schema: { type: object, required: [next], properties: { next: { type: string, enum: [enroll, verify, ""] } } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /auth/two-factor/setup:
+    post:
+      summary: Make a new authenticator secret (only before enrollment finishes)
+      responses:
+        "200": { description: Secret and QR code, content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorSetup" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "409": { description: already_enrolled, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /auth/two-factor/enable:
+    post:
+      summary: Check the first code, turn two-factor on and return the recovery codes once
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [code], properties: { code: { type: string } } } } } }
+      responses:
+        "200": { description: Enabled, content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorEnabled" } } } }
+        "401": { description: too_many_attempts ends the session, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "409": { description: "setup_required or already_enrolled", content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/two-factor/verify:
+    post:
+      summary: Finish sign-in with an authenticator code or a recovery code
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { code: { type: string }, recovery_code: { type: string } } } } } }
+      responses:
+        "200": { description: Verified, content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        "401": { description: too_many_attempts ends the session, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "409": { description: not_enrolled, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
         "422": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
   /auth/logout:
@@ -65,7 +98,7 @@ paths:
       summary: Set a new password from a reset link; revokes all sessions and signs in
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [token, password], properties: { token: { type: string }, password: { type: string } } } } } }
       responses:
-        "200": { description: Signed in, content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        "200": { description: "Signed in, but a two-factor code is still needed", content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorPending" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
   /auth/oauth/{provider}/start:
@@ -144,7 +177,7 @@ paths:
       summary: First-run setup — name the hub, store sign-in providers, create the first hub admin
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/HubSetupRequest" } } } }
       responses:
-        "201": { description: Signed in as hub admin, content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        "201": { description: "Signed in as hub admin, but a two-factor code is still needed", content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorPending" } } } }
         "403": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
@@ -321,8 +354,9 @@ components:
           type: object
           required: [code, message]
           properties:
-            code: { type: string, description: "e.g. validation, email_taken, unknown_email, wrong_password, invalid_token, rate_limited, csrf, not_found" }
+            code: { type: string, description: "e.g. validation, email_taken, unknown_email, wrong_password, invalid_token, rate_limited, csrf, not_found, two_factor_required (401, with next: enroll or verify), invalid_code, too_many_attempts" }
             message: { type: string }
+            next: { type: string, enum: [enroll, verify], description: "With two_factor_required: what the pending session must do" }
             fields: { type: object, additionalProperties: { type: string }, description: "Inline message per field path, e.g. user.email" }
     ClaudeWindow:
       type: object
@@ -476,6 +510,23 @@ components:
             email: { type: string }
             password: { type: string, minLength: 8 }
             accept_terms: { type: boolean }
+    TwoFactorPending:
+      type: object
+      required: [two_factor]
+      properties: { two_factor: { type: string, enum: [enroll, verify], description: "Where to send the person: set up an authenticator, or enter a code" } }
+    TwoFactorSetup:
+      type: object
+      required: [secret, otpauth_url, qr_png]
+      properties:
+        secret: { type: string, description: "Base32 secret for manual entry" }
+        otpauth_url: { type: string }
+        qr_png: { type: string, description: "data: URL of the QR code" }
+    TwoFactorEnabled:
+      type: object
+      required: [recovery_codes, me]
+      properties:
+        recovery_codes: { type: array, items: { type: string } }
+        me: { $ref: "#/components/schemas/Me" }
     LoginRequest:
       type: object
       required: [email, password]

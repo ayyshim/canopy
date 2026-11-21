@@ -106,13 +106,13 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Signed in */
+                /** @description Signed in, but a two-factor code is still needed */
                 201: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Me"];
+                        "application/json": components["schemas"]["TwoFactorPending"];
                     };
                 };
                 /** @description signups_closed */
@@ -166,7 +166,209 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Signed in */
+                /** @description Signed in, but a two-factor code is still needed */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TwoFactorPending"];
+                    };
+                };
+                /** @description unknown_email, wrong_password or no_password */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                422: components["responses"]["Error"];
+                429: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/two-factor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the pending session must do next */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Next step */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            next: "enroll" | "verify" | "";
+                        };
+                    };
+                };
+                401: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/two-factor/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make a new authenticator secret (only before enrollment finishes) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Secret and QR code */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TwoFactorSetup"];
+                    };
+                };
+                401: components["responses"]["Error"];
+                /** @description already_enrolled */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/two-factor/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check the first code, turn two-factor on and return the recovery codes once */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        code: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Enabled */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TwoFactorEnabled"];
+                    };
+                };
+                /** @description too_many_attempts ends the session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                /** @description setup_required or already_enrolled */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                422: components["responses"]["Error"];
+                429: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/two-factor/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Finish sign-in with an authenticator code or a recovery code */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        code?: string;
+                        recovery_code?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Verified */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -175,8 +377,17 @@ export interface paths {
                         "application/json": components["schemas"]["Me"];
                     };
                 };
-                /** @description unknown_email, wrong_password or no_password */
+                /** @description too_many_attempts ends the session */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
+                /** @description not_enrolled */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -342,13 +553,13 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Signed in */
+                /** @description Signed in, but a two-factor code is still needed */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Me"];
+                        "application/json": components["schemas"]["TwoFactorPending"];
                     };
                 };
                 400: components["responses"]["Error"];
@@ -748,13 +959,13 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Signed in as hub admin */
+                /** @description Signed in as hub admin, but a two-factor code is still needed */
                 201: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Me"];
+                        "application/json": components["schemas"]["TwoFactorPending"];
                     };
                 };
                 403: components["responses"]["Error"];
@@ -1610,9 +1821,14 @@ export interface components {
     schemas: {
         ErrorBody: {
             error: {
-                /** @description e.g. validation, email_taken, unknown_email, wrong_password, invalid_token, rate_limited, csrf, not_found */
+                /** @description e.g. validation, email_taken, unknown_email, wrong_password, invalid_token, rate_limited, csrf, not_found, two_factor_required (401, with next: enroll or verify), invalid_code, too_many_attempts */
                 code: string;
                 message: string;
+                /**
+                 * @description With two_factor_required: what the pending session must do
+                 * @enum {string}
+                 */
+                next?: "enroll" | "verify";
                 /** @description Inline message per field path, e.g. user.email */
                 fields?: {
                     [key: string]: string;
@@ -1800,6 +2016,24 @@ export interface components {
                 password: string;
                 accept_terms: boolean;
             };
+        };
+        TwoFactorPending: {
+            /**
+             * @description Where to send the person: set up an authenticator, or enter a code
+             * @enum {string}
+             */
+            two_factor: "enroll" | "verify";
+        };
+        TwoFactorSetup: {
+            /** @description Base32 secret for manual entry */
+            secret: string;
+            otpauth_url: string;
+            /** @description data: URL of the QR code */
+            qr_png: string;
+        };
+        TwoFactorEnabled: {
+            recovery_codes: string[];
+            me: components["schemas"]["Me"];
         };
         LoginRequest: {
             email: string;
