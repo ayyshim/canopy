@@ -875,10 +875,10 @@ body.on-board.tray-open .toasts{bottom:314px}
 .reflink:hover{background:color-mix(in srgb,var(--link) 18%,transparent)}
 .reflink:focus-visible{outline:2px solid var(--link);outline-offset:1px}
 .bub .reflink{color:inherit;border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.18)}
-.refpick{position:absolute;z-index:60;min-width:240px;max-width:min(380px,calc(100vw - 24px));max-height:240px;overflow:auto;background:var(--card);border:1px solid var(--edge);border-radius:10px;box-shadow:var(--shadow);padding:4px;color:var(--ink)}
+.refpick{position:absolute;z-index:95;min-width:240px;max-width:min(380px,calc(100vw - 24px));max-height:240px;overflow:auto;background:var(--card);border:1px solid var(--edge);border-radius:10px;box-shadow:var(--shadow);padding:4px;color:var(--ink)}
 .refpick button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0;background:none;color:inherit;padding:6px 8px;border-radius:7px;font:inherit;font-size:13px;cursor:pointer}
 .refpick button[aria-selected=true],.refpick button:hover{background:var(--soft)}
 .refpick .rt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .refpick .rs{font-size:11px;color:var(--muted)}
 .refpick .none{padding:8px;font-size:13px;color:var(--muted)}
-.refwrap{position:relative}
+.refwrap{display:contents}

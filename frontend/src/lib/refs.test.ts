@@ -66,3 +66,14 @@ test("refOfHref only trusts #ref: links", () => {
   assert.equal(refOfHref("https://x.test/#ref:G-2"), null);
   assert.equal(refOfHref(undefined), null);
 });
+
+import { refQueryAt } from "./refs.ts";
+
+test("the picker opens on a # at the caret, not inside words", () => {
+  assert.deepEqual(refQueryAt("Fix #", 5), { start: 4, query: "" });
+  assert.deepEqual(refQueryAt("Fix #t-3 later", 8), { start: 4, query: "t-3" });
+  assert.deepEqual(refQueryAt("#cache", 6), { start: 0, query: "cache" });
+  assert.equal(refQueryAt("issue#12", 8), null);
+  assert.equal(refQueryAt("Fix # now", 9), null);
+  assert.equal(refQueryAt("no hash here", 12), null);
+});

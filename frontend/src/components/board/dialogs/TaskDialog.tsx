@@ -1,5 +1,6 @@
 "use client";
 
+import { RefAssist } from "../RefAssist";
 import { useCatalog, skillLabel } from "@/lib/catalog";
 import { useState } from "react";
 import { ApiError } from "@/lib/api";
@@ -45,7 +46,7 @@ export function TaskDialog({ goalId, memberId }: { goalId?: string; memberId?: s
       <h2>{g?.status === "ready" || g?.status === "done" ? "Add a follow-up task" : "New task"}</h2>
       <p>{g?.status === "ready" || g?.status === "done" ? `This puts “${g.title}” back to work.` : "Most work comes from managers splitting goals. Add a task yourself when you want something specific done."}</p>
       <label className="field"><span>Title</span>
-        <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Add a saved-cards picker" autoComplete="off" autoFocus /></label>
+        <RefAssist><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Add a saved-cards picker" autoComplete="off" autoFocus /></RefAssist></label>
       <label className="field"><span>Goal</span>
         <select className="input" value={goal} onChange={(e) => setGoal(e.target.value)}>
           <option value="">No goal</option>

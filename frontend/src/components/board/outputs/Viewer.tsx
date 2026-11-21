@@ -1,5 +1,6 @@
 "use client";
 
+import { RefAssist } from "../RefAssist";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { markSeen, resolveSignal } from "@/lib/board/actions";
@@ -171,7 +172,7 @@ export function Viewer() {
               <span style={{ fontSize: 13 }}>The task finishes once you approve.</span>
               {changes ? (
                 <>
-                  <label className="field"><span>What should change?</span><textarea className="textarea" rows={3} value={note} onChange={(e) => setNote(e.target.value)} /></label>
+                  <label className="field"><span>What should change?</span><RefAssist><textarea className="textarea" rows={3} value={note} onChange={(e) => setNote(e.target.value)} /></RefAssist></label>
                   <div className="row">
                     <button className="btn btn-primary" disabled={!note.trim()} onClick={async () => { if (await resolveSignal(sig.id, "changes", { note })) { setChanges(false); setNote(""); } }}>Send to {m?.name}</button>
                     <button className="btn" onClick={() => setChanges(false)}>Cancel</button>

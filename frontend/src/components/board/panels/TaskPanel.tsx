@@ -1,5 +1,6 @@
 "use client";
 
+import { RefAssist } from "../RefAssist";
 import { IdTag, CopyId } from "../IdTag";
 import { useCatalog, skillLabel } from "@/lib/catalog";
 import { useEffect, useState } from "react";
@@ -179,7 +180,7 @@ export function TaskPanel({ id }: { id: string }) {
         <form className="stack-sm" style={{ width: "100%", gap: 6 }} onSubmit={send}>
           <label className="lbl" htmlFor="comment-input">Comment for {m?.name ?? "the agent"}</label>
           <div className="row">
-            <input className="input" id="comment-input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Add context or a change" />
+            <RefAssist><input className="input" id="comment-input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Add context or a change" /></RefAssist>
             <button className="btn btn-primary btn-sm" type="submit">Post</button>
           </div>
         </form>

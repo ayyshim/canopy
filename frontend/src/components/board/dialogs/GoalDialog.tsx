@@ -1,5 +1,6 @@
 "use client";
 
+import { RefAssist } from "../RefAssist";
 import Link from "next/link";
 import { useState } from "react";
 import { ApiError } from "@/lib/api";
@@ -89,14 +90,14 @@ export function GoalDialog({ managerId, draftId }: { managerId?: string; draftId
         {errors.manager_id && <span className="err">{errors.manager_id}</span>}
       </label>
       <label className="field"><span>Goal</span>
-        <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Let admins refund a payment from the dashboard" autoComplete="off" autoFocus />
+        <RefAssist><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Let admins refund a payment from the dashboard" autoComplete="off" autoFocus /></RefAssist>
         {errors.title && <span className="err">{errors.title}</span>}
       </label>
       <label className="field"><span>Description <span style={{ fontWeight: 500 }}>(optional)</span></span>
-        <textarea className="input" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Add any details, context or links that help the team" />
+        <RefAssist><textarea className="input" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Add any details, context or links that help the team" /></RefAssist>
       </label>
       <label className="field"><span>Done when <span style={{ fontWeight: 500 }}>(optional)</span></span>
-        <input className="input" value={doneWhen} onChange={(e) => setDoneWhen(e.target.value)} placeholder="A refund shows up in the payment’s history" autoComplete="off" />
+        <RefAssist><input className="input" value={doneWhen} onChange={(e) => setDoneWhen(e.target.value)} placeholder="A refund shows up in the payment’s history" autoComplete="off" /></RefAssist>
       </label>
       <FilePicker files={files} onChange={setFiles} />
       {repos.length > 0 && (

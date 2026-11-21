@@ -1,5 +1,6 @@
 "use client";
 
+import { RefAssist } from "../RefAssist";
 import { CopyId, IdTag } from "../IdTag";
 import { useState } from "react";
 import { deleteNote, saveNote } from "@/lib/board/actions";
@@ -81,7 +82,7 @@ function NoteEditor({ note, done }: { note?: NoteView; done: () => void }) {
         </div>
         <div className="row"><span className="lbl spacer">Text (Markdown)</span>
           <button type="button" className="linkbtn" onClick={() => setPreview(!preview)}>{preview ? "Edit" : "Preview"}</button></div>
-        {preview ? <Markdown text={body} /> : <textarea className="input" rows={12} value={body} onChange={(e) => setBody(e.target.value)} />}
+        {preview ? <Markdown text={body} /> : <RefAssist><textarea className="input" rows={12} value={body} onChange={(e) => setBody(e.target.value)} /></RefAssist>}
       </PanelBody>
       <PanelFoot>
         <button type="button" className="btn btn-sm" onClick={done}>Cancel</button><span className="spacer" />

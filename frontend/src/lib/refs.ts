@@ -100,3 +100,9 @@ export function remarkRefs(isKnown: (ref: Ref) => boolean) {
 
 /** refOfHref reads the ref out of a "#ref:T-34" link made by remarkRefs. */
 export const refOfHref = (href: string | undefined): Ref | null => (href?.startsWith("#ref:") ? parseRef(href.slice(5)) : null);
+
+/** refQueryAt finds an open "#query" just before the caret: the start of the "#" and what follows it. */
+export function refQueryAt(text: string, caret: number): { start: number; query: string } | null {
+  const m = /(?<![\w/-])#([\w-]{0,30})$/.exec(text.slice(0, caret));
+  return m ? { start: m.index, query: m[1] } : null;
+}
