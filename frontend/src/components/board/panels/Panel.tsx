@@ -69,7 +69,7 @@ export function Panel() {
 }
 
 /** Parts every panel uses: a head with a close button, a scrolling body, a footer. */
-export function PanelHead({ children }: { children: React.ReactNode }) {
+export function PanelHead({ children, tabs }: { children: React.ReactNode; tabs?: React.ReactNode }) {
   const openSide = useUI((s) => s.openSide);
   return (
     <div className="sb-head">
@@ -77,6 +77,7 @@ export function PanelHead({ children }: { children: React.ReactNode }) {
         <div className="spacer" style={{ minWidth: 0 }}>{children}</div>
         <button className="icon-btn" onClick={() => openSide(null)} aria-label="Close details">✕</button>
       </div>
+      {tabs}
     </div>
   );
 }

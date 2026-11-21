@@ -9,6 +9,7 @@ import { useUI } from "@/lib/board/ui";
 import type { Board, GoalView, SignalView, TaskView } from "@/lib/types";
 import { useB, useBoardCtx } from "../context";
 import { Avatar } from "../icons";
+import { UsageBadge } from "../../ui";
 
 export const shortTitle = (s: string) => (s.length > 34 ? s.slice(0, 32) + "…" : s);
 
@@ -29,6 +30,7 @@ export function GoalRow({ g }: { g: GoalView }) {
       <span className="gdot" style={{ background: g.color }} />
       <span className="spacer">{g.title}</span>
       {goalNeeds(b, g) && <span className="pill warn">Needs you</span>}
+      <UsageBadge usage={g.usage} compact />
       <span className="hint">{goalLabel(b, g)}</span>
     </button>
   );
@@ -47,6 +49,7 @@ export function TaskRow({ t, nested }: { t: TaskView; nested?: boolean }) {
         <span className="spacer" style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.title}</span>
         {t.kind === "triage" && <span className="pill">Request</span>}
         <span className="hint">{m?.name ?? ""}</span>
+        <UsageBadge usage={t.usage} compact />
         <span className="meter"><i style={{ width: `${t.status === "done" ? 100 : t.progress}%` }} /></span>
       </button>
       {kids.map((k) => <div key={k.id} style={{ paddingLeft: 16 }}><TaskRow t={k} nested /></div>)}
