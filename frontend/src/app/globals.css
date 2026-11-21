@@ -333,16 +333,17 @@ code,.mono{font-family:var(--font-mono);font-size:.92em}
 .logline .k{color:var(--term-sub)}
 
 /* Chat */
-.chat{position:absolute;width:400px;height:560px;max-width:calc(100% - 24px);max-height:calc(100% - 24px);background:var(--card);border:1px solid var(--edge);border-radius:18px;box-shadow:0 28px 56px -22px rgba(10,14,20,.5);z-index:24;display:flex;flex-direction:column;overflow:hidden}
-.chat-head{display:flex;align-items:center;gap:10px;padding:12px 10px 10px 14px;cursor:grab;user-select:none;border-bottom:1px solid var(--edge)}
+.chat{position:absolute;width:400px;height:560px;max-width:calc(100% - 24px);max-height:calc(100% - 24px);background:var(--card);border:1px solid var(--edge);border-radius:var(--r-lg);box-shadow:0 28px 56px -22px rgba(10,14,20,.5);z-index:24;display:flex;flex-direction:column;overflow:hidden}
+.chat-head{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);cursor:grab;user-select:none;border-bottom:1px solid var(--edge)}
 .chat-head:active{cursor:grabbing}
-.chat-head b{font-size:15px}
+.chat-head b{font-size:var(--t-lg)}
+.chat-head .sub{font-size:var(--t-sm);color:var(--muted)}
 .chat-head .stat{display:flex}
 .chat-head .mine{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--edge);background:var(--card);border-radius:99px;min-height:30px;padding:0 10px 0 8px;font-size:12px;font-weight:600;color:var(--muted);flex:none}
 .chat-head .mine[aria-expanded="true"]{border-color:var(--green);color:var(--green);background:var(--green-soft)}
-.chat-tabs{display:flex;gap:2px;padding:6px 10px 0;border-bottom:1px solid var(--edge)}
-.chat-tabs button{flex:1;border:0;background:transparent;min-height:34px;border-radius:9px 9px 0 0;font-size:12.5px;font-weight:500;color:var(--muted);border-bottom:2px solid transparent}
-.chat-tabs button[aria-selected="true"]{color:var(--ink);font-weight:600;border-bottom-color:var(--green)}
+.chat-tabs{display:flex;gap:var(--sp-4);padding:0 var(--sp-4);border-bottom:1px solid var(--edge)}
+.chat-tabs button{flex:none;border:0;background:transparent;min-height:40px;padding:0;margin-bottom:-1px;font-size:var(--t-md);font-weight:500;color:var(--muted);border-bottom:2px solid transparent}
+.chat-tabs button[aria-selected="true"]{color:var(--ink);font-weight:600;border-bottom-color:var(--accent)}
 .thread{flex:1;min-height:0;overflow:auto;padding:14px 14px 8px;display:flex;flex-direction:column;gap:2px;position:relative;overscroll-behavior:contain}
 .grp{display:flex;flex-direction:column;gap:3px;margin-top:10px}
 .grp.you{align-items:flex-end}.grp.them{align-items:flex-start}
@@ -406,8 +407,8 @@ code,.mono{font-family:var(--font-mono);font-size:.92em}
 .ocard .by{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .kind{position:absolute;left:8px;top:8px;padding:2px 7px;border-radius:6px;background:rgba(20,24,31,.72);color:#fff;font-size:10.5px;font-weight:600}
 .overlay{position:fixed;inset:0;background:rgba(10,14,20,.55);display:grid;place-items:center;z-index:60;padding:16px}
-.dialog{background:var(--card);border-radius:18px;width:min(560px,100%);max-height:90vh;overflow:auto;padding:20px 22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:12px}
-.dialog h2{margin:0;font:700 24px var(--font-display);letter-spacing:-.02em}
+.dialog{background:var(--surface);border-radius:var(--r-lg);width:min(560px,100%);max-height:90vh;overflow:auto;padding:var(--sp-5);box-shadow:0 30px 60px -20px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:var(--sp-3)}
+.dialog h2{margin:0;font:700 var(--t-2xl)/var(--lh-2xl) var(--font-display);letter-spacing:-.02em}
 .dialog>p,.dialog .lead{color:var(--muted)}
 .viewer{background:var(--card);border-radius:20px;width:min(1120px,100%);height:min(720px,92vh);display:flex;overflow:hidden;box-shadow:0 40px 80px -30px rgba(0,0,0,.6)}
 .stage{flex:1;min-width:0;background:var(--stage);display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto;position:relative;color:#D5DEE8}
