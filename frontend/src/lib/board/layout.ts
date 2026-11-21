@@ -46,7 +46,7 @@ export function layout(b: Board, heights: Record<string, number>, focusGoal: str
   const ws = add({ id: "__ws", type: "ws", x: 0, y: 0, w: GEO.teamW, h: GEO.teamH });
   const gx = GEO.teamW + 40;
   let gy = 0;
-  // Done goals leave the canvas entirely: their cards, tasks and outputs.
+  // Done goals lose their card; their tasks stay hidden unless show_tasks is on (hiddenTask).
   const goals = b.goals.filter((g) => g.status !== "done");
   for (const g of goals) {
     add({ id: g.id, type: "goal", g, x: gx, y: gy, w: 236, h: 60 });
@@ -72,14 +72,12 @@ export function layout(b: Board, heights: Record<string, number>, focusGoal: str
   const L1 = Math.max(GEO.teamH + 70, gy + 100, dirs.y + dirs.h + 50);
   const L2 = L1 + GEO.agH + 70;
 
-  const doneGoals = new Set(b.goals.filter((g) => g.status === "done").map((g) => g.id));
-  const onDoneGoal = (t: TaskView) => !!t.goal_id && doneGoals.has(t.goal_id);
   const kids: Record<string, Node[]> = {};
   const column = (m: MemberView | null, id: string, x: number, y0: number) => {
     const list: Node[] = (kids[id] = []);
     if (!m) return;
     let y = y0;
-    for (const t of b.tasks.filter((z) => z.member_id === id && !hiddenTask(b, z) && !onDoneGoal(z))) {
+    for (const t of b.tasks.filter((z) => z.member_id === id && !hiddenTask(b, z))) {
       const tn = add({ id: t.id, type: "task", t, x: x + GEO.cx, y, w: GEO.cw, h: SIZE.task });
       list.push(tn);
       y += SIZE.task + GEO.gap;

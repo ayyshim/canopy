@@ -74,17 +74,20 @@ export function Canvas() {
     if (cam.current.auto) fit(true);
   }, [L, heights, fit]);
 
+  // A node that is not drawn yet (its goal's tasks are being shown) is centered once it appears.
+  const focused = useRef(0);
   useEffect(() => {
-    if (!focus) return;
-    const n = layoutRef.current.byId[focus.id], el = boardRef.current;
+    if (!focus || focused.current === focus.at) return;
+    const n = L.byId[focus.id], el = boardRef.current;
     if (!n || !el) return;
+    focused.current = focus.at;
     const r = el.getBoundingClientRect(), c = cam.current;
     c.auto = false;
     c.z = Math.max(c.z, 0.85);
     c.x = r.width / 2 - (n.x + n.w / 2) * c.z;
     c.y = r.height / 2.6 - (n.y + n.h / 2) * c.z;
     apply();
-  }, [focus, apply]);
+  }, [focus, L, apply]);
 
   // Pan by dragging, pinch to zoom, scroll to pan, Ctrl + scroll to zoom. Clicking empty space
   // closes the details panel.

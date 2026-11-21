@@ -56,6 +56,11 @@ function GivenGoalPanel({ g }: { g: GoalView }) {
   const plan = outs.find((o) => o.name === "plan.md");
   const mine = g.created_by === me || isAdmin(b);
   const repos = goalRepos(b, g.id);
+  const showTasks = async (goalId: string, showing: boolean) => {
+    await showGoalTasks(goalId, !showing);
+    const first = work[0] ?? ts[0];
+    if (!showing && first) ui.centerOn(first.id);
+  };
   const events = b.goal_events.filter((e) => e.goal_id === g.id).slice().reverse().slice(0, 14);
   const ends = g.finished_at ? new Date(g.finished_at).getTime() : now;
   const mins = Math.max(0, Math.round((ends - new Date(g.created_at).getTime()) / 60000));
@@ -129,7 +134,7 @@ function GivenGoalPanel({ g }: { g: GoalView }) {
             {g.shipped?.prs?.map((u: string) => <a key={u} href={u} target="_blank" rel="noreferrer" className="linkbtn">{u}</a>)}
             {mine && (
               <div className="row wrap">
-                <button className="btn btn-sm" onClick={() => showGoalTasks(g.id, !g.show_tasks)}>{g.show_tasks ? "Hide its tasks" : "Show its tasks on the board"}</button>
+                <button className="btn btn-sm" onClick={() => showTasks(g.id, g.show_tasks)}>{g.show_tasks ? "Hide its tasks" : "Show its tasks on the board"}</button>
                 <button className="btn btn-sm" onClick={() => ui.openDialog({ kind: "task", goalId: g.id, memberId: g.manager_id ?? undefined })}>Reopen with a task</button>
               </div>
             )}

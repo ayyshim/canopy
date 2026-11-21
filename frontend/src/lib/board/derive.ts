@@ -1,6 +1,7 @@
 // Read-only helpers over a board snapshot. Components use these instead of digging into lists.
 import type { AccountView, AnyMember, Board, Computer, GoalView, MemberView, SignalView, TaskView } from "../types";
 import { isHidden } from "../types";
+import { tasksHiddenByGoal } from "../taskShown";
 
 export const isAdmin = (b: Board) => b.viewer.role === "admin";
 
@@ -35,8 +36,7 @@ export const goalHasCode = (b: Board, goalId: string) => goalRepos(b, goalId).so
 
 /** A done goal's tasks leave the board unless someone shows them again. */
 export function hiddenTask(b: Board, t: TaskView): boolean {
-  const g = goal(b, t.goal_id);
-  return !!g && g.status === "done" && !g.show_tasks;
+  return tasksHiddenByGoal(goal(b, t.goal_id));
 }
 
 export const signalsForTask = (b: Board, taskId: string) => b.signals.filter((s) => s.task_id === taskId);
