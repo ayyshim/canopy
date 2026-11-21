@@ -9,7 +9,10 @@ import type { OutputView } from "@/lib/types";
 import { useB } from "../context";
 import { isPrototype } from "@/lib/prototype";
 import { Avatar, kindLabel } from "../icons";
-import { Markdown } from "../panels/bits";
+import { findOutputByName } from "@/lib/prototype";
+import { isExternal, siblingName } from "@/lib/outputPath";
+import { Markdown, type MdLinks } from "../panels/bits";
+import { ImageView } from "./ImageView";
 import { Prototype } from "./Prototype";
 
 const fileURL = (o: OutputView, n: number) => `/api/v1/outputs/${o.id}/versions/${n}/file`;
@@ -26,14 +29,35 @@ function useText(url: string, enabled: boolean) {
   return got?.url === url ? got.text : null;
 }
 
-function Preview({ o, n }: { o: OutputView; n: number }) {
+type Ctx = { outputs: OutputView[]; goalOf: (taskId: string) => string | undefined; onOpen: (id: string) => void; warn: (msg: string) => void };
+
+/** mdLinks lets a Markdown output point at its sibling outputs: same task first, then the goal. */
+function mdLinks(o: OutputView, c: Ctx): MdLinks {
+  const find = (raw: string) => {
+    const name = siblingName(o.name, raw);
+    return name ? findOutputByName(c.outputs, o, name, c.goalOf) : undefined;
+  };
+  return {
+    relative: (h) => !!h.trim() && !h.trim().startsWith("#") && !isExternal(h),
+    image: (src) => {
+      const t = find(src);
+      return t && t.versions.length ? fileURL(t, t.versions.length) : null;
+    },
+    open: (href) => {
+      const t = find(href);
+      if (!t) { c.warn("Couldn’t find that file in this task’s outputs."); return false; }
+      c.onOpen(t.id);
+      return true;
+    },
+  };
+}
+
+function Preview({ o, n, ctx }: { o: OutputView; n: number; ctx: Ctx }) {
   const v = o.versions[n - 1];
   const isText = !/^(image|video|audio)\//.test(v?.mime ?? "");
   const text = useText(fileURL(o, n), isText);
-  // Outputs are files from the hub, so next/image's optimizer doesn't apply.
-  // eslint-disable-next-line @next/next/no-img-element
-  if (v?.mime.startsWith("image/")) return <img src={fileURL(o, n)} alt={o.title} style={{ maxWidth: "100%", borderRadius: 8 }} />;
-  if (v?.mime.startsWith("video/") || v?.mime.startsWith("audio/")) return <video src={fileURL(o, n)} controls style={{ maxWidth: "100%", borderRadius: 10 }} />;
+  if (v?.mime.startsWith("image/")) return <ImageView key={`${o.id}:${n}`} src={fileURL(o, n)} alt={o.title} />;
+  if (v?.mime.startsWith("video/") || v?.mime.startsWith("audio/")) return <video src={fileURL(o, n)} controls className="stage-media" />;
   if (text === null) return <p className="hint">Loading…</p>;
   if (o.kind === "diff" || /\.(diff|patch)$/.test(o.name)) {
     return (
@@ -44,7 +68,7 @@ function Preview({ o, n }: { o: OutputView; n: number }) {
       </div>
     );
   }
-  if (/\.md$/.test(o.name) || v?.mime === "text/markdown") return <div className="doc"><Markdown text={text} className="md" /></div>;
+  if (/\.(md|markdown)$/i.test(o.name) || v?.mime.startsWith("text/markdown")) return <div className="doc"><Markdown text={text} className="md md-doc" links={mdLinks(o, ctx)} /></div>;
   return <div className="doc"><pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>{text}</pre></div>;
 }
 
@@ -129,7 +153,7 @@ export function Viewer() {
         ) : (
           <div className="stage">
             {top}
-            <div className="stage-in"><Preview o={o} n={n} /></div>
+            <div className="stage-in"><Preview o={o} n={n} ctx={{ outputs: list, goalOf, onOpen: openPage, warn: (m) => ui.toast(m, "warn") }} /></div>
           </div>
         )}
         <aside className="vpanel">
