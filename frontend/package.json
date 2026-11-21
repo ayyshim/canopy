@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test src/lib/*.test.ts src/lib/board/*.test.ts"
+    "test": "node --test src/lib/*.test.ts src/lib/board/*.test.ts src/lib/outputs/*.test.ts"
   },
   "dependencies": {
     "next": "16.4.6",

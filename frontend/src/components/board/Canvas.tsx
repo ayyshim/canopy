@@ -22,7 +22,6 @@ export function Canvas() {
   const { send } = useBoardCtx();
   const side = useUI((s) => s.side);
   const draft = useUI((s) => s.sticky);
-  const tray = useUI((s) => s.tray);
   const focus = useUI((s) => s.focus);
   const openSide = useUI((s) => s.openSide);
   const [heights, setHeights] = useState<Record<string, number>>({});
@@ -58,15 +57,15 @@ export function Canvas() {
   const fit = useCallback((soft = false) => {
     const el = boardRef.current;
     if (!el) return;
-    const r = el.getBoundingClientRect(), bx = layoutRef.current.box, over = tray ? 300 : 0;
+    const r = el.getBoundingClientRect(), bx = layoutRef.current.box;
     const small = r.width < 640;
     // On phones keep text readable: never fit below 0.55 and start at the top left, then pan.
-    const k = Math.max(small ? 0.55 : 0.3, Math.min(1.05, (r.width - 48) / (bx.x1 - bx.x0), (r.height - 90 - over) / (bx.y1 - bx.y0)));
+    const k = Math.max(small ? 0.55 : 0.3, Math.min(1.05, (r.width - 48) / (bx.x1 - bx.x0), (r.height - 90) / (bx.y1 - bx.y0)));
     const w = (bx.x1 - bx.x0) * k;
     Object.assign(cam.current, { z: k, x: (w > r.width - 24 ? 16 : (r.width - w) / 2) - bx.x0 * k, y: 40 - bx.y0 * k });
     if (!soft) cam.current.auto = true;
     apply();
-  }, [apply, tray]);
+  }, [apply]);
 
   const zoomAt = useCallback((f: number, cx: number, cy: number) => {
     const c = cam.current, nz = Math.max(0.25, Math.min(2.2, c.z * f));
@@ -114,7 +113,7 @@ export function Canvas() {
     const ptr = new Map<number, { x: number; y: number }>();
     let drag: { id: number; x: number; y: number; cx: number; cy: number; moved: boolean; onNode: boolean } | null = null;
     let pinch: { d: number; z: number; mx: number; my: number; cx: number; cy: number } | null = null;
-    const skip = "button, input, select, textarea, a, .sticky, .zoomctl, .minimap, .sidebar, .chat, .tray, .hintcard, .banner, .menu";
+    const skip = "button, input, select, textarea, a, .sticky, .zoomctl, .minimap, .sidebar, .chat, .hintcard, .banner, .menu";
     const down = (e: PointerEvent) => {
       const t = e.target as HTMLElement;
       if (t.closest(skip) && !t.closest(".node")) return;
@@ -171,7 +170,7 @@ export function Canvas() {
       }
     };
     const wheel = (e: WheelEvent) => {
-      if ((e.target as HTMLElement).closest(".sidebar, .chat, .tray, .menu, .hintcard, .toasts")) return;
+      if ((e.target as HTMLElement).closest(".sidebar, .chat, .menu, .hintcard, .toasts")) return;
       e.preventDefault();
       const r = el.getBoundingClientRect(), c = cam.current;
       if (e.ctrlKey || e.metaKey) zoomAt(Math.exp(-e.deltaY * 0.01), e.clientX - r.left, e.clientY - r.top);

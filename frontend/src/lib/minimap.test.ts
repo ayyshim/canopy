@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { centerCam, fitMap, mapBounds, mapToWorld, viewRect } from "./minimap.ts";
+import { centerCam, fitMap, mapBounds, mapToWorld, nodeLook, viewRect } from "./minimap.ts";
 
 const box = { x0: 0, y0: 0, x1: 1000, y1: 500 };
 
@@ -39,4 +39,23 @@ test("a saved choice wins, otherwise phones start hidden", async () => {
   assert.equal(minimapDefault(null, 390), false);
   assert.equal(minimapDefault(null, 1440), true);
   assert.equal(minimapDefault("junk", 640), true);
+});
+
+test("task rects follow status like the board cards", () => {
+  assert.equal(nodeLook({ type: "task", taskStatus: "doing" }).fill, "--amber-soft");
+  assert.equal(nodeLook({ type: "task", taskStatus: "done" }).fill, "--green-soft");
+  assert.equal(nodeLook({ type: "task", taskStatus: "todo" }).fill, "--surface");
+  assert.equal(nodeLook({ type: "task", taskStatus: "waiting", blocked: true }).edge, "--red");
+  assert.equal(nodeLook({ type: "task", goalColor: "#123456" }).accent, "#123456");
+});
+
+test("managers get the team bar, warnings turn it amber", () => {
+  assert.deepEqual([nodeLook({ type: "member", mgr: true }).accent, nodeLook({ type: "member", mgr: true }).side], ["--team", "top"]);
+  assert.equal(nodeLook({ type: "member", mgr: true, warn: true }).accent, "--amber");
+  assert.equal(nodeLook({ type: "member" }).accent, undefined);
+});
+
+test("sessions are dark, stickies use their note colour", () => {
+  assert.equal(nodeLook({ type: "session", goalColor: "#abc" }).fill, "--term");
+  assert.equal(nodeLook({ type: "sticky", stickyColor: "pink" }).fill, "--n-pink");
 });

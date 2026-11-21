@@ -174,7 +174,7 @@ export function blockReason(b: Board, t: TaskView): string {
 }
 
 export const outputsOf = (b: Board, taskId: string) => b.outputs.filter((o) => o.task_id === taskId);
-export const unseen = (b: Board) => b.outputs.filter((o) => (b.seen[o.id] ?? 0) < o.versions.length || o.status === "review");
+export { activeOutputs, outputGoal, unseen } from "./outputs";
 
 export function fmtTokens(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1) + "M";

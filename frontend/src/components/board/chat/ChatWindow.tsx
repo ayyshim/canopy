@@ -45,6 +45,8 @@ export function ChatWindow({ win, index }: { win: ChatWin; index: number }) {
   const threadRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLElement>(null);
   const m = visibleMember(b, win.id);
+  const stamp = (o: { created_at: string; versions: { created_at: string }[] }) => o.versions[o.versions.length - 1]?.created_at ?? o.created_at;
+  const memberOutputs = m ? b.outputs.filter((o) => o.member_id === m.id).sort((x, y) => stamp(y).localeCompare(stamp(x))) : [];
   const tab = win.tab ?? "chat";
 
   useEffect(() => {
@@ -158,10 +160,11 @@ export function ChatWindow({ win, index }: { win: ChatWin; index: number }) {
                 <div key={l.id}><span className="sys2">{clock(l.at)}</span> <span className={l.kind === "human" ? "you" : l.kind === "error" ? "err" : ""}><RefText text={l.text} /></span></div>
               ))}
             </div>
-            {b.outputs.some((o) => o.member_id === m.id) && (
+            {memberOutputs.length > 0 && (
               <>
                 <span className="lbl" style={{ marginTop: 10 }}>Outputs</span>
-                <div className="thumbs">{b.outputs.filter((o) => o.member_id === m.id).map((o) => <button key={o.id} className="fruit" onClick={() => ui.openViewer(o.id)} title={o.title}><OutputThumb o={o} /></button>)}</div>
+                <div className="thumbs">{memberOutputs.slice(0, 4).map((o) => <button key={o.id} className="fruit" onClick={() => ui.openViewer(o.id)} title={o.title}><OutputThumb o={o} /></button>)}</div>
+                <button className="linkbtn" style={{ alignSelf: "flex-start" }} onClick={() => ui.openOutputs({ staff: [m.id], scope: "all" })}>See all {memberOutputs.length}</button>
               </>
             )}
           </>

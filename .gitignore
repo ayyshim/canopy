@@ -36,3 +36,4 @@ out/
 canopy-data/
 
 outputs/
+!/frontend/src/**/outputs/
