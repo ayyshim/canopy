@@ -23,6 +23,8 @@ type Link struct {
 type Media struct {
 	OutputIDs []uuid.UUID `json:"output_ids"`
 	Links     []Link      `json:"links"`
+	// Test marks the sample message from the settings page; it skips the kind filter.
+	Test bool `json:"test,omitempty"`
 }
 
 // Note is one notification to queue.
