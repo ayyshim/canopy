@@ -402,6 +402,16 @@ Every goal, task and note has a number that is unique in its workspace: **G-12**
 - **IDs become links** in text the board shows. A click opens the goal, task or note and centers it on the board.
 - IDs in code (`T-1` between backticks, or a code block) stay plain text. An ID you can't see, or that doesn't exist, also stays plain text.
 
+## Sticky notes
+
+A note with a board position shows on the canvas as a sticky note, with its N-5 ID, a color, its title and the first lines of the text (Markdown works). Pin or unpin it in the Notes panel, and it also shows on the minimap.
+
+- **Add one** with **Sticky note** in the top bar (or its menu on phones), or double-click empty canvas. You write it in place. New stickies are **Private**.
+- **Move it** by dragging. The position is saved a moment after you stop.
+- **Private or Shared.** A private note is seen only by you and by the agents working for you (goals you gave, chats with you). Nobody else sees it, admins included, and it never reaches their browsers. Shared notes are seen by the whole workspace. Only the author switches a note between the two (Notes panel).
+- **Who edits.** The author edits their notes; admins also edit shared ones. Agents can update notes with `update_note` when asked or clearly useful. A sticky shows "Edited by <agent>" and glows briefly when an agent changes it.
+- **History.** Every change to the title or text keeps the earlier version (the last 20). Open the note in the Notes panel and choose **Restore**; the current text is kept in the history too.
+
 ## Prototype pages
 
 When an agent submits an HTML file, the output viewer shows it as a live page ("Prototype"), with its CSS,
