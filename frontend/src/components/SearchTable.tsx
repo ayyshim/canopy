@@ -35,19 +35,19 @@ export function SearchTable<T>({ path, label, columns, rowKey, version = 0 }: Pr
     <div className="stack">
       <input className="input" type="search" aria-label={label} placeholder={label} value={q}
         onChange={(e) => { setQ(e.target.value); setOffset(0); }} />
-      <div className="card" style={{ overflowX: "auto" }}>
-        <table className="table">
+      <div className="card scroll-x">
+        <table className="table stack-m">
           <thead>
             <tr>{columns.map((c) => <th key={c.header} style={{ textAlign: c.align ?? "left" }}>{c.header}</th>)}</tr>
           </thead>
           <tbody>
             {data?.items.map((row) => (
               <tr key={rowKey(row)}>
-                {columns.map((c) => <td key={c.header} style={{ textAlign: c.align ?? "left" }}>{c.cell(row)}</td>)}
+                {columns.map((c) => <td key={c.header} data-l={c.header} style={{ textAlign: c.align ?? "left" }}>{c.cell(row)}</td>)}
               </tr>
             ))}
             {data && data.items.length === 0 && (
-              <tr><td colSpan={columns.length} className="muted">No matches.</td></tr>
+              <tr><td colSpan={columns.length} className="muted">No matches. Try a different search.</td></tr>
             )}
           </tbody>
         </table>

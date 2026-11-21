@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { LogoUpload } from "@/components/LogoUpload";
 import { Denied, Section } from "@/components/PageShell";
+import { TabPanel, Tabs, useTab } from "@/components/ui";
 import { api, ApiError, currentOrg, isOrgAdmin, ROLE_LABEL, type OrgResponse } from "@/lib/api";
 import { useMe } from "@/lib/me";
 
@@ -16,6 +17,7 @@ export default function OrgGeneralPage() {
   const [name, setName] = useState("");
   const [limits, setLimits] = useState({ session: "", week: "", tz: "UTC" });
   const [msg, setMsg] = useState<Record<string, string>>({});
+  const [tab, setTab] = useTab("org-general", "general", ["general", "limits", "owner"]);
 
   useEffect(() => {
     if (!summary) return;
@@ -44,7 +46,9 @@ export default function OrgGeneralPage() {
     <>
       <h1>General</h1>
       <p className="lead">{org?.name ?? summary.name}. Your role: {ROLE_LABEL[summary.role]}.</p>
-      <Section title="Organization">
+      <Tabs label="Organization sections" idBase="og" value={tab} onChange={setTab}
+        tabs={[{ id: "general", label: "General" }, { id: "limits", label: "Limits" }, ...(summary.role === "owner" ? [{ id: "owner", label: "Owner actions" }] : [])]} />
+      <TabPanel id="general" value={tab} idBase="og"><Section title="Organization">
         <form className="row wrap" style={{ alignItems: "flex-end" }} onSubmit={(e) => { e.preventDefault(); patch({ name }, "name"); }}>
           <label className="field spacer"><span>Name</span><input className="input" value={name} onChange={(e) => setName(e.target.value)} required /></label>
           <button className="btn">Save</button>
@@ -55,8 +59,8 @@ export default function OrgGeneralPage() {
           <dt>Address</dt><dd><code>{org?.slug}</code></dd>
           <dt>Created</dt><dd>{org ? new Date(org.created_at).toLocaleDateString() : ""}</dd>
         </dl>
-      </Section>
-      <Section title="Limits for each person" sub="Canopy’s own limits, separate from what your CLI accounts allow. At 100%, a person’s new goals and chats wait until the window resets.">
+      </Section></TabPanel>
+      <TabPanel id="limits" value={tab} idBase="og"><Section title="Limits for each person" sub="Canopy’s own limits, separate from what your CLI accounts allow. At 100%, a person’s new goals and chats wait until the window resets.">
         <form className="stack-sm" onSubmit={(e) => { e.preventDefault(); patch({ default_session_limit: num(limits.session), default_weekly_limit: num(limits.week), timezone: limits.tz }, "limits"); }}>
           <div className="row wrap">
             <label className="field spacer"><span>Per 5-hour session (tokens)</span><input className="input tnum" inputMode="numeric" value={limits.session} onChange={(e) => setLimits({ ...limits, session: e.target.value })} /></label>
@@ -70,8 +74,8 @@ export default function OrgGeneralPage() {
           </label>
           <div className="row"><button className="btn btn-primary">Save limits</button>{msg.limits && <span className={msg.limits === "Saved" ? "hint" : "err"} role="status">{msg.limits}</span>}</div>
         </form>
-      </Section>
-      {summary.role === "owner" && <OwnerActions orgId={summary.id} orgName={org?.name ?? ""} />}
+      </Section></TabPanel>
+      {summary.role === "owner" && <TabPanel id="owner" value={tab} idBase="og"><OwnerActions orgId={summary.id} orgName={org?.name ?? ""} /></TabPanel>}
     </>
   );
 }
