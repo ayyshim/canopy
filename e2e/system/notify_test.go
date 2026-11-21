@@ -91,7 +91,16 @@ func TestNotificationsReachDiscord(t *testing.T) {
 	// A manual workspace raises goal ready; a usage limit raises an error message.
 	owner.do("PATCH", "/api/v1/workspaces/"+ws, map[string]any{"goal_completion": "manual"}, 200)
 	owner.goal(ws, riley, "Wrap up [tasks:1]")
-	owner.waitSignal(ws, "goal_ready", 30*time.Second)
+	waitFor(t, 30*time.Second, "a goal_ready signal", func() bool {
+		b := owner.board(ws)
+		owner.approveHandovers(b)
+		for _, s := range list(b["signals"]) {
+			if str(m(s)["type"]) == "goal_ready" {
+				return true
+			}
+		}
+		return false
+	})
 	owner.goal(ws, riley, "Hit the limit [tasks:1] [limit]")
 	owner.waitSignal(ws, "usage_limit", 30*time.Second)
 
