@@ -32,7 +32,9 @@ func (c CSRF) Token(w http.ResponseWriter, r *http.Request) string {
 }
 
 // Exempt paths are called by programs, not browsers, and never use the session cookie.
-var csrfExempt = map[string]bool{"/api/v1/runners/pair": true}
+// The act route is for service workers: it has no CSRF cookie to echo, but it needs the
+// person's session cookie (SameSite=Lax) and a secret one-use token.
+var csrfExempt = map[string]bool{"/api/v1/runners/pair": true, "/api/v1/notifications/act": true}
 
 func (c CSRF) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
