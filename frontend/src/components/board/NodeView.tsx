@@ -4,7 +4,7 @@ import { UsageBadge } from "../ui";
 import { useCatalog, skillLabel } from "@/lib/catalog";
 import { resolveSignal } from "@/lib/board/actions";
 import {
-  account, blockReason, chatLocked, blockedOnPerson, computer, fmtTokens, goalProgress, goalRepos, isAdmin, memberStatus, needsMe, payload,
+  account, blockReason, briefInReview, chatLocked, blockedOnPerson, computer, fmtTokens, goalProgress, goalRepos, isAdmin, memberStatus, needsMe, payload,
   runnerForTask, signInLabel, signalsForTask, task as findTask, whyWaiting, workTasks, firstName, clock, plural,
 } from "@/lib/board/derive";
 import type { Node } from "@/lib/board/layout";
