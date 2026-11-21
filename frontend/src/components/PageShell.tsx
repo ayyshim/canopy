@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Brand } from "@/components/board/icons";
 import { api, currentOrg, hardNavigate, isOrgAdmin } from "@/lib/api";
+import { Card } from "@/components/ui";
 import { useMe } from "@/lib/me";
 import type { WorkspaceSummary } from "@/lib/types";
 
@@ -57,7 +58,7 @@ export function PageShell({ title, children, workspace }: { title: string; child
         <nav className="pnav" aria-label="Sections">
           {org && (
             <>
-              <h2>{org.name}</h2>
+              <h2 className="pnav-h">{org.name}</h2>
               {orgAdmin ? (
                 <>
                   {link("/org/usage", "Usage and analytics", path.startsWith("/org/usage"))}
@@ -77,7 +78,7 @@ export function PageShell({ title, children, workspace }: { title: string; child
           )}
           {wsAdmin && ws && (
             <>
-              <h2 style={{ marginTop: 18 }}>Workspace: {ws.name}</h2>
+              <h2 className="pnav-h">Workspace: {ws.name}</h2>
               {link(`/w/${ws.id}/settings?tab=general`, "General")}
               {link(`/w/${ws.id}/settings?tab=directories`, "Directories")}
               {link(`/w/${ws.id}/settings?tab=members`, "Members")}
@@ -88,14 +89,14 @@ export function PageShell({ title, children, workspace }: { title: string; child
           )}
           {me.user.is_hub_admin && (
             <>
-              <h2 style={{ marginTop: 18 }}>This hub</h2>
+              <h2 className="pnav-h">This hub</h2>
               {link("/admin", "Overview")}
               {link("/admin/organizations", "Organizations", path.startsWith("/admin/organizations"))}
               {link("/admin/users", "People")}
               {link("/admin/settings", "Hub settings")}
             </>
           )}
-          <h2 style={{ marginTop: 18 }}>You</h2>
+          <h2 className="pnav-h">You</h2>
           {link("/account", "Account and notifications")}
           <button className="btn btn-ghost btn-sm show-sm" onClick={logout}>Log out</button>
         </nav>
@@ -107,12 +108,7 @@ export function PageShell({ title, children, workspace }: { title: string; child
 
 /** Section is a titled card on a settings page. */
 export function Section({ title, sub, children, danger }: { title: string; sub?: React.ReactNode; children: React.ReactNode; danger?: boolean }) {
-  return (
-    <section className={"card panel" + (danger ? " danger" : "")}>
-      <div><h2>{title}</h2>{sub && <p className="hint" style={{ marginTop: 2 }}>{sub}</p>}</div>
-      {children}
-    </section>
-  );
+  return <Card title={title} sub={sub} danger={danger}>{children}</Card>;
 }
 
 /** Denied is shown to people who may not open a page. */
