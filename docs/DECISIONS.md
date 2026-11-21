@@ -363,3 +363,20 @@ and `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` turns it off, so Canopy no longer
 It works on Claude Code 2.1.316 and later. Telemetry vars still set: `DISABLE_ERROR_REPORTING=1`
 and `DISABLE_BUG_COMMAND=1`. `DISABLE_TELEMETRY=1` is not set, because with it only Artifact
 loads and ArtifactComments and ArtifactData are lost.
+
+## A goal needs an approved handover brief
+
+When every work task of a goal is done, the goal does not go to ready. Its manager gets a
+`handover` task, "Handover: <goal>", and writes `handover.md` for the goal's person: what was asked,
+what changed and where, how to check it, what isn't done or is risky, and what to decide. The
+manager submits it with `submit_output` (needs review). The review card is for the goal's person;
+admins can answer it too. "Changes" sends the comment back to the manager as for any output.
+
+On approve, the goal stores `handover_approved_by` and `handover_approved_at`, the handover task is
+done, and the brief becomes the goal summary, the "Summary:" note and the pull request body. The
+goal then goes to ready, or closes with its branch kept when goals finish automatically.
+
+Mark done and ship answer "The handover brief isn’t approved yet." without an approval, and
+`complete_task` on a handover task is refused until then. A goal reopened with a new task loses its
+approval, so it needs a fresh brief. A ready goal with no approval (made before this) goes back to
+active and gets a brief task.
