@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { moveGoal, resolveSignal } from "@/lib/board/actions";
 import {
-  computer, directory, firstName, goalRepos, isAdmin, payload, personName, signalsForTask, task as findTask, visibleMember, whyWaiting,
+  briefInReview, computer, directory, firstName, goalRepos, isAdmin, payload, personName, signalsForTask, task as findTask, visibleMember, whyWaiting,
 } from "@/lib/board/derive";
 import { useUI } from "@/lib/board/ui";
 import type { Board, GoalView, SignalView, TaskView } from "@/lib/types";
@@ -18,6 +18,7 @@ export function goalNeeds(b: Board, g: GoalView) {
 }
 
 export function goalLabel(b: Board, g: GoalView) {
+  if (g.status !== "done" && briefInReview(b, g.id)) return "Brief to review";
   if (g.status === "ready") return goalRepos(b, g.id).length ? "Ready to ship" : "Ready to close";
   return ({ done: "Done", planning: "Planning", draft: "Draft" } as Record<string, string>)[g.status] ?? "In progress";
 }
@@ -48,6 +49,7 @@ export function TaskRow({ t, nested }: { t: TaskView; nested?: boolean }) {
         <span className={`dot ${t.status === "done" ? "done" : need ? "need" : t.status === "doing" ? "working" : ""}`} />
         <span className="spacer" style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.title}</span>
         {t.kind === "triage" && <span className="pill">Request</span>}
+        {t.kind === "handover" && <span className="pill">Handover</span>}
         <span className="hint">{m?.name ?? ""}</span>
         <UsageBadge usage={t.usage} compact />
         <span className="meter"><i style={{ width: `${t.status === "done" ? 100 : t.progress}%` }} /></span>
