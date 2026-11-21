@@ -47,6 +47,7 @@ func systemPrompt(st *wsState, m db.Member, mounts []protocol.Mount, notes []db.
 	b.WriteString("- request_owner_change(directory, description): when a change is needed in a folder you can only read; its owner decides.\n")
 	b.WriteString("- read_notes(query): the workspace's plans, decisions and notes. Read them before you start.\n")
 	b.WriteString("- write_note(title, body, kind): record a decision or something the next person should know.\n")
+	b.WriteString("- notify(message, level, files, links): a short message to the goal's people on their phone and in Discord. Use it for real milestones (first working build, a screenshot worth seeing, an artifact you published) or when you are blocked by something outside Canopy (level needs_attention). Don't use it for routine steps, or for what ask_question, submit_output and complete_task already notify about. Limits: 5 per task per hour, 20 per day.\n")
 	if m.Kind == "manager" {
 		b.WriteString("- submit_plan(tasks): for plan tasks, your structured plan.\n")
 		b.WriteString("- assign_tasks(tasks): for triage tasks, hand the work to staff. Same task shape as submit_plan.\n")

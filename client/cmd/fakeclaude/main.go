@@ -8,6 +8,7 @@
 //	[limit] hit a usage limit once  [stall] stop without finishing once  [slow:N] N seconds per step
 //	[read:/p] try to read /p (sandbox checks)  [write:/p] write to /p
 //	[dirs:/p:rw] the plan's first task needs /p  [everydir] every task needs it  [parallel] no dependencies
+//	[notify] send a notification with a sample screenshot
 //	[code:repo] write a file in the repository's worktree  [conflict:repo] every task edits the same file
 package main
 
@@ -17,6 +18,9 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -274,6 +278,9 @@ func work(text string, resumed bool) {
 	if outDir != "" && marker(text, "prototype") {
 		notes = append(notes, "prototype: "+writePrototype(call, outDir))
 	}
+	if outDir != "" && marker(text, "notify") && once("notify-"+key) {
+		notes = append(notes, "notify: "+sendNotify(outDir))
+	}
 	if outDir != "" && (marker(text, "output") || marker(text, "review")) {
 		_ = os.MkdirAll(outDir, 0o755)
 		name := filepath.Join(outDir, "report.md")
@@ -434,5 +441,26 @@ func writePrototype(call func(string, map[string]any) (string, bool), outDir str
 		}
 		res, _ = call("submit_output", in)
 	}
+	return firstLine(res)
+}
+
+// sendNotify saves a sample screenshot and tells the goal's people about it.
+func sendNotify(outDir string) string {
+	_ = os.MkdirAll(outDir, 0o755)
+	img := image.NewRGBA(image.Rect(0, 0, 160, 100))
+	for y := 0; y < 100; y++ {
+		for x := 0; x < 160; x++ {
+			img.Set(x, y, color.RGBA{R: uint8(40 + x), G: uint8(90 + y), B: 200, A: 255})
+		}
+	}
+	path := filepath.Join(outDir, "screenshot.png")
+	if f, err := os.Create(path); err == nil {
+		_ = png.Encode(f, img)
+		_ = f.Close()
+	}
+	if res, isErr := call("submit_output", map[string]any{"path": path, "title": "Screenshot", "kind": "image"}); isErr {
+		return firstLine(res)
+	}
+	res, _ := call("notify", map[string]any{"message": "The first working version is ready to look at.", "level": "milestone", "files": []string{"screenshot.png"}})
 	return firstLine(res)
 }

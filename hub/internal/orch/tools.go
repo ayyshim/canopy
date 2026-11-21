@@ -94,6 +94,8 @@ func (o *Orch) onToolCall(ctx context.Context, rn db.Runner, c protocol.ToolCall
 		handle = o.toolGetAttachments
 	case protocol.ToolAttachFile:
 		handle = o.toolAttachFile
+	case protocol.ToolNotify:
+		handle = o.toolNotify
 	default:
 		o.reply(tc, "Unknown tool "+c.Tool, true)
 		return

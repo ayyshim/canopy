@@ -65,6 +65,12 @@ SET discord_last_ok_at = CASE WHEN sqlc.arg(error)::text = '' THEN now() ELSE di
     discord_last_error = sqlc.arg(error)
 WHERE id = sqlc.arg(id);
 
+-- name: CountAgentNotificationsForTask :one
+SELECT count(*) FROM notification_outbox WHERE task_id = $1 AND media @> '{"agent": true}' AND created_at > $2;
+
+-- name: CountAgentNotificationsForMember :one
+SELECT count(*) FROM notification_outbox WHERE member_id = $1 AND media @> '{"agent": true}' AND created_at > $2;
+
 -- name: SetGoalDiscordThread :exec
 UPDATE goals SET discord_thread_id = $2 WHERE id = $1;
 
