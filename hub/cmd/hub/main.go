@@ -417,6 +417,7 @@ func serve(args []string) error {
 	}
 	var limiter auth.Limiter = &auth.MemoryLimiter{}
 	var bus realtime.Bus = realtime.NewMemory()
+	var previews api.PreviewStore = &api.MemoryPreviews{}
 	if cfg.RedisURL != "" {
 		opt, err := redis.ParseURL(cfg.RedisURL)
 		if err != nil {
@@ -425,6 +426,7 @@ func serve(args []string) error {
 		rc := redis.NewClient(opt)
 		limiter = auth.RedisLimiter{Client: rc}
 		bus = realtime.NewRedis(ctx, rc)
+		previews = api.RedisPreviews{Client: rc}
 	}
 	ca, err := pki.Load(ctx, st)
 	if err != nil {
@@ -442,6 +444,7 @@ func serve(args []string) error {
 
 	app := api.New(cfg, st, mailer, limiter, bus)
 	app.Version = version
+	app.Previews = previews
 	rh := runners.New(st, ca, blobs)
 	orchestrator := orch.New(app.Core, rh, blobs)
 	mirrorSvc := mirror.New(app.Core, rh, blobs, orchestrator)

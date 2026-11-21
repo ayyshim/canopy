@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { api } from "@/lib/api";
 import { markSeen, resolveSignal } from "@/lib/board/actions";
 import { clock, computer, goal as findGoal, payload, runnerForTask, task as findTask, visibleMember } from "@/lib/board/derive";
 import { useUI } from "@/lib/board/ui";
 import type { OutputView } from "@/lib/types";
 import { useB } from "../context";
-import { Avatar, KIND_LABEL } from "../icons";
+import { isPrototype } from "@/lib/prototype";
+import { Avatar, kindLabel } from "../icons";
 import { Markdown } from "../panels/bits";
+import { Prototype } from "./Prototype";
 
 const fileURL = (o: OutputView, n: number) => `/api/v1/outputs/${o.id}/versions/${n}/file`;
 
@@ -73,6 +76,9 @@ export function Viewer() {
     return () => window.removeEventListener("keydown", onKey);
   }, [vw, b.outputs, ui]);
 
+  const openPage = useCallback((id: string) => ui.openViewer(id), [ui]);
+  const goalOf = useCallback((taskId: string) => findTask(b, taskId)?.goal_id ?? undefined, [b]);
+
   if (!vw || !o) return null;
   const list = b.outputs;
   const idx = list.indexOf(o);
@@ -82,7 +88,21 @@ export function Viewer() {
   const v = o.versions[n - 1];
   const sig = b.signals.find((s) => s.type === "review" && payload(s).output_id === o.id);
   const latest = n === o.versions.length;
+  const proto = isPrototype(o);
+  const goalId = findTask(b, o.task_id)?.goal_id;
+  const rev = list.reduce((sum, x) => (goalId && x.task_id && goalOf(x.task_id) === goalId ? sum + x.versions.length : sum), 0);
   const show = () => { if (t) { ui.closeViewer(); ui.centerOn(t.id); ui.setGlow(t.id); } };
+  // The preview link needs a fresh token, so open the tab first and point it once the hub answers.
+  const openPage_ = async () => {
+    const tab = window.open("about:blank", "_blank");
+    try {
+      const r = await api<{ url: string }>("POST", `/outputs/${o.id}/preview`);
+      if (tab) tab.location.href = r.url; else window.location.assign(r.url);
+    } catch {
+      tab?.close();
+      ui.toast("Couldn’t open the page. Try again.", "warn");
+    }
+  };
   const copy = async () => {
     try {
       const text = await (await fetch(fileURL(o, n), { credentials: "same-origin" })).text();
@@ -93,19 +113,27 @@ export function Viewer() {
     }
   };
 
+  const top = (
+    <div className="stage-top">
+      <button aria-label="Previous output" disabled={idx <= 0} onClick={() => ui.openViewer(list[idx - 1].id)}>‹</button>
+      <span className="t">{o.title}</span>
+      <button aria-label="Next output" disabled={idx >= list.length - 1} onClick={() => ui.openViewer(list[idx + 1].id)}>›</button>
+    </div>
+  );
+
   return (
     <div className="overlay" onClick={(e) => e.target === e.currentTarget && ui.closeViewer()}>
       <div className="viewer" role="dialog" aria-modal="true" aria-label={o.title}>
-        <div className="stage">
-          <div className="stage-top">
-            <button aria-label="Previous output" disabled={idx <= 0} onClick={() => ui.openViewer(list[idx - 1].id)}>‹</button>
-            <span className="t">{o.title}</span>
-            <button aria-label="Next output" disabled={idx >= list.length - 1} onClick={() => ui.openViewer(list[idx + 1].id)}>›</button>
+        {proto ? (
+          <Prototype o={o} outputs={list} goalOf={goalOf} rev={rev} onOpen={openPage} header={top} />
+        ) : (
+          <div className="stage">
+            {top}
+            <div className="stage-in"><Preview o={o} n={n} /></div>
           </div>
-          <div className="stage-in"><Preview o={o} n={n} /></div>
-        </div>
+        )}
         <aside className="vpanel">
-          <div className="row"><span className="pill">{KIND_LABEL[o.kind]}</span><span className="spacer" /><button className="icon-btn" onClick={ui.closeViewer} aria-label="Close viewer">✕</button></div>
+          <div className="row"><span className="pill">{kindLabel(o)}</span><span className="spacer" /><button className="icon-btn" onClick={ui.closeViewer} aria-label="Close viewer">✕</button></div>
           <h2>{o.title}</h2>
           {o.versions.length > 1 && (
             <div className="sb-sec">
@@ -149,7 +177,9 @@ export function Viewer() {
           <div className="row wrap" style={{ marginTop: "auto" }}>
             {t && <button className="btn btn-sm" onClick={show}>Show on the tree</button>}
             {["document", "diff", "report"].includes(o.kind) && <button className="btn btn-sm" onClick={copy}>Copy</button>}
-            <a className="btn btn-sm" href={fileURL(o, n)} target="_blank" rel="noreferrer">Open the file</a>
+            {proto
+              ? <button className="btn btn-sm" onClick={openPage_}>Open the file</button>
+              : <a className="btn btn-sm" href={fileURL(o, n)} target="_blank" rel="noreferrer">Open the file</a>}
           </div>
           <span className="hint"><span className="kbd">←</span> <span className="kbd">→</span> move between outputs · <span className="kbd">Esc</span> closes</span>
         </aside>

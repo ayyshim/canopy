@@ -33,6 +33,8 @@ type Server struct {
 	Sessions *auth.Sessions
 	CSRF     auth.CSRF
 	Limiter  auth.Limiter
+	// Previews holds preview tokens; nil uses memory.
+	Previews PreviewStore
 	Argon2   auth.Argon2Params
 	Now      func() time.Time
 
@@ -127,6 +129,7 @@ func (s *Server) setupRoutes(r chi.Router) {
 		r.With(auth.RateLimit(s.Limiter, "invite", s.Cfg.AuthRateLimit, s.Cfg.TrustProxy)).
 			Post("/invites/{token}/accept", httpx.Handler(s.handleAcceptInvite))
 		r.Get("/auth/oauth/{provider}/callback", s.handleOAuthCallback)
+		r.Get("/preview/{token}/*", httpx.Handler(s.handlePreviewFile))
 		r.Post("/auth/logout", httpx.Handler(s.handleLogout))
 
 		r.Group(func(r chi.Router) {

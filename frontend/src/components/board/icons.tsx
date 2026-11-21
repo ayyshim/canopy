@@ -1,5 +1,6 @@
 // Small inline icons and output thumbnails used on the board.
 import { initials } from "@/lib/api";
+import { isPrototype } from "@/lib/prototype";
 
 export function Brand({ size = 24 }: { size?: number }) {
   return (
@@ -66,8 +67,19 @@ export const RepoIcon = () => (
 
 export const KIND_LABEL: Record<string, string> = { image: "Image", recording: "Recording", document: "Document", diff: "Diff", report: "Report" };
 
+/** kindLabel is the type shown on cards and in the viewer; HTML outputs are prototypes. */
+export const kindLabel = (o: { kind: string; name: string; versions: { mime: string }[] }) => (isPrototype(o) ? "Prototype" : KIND_LABEL[o.kind]);
+
 export function Thumb({ kind }: { kind: string }) {
   switch (kind) {
+    case "prototype":
+      return (
+        <svg viewBox="0 0 30 30" preserveAspectRatio="xMidYMid slice">
+          <rect width="30" height="30" fill="#E8EEFC" /><rect x="3" y="5" width="24" height="20" rx="2.5" fill="#fff" stroke="#3E7BFA" strokeWidth="1.4" />
+          <rect x="3" y="5" width="24" height="5" rx="2" fill="#3E7BFA" /><circle cx="6" cy="7.5" r=".9" fill="#fff" /><circle cx="9" cy="7.5" r=".9" fill="#fff" />
+          <rect x="6" y="13" width="9" height="3" rx="1" fill="#A3AEBB" /><rect x="6" y="18" width="18" height="2.5" rx="1" fill="#C9D1DC" /><path d="M18 12.5l5 3-2.2.5-1 2z" fill="#14181F" />
+        </svg>
+      );
     case "image":
       return (
         <svg viewBox="0 0 30 30" preserveAspectRatio="xMidYMid slice">
