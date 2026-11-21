@@ -12,6 +12,7 @@ import type { OutputView } from "@/lib/types";
 import { useB } from "../context";
 import { KIND_LABEL } from "../icons";
 import { OutputThumb } from "../OutputThumb";
+import { goalClosed } from "../../../lib/goalStatus";
 
 const TYPES = ["image", "recording", "document", "diff", "report", "prototype"];
 const STATUS_LABEL: Record<string, string> = { review: "Needs review", approved: "Approved", changes: "Changes asked", new: "New" };
@@ -69,7 +70,7 @@ function Manager() {
     return {
       id: o.id, title: o.title, name: o.name, type: isPrototype(o) ? "prototype" : o.kind, status: o.status,
       isNew: (b.seen[o.id] ?? 0) < o.versions.length,
-      taskId: t?.id ?? "", taskTitle: t?.title ?? "", goalId: g?.id ?? "", goalTitle: g?.title ?? "", goalActive: !!g && g.status !== "done",
+      taskId: t?.id ?? "", taskTitle: t?.title ?? "", goalId: g?.id ?? "", goalTitle: g?.title ?? "", goalActive: !!g && !goalClosed(g),
       staffId: o.member_id ?? "", staffName: visibleMember(b, o.member_id)?.name ?? "An agent",
       model: last?.model ?? "", size: last?.size ?? 0, versions: o.versions.length, notes: o.versions.map((v) => v.note).join(" "),
       created: o.created_at, updated: last?.created_at ?? o.created_at,
@@ -111,7 +112,7 @@ function Manager() {
   /* ---- sidebar ---- */
   const nIn = (fn: (r: Row) => boolean) => inScope.filter(fn).length;
   const only = (a: string[], v: string) => a.length === 1 && a[0] === v;
-  const goals = b.goals.filter((g) => fm.scope === "all" || (fm.scope === "active") === (g.status !== "done")).filter((g) => rows.some((r) => r.goalId === g.id));
+  const goals = b.goals.filter((g) => fm.scope === "all" || (fm.scope === "active") === (!goalClosed(g))).filter((g) => rows.some((r) => r.goalId === g.id));
   const staff = [...new Set(rows.map((r) => r.staffId))].filter(Boolean);
   const staffName = (id: string) => visibleMember(b, id)?.name ?? "An agent";
   const side = (
@@ -188,7 +189,7 @@ function Manager() {
       </div>
     );
   };
-  const scopeGoals = b.goals.filter((g) => fm.scope === "all" || (fm.scope === "active") === (g.status !== "done")).filter((g) => rows.some((r) => r.goalId === g.id));
+  const scopeGoals = b.goals.filter((g) => fm.scope === "all" || (fm.scope === "active") === (!goalClosed(g))).filter((g) => rows.some((r) => r.goalId === g.id));
   const scopeTasks = b.tasks.filter((t) => scopeGoals.some((g) => g.id === t.goal_id) && (!fm.goals.length || fm.goals.includes(t.goal_id ?? "")) && rows.some((r) => r.taskId === t.id));
   const models = [...new Set(rows.map((r) => r.model).filter(Boolean))].sort();
 

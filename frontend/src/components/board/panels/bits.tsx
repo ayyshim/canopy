@@ -15,6 +15,7 @@ import { useB, useBoardCtx } from "../context";
 import { Avatar } from "../icons";
 import { RefLink, RefText } from "../IdTag";
 import { UsageBadge } from "../../ui";
+import { goalClosed } from "../../../lib/goalStatus";
 
 export const shortTitle = (s: string) => (s.length > 34 ? s.slice(0, 32) + "…" : s);
 
@@ -23,9 +24,9 @@ export function goalNeeds(b: Board, g: GoalView) {
 }
 
 export function goalLabel(b: Board, g: GoalView) {
-  if (g.status !== "done" && briefInReview(b, g.id)) return "Brief to review";
+  if (!goalClosed(g) && briefInReview(b, g.id)) return "Brief to review";
   if (g.status === "ready") return goalRepos(b, g.id).length ? "Ready to ship" : "Ready to close";
-  return ({ done: "Done", planning: "Planning", draft: "Draft" } as Record<string, string>)[g.status] ?? "In progress";
+  return ({ done: "Done", stopped: "Stopped", planning: "Planning", draft: "Draft" } as Record<string, string>)[g.status] ?? "In progress";
 }
 
 export function GoalRow({ g }: { g: GoalView }) {

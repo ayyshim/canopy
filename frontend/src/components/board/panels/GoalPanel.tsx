@@ -22,6 +22,7 @@ import { UsageBadge } from "../../ui";
 import { UsageTab } from "./UsageTab";
 import { HandoverBrief } from "./HandoverBrief";
 import { OutputThumb } from "../OutputThumb";
+import { goalClosed } from "../../../lib/goalStatus";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function shippedText(shipped: any, base: string, branch: string): string {
@@ -93,14 +94,14 @@ function GivenGoalPanel({ g }: { g: GoalView }) {
       <PanelBody>
         <TabPanel id="overview" value={tab} idBase="goal"><div className="stack">
         <div className="row wrap">
-          <span className={`pill ${g.status === "done" ? "ok" : g.status === "ready" ? "warn" : g.status === "planning" ? "" : "info"}`}>{goalLabel(b, g)}</span>
+          <span className={`pill ${goalClosed(g) ? "ok" : g.status === "ready" ? "warn" : g.status === "planning" ? "" : "info"}`}>{goalLabel(b, g)}</span>
           <span className="hint">Given by {personName(b, g.created_by)} at {clock(g.created_at)}</span>
           <span className="spacer" /><UsageBadge usage={g.usage} />
         </div>
         <div className="box" style={{ borderColor: g.color + "55", background: g.color + "14" }}>
           <div className="row" style={{ fontSize: 12, color: "var(--muted)" }}>
             <span className="spacer">{dn} of {plural(work.length, "task")} done</span>
-            <span>{outs.length} output{outs.length === 1 ? "" : "s"}, {g.status === "done" ? "took" : "running"} {mins >= 60 ? Math.floor(mins / 60) + "h " : ""}{mins % 60}m</span>
+            <span>{outs.length} output{outs.length === 1 ? "" : "s"}, {goalClosed(g) ? "took" : "running"} {mins >= 60 ? Math.floor(mins / 60) + "h " : ""}{mins % 60}m</span>
           </div>
           <div className="meter"><i style={{ width: `${work.length ? (dn / work.length) * 100 : 0}%`, background: g.color }} /></div>
         </div>
@@ -133,11 +134,11 @@ function GivenGoalPanel({ g }: { g: GoalView }) {
             )}
           </div>
         )}
-        {g.status === "done" && (
+        {goalClosed(g) && (
           <div className="box">
-            <b>Done at {clock(g.finished_at)}</b>
+            <b>{g.status === "stopped" ? "Stopped" : "Done"} at {clock(g.finished_at)}</b>
             <span style={{ fontSize: 13 }}>
-              Marked done {g.done_by ? "by " + personName(b, g.done_by) : "automatically"}. {shippedText(g.shipped, g.base, g.branch)}{" "}
+              {g.status === "stopped" ? "Marked stopped" : "Marked done"} {g.done_by ? "by " + personName(b, g.done_by) : "automatically"}. {shippedText(g.shipped, g.base, g.branch)}{" "}
               {g.show_tasks ? "Its tasks are showing on the board." : "Its tasks are hidden from the board."}
             </span>
             {g.shipped?.prs?.map((u: string) => <a key={u} href={u} target="_blank" rel="noreferrer" className="linkbtn">{u}</a>)}

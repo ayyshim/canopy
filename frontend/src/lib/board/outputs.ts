@@ -1,4 +1,5 @@
 import type { Board } from "../types";
+import { goalClosed } from "../goalStatus.ts";
 
 export const outputGoal = (b: Board, o: { task_id?: string | null }) => {
   const t = o.task_id ? b.tasks.find((x) => x.id === o.task_id) : undefined;
@@ -9,7 +10,7 @@ export const outputGoal = (b: Board, o: { task_id?: string | null }) => {
 export const activeOutputs = (b: Board) =>
   b.outputs.filter((o) => {
     const g = outputGoal(b, o);
-    return !!g && g.status !== "done";
+    return !!g && !goalClosed(g);
   });
 
 export const unseen = (b: Board) =>

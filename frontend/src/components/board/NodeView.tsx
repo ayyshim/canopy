@@ -16,6 +16,7 @@ import { Avatar, KIND_LABEL } from "./icons";
 import { SignalCard } from "./SignalCard";
 import { Sticky } from "./Sticky";
 import { OutputThumb } from "./OutputThumb";
+import { goalClosed } from "../../lib/goalStatus";
 
 /** NodeView draws one card on the tree. */
 export function NodeView({ n }: { n: Node }) {
@@ -36,7 +37,7 @@ export function NodeView({ n }: { n: Node }) {
       const mg = b.members.filter((m) => m.kind === "manager").length;
       const done = b.tasks.filter((t) => t.status === "done").length;
       const all = Math.max(b.tasks.length, 1);
-      const hosts = [...new Set(b.goals.filter((g) => g.status !== "done" && g.status !== "draft").map((g) => g.runner_id).filter(Boolean))] as string[];
+      const hosts = [...new Set(b.goals.filter((g) => !goalClosed(g) && g.status !== "draft").map((g) => g.runner_id).filter(Boolean))] as string[];
       const open = () => ui.openSide({ type: "ws" });
       return (
         <div className={`node team${ui.side?.type === "ws" ? " sel" : ""}${glow}`} style={style} role="button" tabIndex={0} onClick={open} onKeyDown={keyOpen(open)}
@@ -72,12 +73,12 @@ export function NodeView({ n }: { n: Node }) {
       const dn = ts.filter((t) => t.status === "done").length;
       const sel = focusGoal === g.id;
       const hasRepos = goalRepos(b, g.id).length > 0;
-      const status = g.status !== "done" && briefInReview(b, g.id) ? "Brief to review" : g.status === "ready" ? (hasRepos ? "Ready to ship" : "Ready to close") : g.status === "done" ? "Done ✓" : g.status === "planning" ? "Planning" : g.status === "draft" ? "Draft" : `${dn} of ${ts.length}`;
+      const status = !goalClosed(g) && briefInReview(b, g.id) ? "Brief to review" : g.status === "ready" ? (hasRepos ? "Ready to ship" : "Ready to close") : g.status === "stopped" ? "Stopped" : goalClosed(g) ? "Done ✓" : g.status === "planning" ? "Planning" : g.status === "draft" ? "Draft" : `${dn} of ${ts.length}`;
       const open = () => ui.openSide({ type: "goal", id: g.id });
       const mName = m && "name" in m ? m.name : "Manager";
       const mColor = m && "avatar_color" in m ? m.avatar_color : "var(--line)";
       return (
-        <div className={`node goal${g.status === "done" ? " done" : g.status === "ready" ? " ready" : g.status === "draft" ? " draft" : ""}${sel ? " sel" : ""}${focusGoal && !sel ? " dim" : ""}${glow}`}
+        <div className={`node goal${goalClosed(g) ? " done" : g.status === "ready" ? " ready" : g.status === "draft" ? " draft" : ""}${sel ? " sel" : ""}${focusGoal && !sel ? " dim" : ""}${glow}`}
           style={style} role="button" tabIndex={0} onClick={open} onKeyDown={keyOpen(open)}>
           <span className="gt" title={g.title}><span className="gdot" style={{ background: g.color }} /><span><IdTag kind="goal" number={g.number} />{g.title}</span></span>
           <span className="gb">
@@ -92,7 +93,7 @@ export function NodeView({ n }: { n: Node }) {
     case "addgoal":
       return <button className="node addgoal" style={style} onClick={() => ui.openDialog({ kind: "goal" })}>+ Give a goal</button>;
     case "note": {
-      const done = b.goals.filter((g) => g.status === "done").length;
+      const done = b.goals.filter((g) => goalClosed(g)).length;
       return (
         <button className="node note" style={style} onClick={() => ui.openDialog({ kind: "summary" })}>
           <b>Workspace summary</b>{done} of {plural(b.goals.length, "goal")} done, {needsMe(b, me).length} waiting on you, {plural(b.outputs.length, "output")}.

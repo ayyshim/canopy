@@ -11,3 +11,7 @@ test("open goals and tasks without a goal are never hidden", () => {
   for (const status of ["draft", "planning", "active", "ready"]) assert.equal(tasksHiddenByGoal({ status, show_tasks: false }), false);
   assert.equal(tasksHiddenByGoal(undefined), false);
 });
+
+test("a stopped goal hides its tasks like a done one", () => {
+  assert.equal(tasksHiddenByGoal({ status: "stopped", show_tasks: false }), true);
+});
