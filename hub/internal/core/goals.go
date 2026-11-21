@@ -20,10 +20,21 @@ type NewGoal struct {
 	DoneWhen    string
 	Description string
 	By          uuid.UUID
-	RunnerID    *uuid.UUID // where it runs; empty = the person's own computer, else a shared one
-	Base        string     // branch to start from in its repositories; "" = their default branch
-	Snapshot    bool       // include the person's uncommitted changes
-	Draft       bool       // saved for later; nobody works on it yet
+	RunnerID    *uuid.UUID  // where it runs; empty = the person's own computer, else a shared one
+	Base        string      // branch to start from in its repositories; "" = their default branch
+	Snapshot    bool        // include the person's uncommitted changes
+	Draft       bool        // saved for later; nobody works on it yet
+	JobRunID    *uuid.UUID  // set when a job run creates the goal
+	Direct      *DirectWork // start active with this one work task and no plan task
+}
+
+// DirectWork is the single task of a goal that skips planning.
+type DirectWork struct {
+	MemberID     uuid.UUID
+	Skill        *string
+	Title        string
+	Description  string
+	RequiredDirs []byte // JSON, same shape as tasks.required_dirs; nil = none
 }
 
 // CreateGoal records a goal given to a manager (or a draft), with the next goal color,
@@ -37,12 +48,19 @@ func CreateGoal(ctx context.Context, t *Tx, ws db.Workspace, ng NewGoal) (db.Goa
 	status := "planning"
 	if ng.Draft {
 		status = "draft"
+	} else if ng.Direct != nil {
+		status = "active"
 	}
 	g, err := t.Q.CreateGoal(ctx, db.CreateGoalParams{ID: uuid.Must(uuid.NewV7()), WorkspaceID: ws.ID, ManagerID: &ng.ManagerID, Title: ng.Title,
 		DoneWhen: ng.DoneWhen, Color: domain.GoalColors[len(goals)%len(domain.GoalColors)], CreatedBy: &ng.By,
-		RunnerID: ng.RunnerID, Description: ng.Description, Base: ng.Base, Branch: branch, Snapshot: ng.Snapshot, Status: status})
+		RunnerID: ng.RunnerID, Description: ng.Description, Base: ng.Base, Branch: branch, Snapshot: ng.Snapshot, Status: status, JobRunID: ng.JobRunID})
 	if err != nil {
 		return g, err
+	}
+	if ng.Direct != nil {
+		if err := createDirectTask(ctx, t, ws, g, ng); err != nil {
+			return g, err
+		}
 	}
 	if ng.Draft {
 		err = GoalEvent(ctx, t, ws, g, "drafted", "Saved as a draft", nil)
@@ -53,6 +71,22 @@ func CreateGoal(ctx context.Context, t *Tx, ws db.Workspace, ng NewGoal) (db.Goa
 		return g, err
 	}
 	return g, t.Emit(ctx, WSMember(ws.OrgID, ws.ID, ng.ManagerID, "goal.updated"), ToGoal(g))
+}
+
+// createDirectTask adds the one work task of a direct goal.
+func createDirectTask(ctx context.Context, t *Tx, ws db.Workspace, g db.Goal, ng NewGoal) error {
+	d := ng.Direct
+	dirs := d.RequiredDirs
+	if dirs == nil {
+		dirs = []byte("[]")
+	}
+	task, err := t.Q.CreateTask(ctx, db.CreateTaskParams{ID: uuid.Must(uuid.NewV7()), WorkspaceID: ws.ID, GoalID: &g.ID, MemberID: &d.MemberID,
+		Kind: "work", Title: d.Title, Description: d.Description, Skill: d.Skill, Status: "waiting", DependsOn: []uuid.UUID{},
+		Steps: []byte("[]"), RequiredDirs: dirs, AttributedUserID: &ng.By, CreatedBy: &ng.By})
+	if err != nil {
+		return err
+	}
+	return t.Emit(ctx, WSMember(ws.OrgID, ws.ID, d.MemberID, "task.created"), ToTask(task))
 }
 
 // UpdateDraft saves changes to a draft goal and renames its branch to match the title.

@@ -71,3 +71,31 @@ SELECT * FROM job_runs WHERE job_id = $1 ORDER BY number DESC LIMIT $2;
 
 -- name: JobRunByGoal :one
 SELECT r.* FROM job_runs r JOIN goals g ON g.job_run_id = r.id WHERE g.id = $1;
+
+-- name: DueJobIDs :many
+SELECT id FROM jobs
+WHERE status = 'active' AND next_run_at IS NOT NULL AND next_run_at <= sqlc.arg(now)
+ORDER BY next_run_at, id
+LIMIT sqlc.arg(max_rows);
+
+-- name: LockDueJob :one
+-- One due job, locked; no row when another hub holds it or it is no longer due.
+SELECT * FROM jobs
+WHERE id = sqlc.arg(id) AND status = 'active' AND next_run_at IS NOT NULL AND next_run_at <= sqlc.arg(now)
+FOR UPDATE SKIP LOCKED;
+
+-- name: LockJob :one
+SELECT * FROM jobs WHERE id = $1 FOR UPDATE;
+
+-- name: CountJobRuns :one
+-- Runs that count toward max_runs: not skipped, not a test.
+SELECT count(*)::int FROM job_runs WHERE job_id = $1 AND status <> 'skipped' AND trigger <> 'test';
+
+-- name: RunningJobRuns :many
+SELECT * FROM job_runs WHERE status = 'running' ORDER BY started_at;
+
+-- name: GoalTokens :one
+SELECT coalesce(sum(tokens_in + tokens_out), 0)::bigint FROM usage_work WHERE goal_id = $1;
+
+-- name: GoalStartedTasks :one
+SELECT count(*)::int FROM tasks WHERE goal_id = $1 AND status IN ('doing', 'review', 'done');

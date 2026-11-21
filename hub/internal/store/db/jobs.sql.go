@@ -12,6 +12,18 @@ import (
 	"github.com/google/uuid"
 )
 
+const countJobRuns = `-- name: CountJobRuns :one
+SELECT count(*)::int FROM job_runs WHERE job_id = $1 AND status <> 'skipped' AND trigger <> 'test'
+`
+
+// Runs that count toward max_runs: not skipped, not a test.
+func (q *Queries) CountJobRuns(ctx context.Context, jobID uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, countJobRuns, jobID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createJob = `-- name: CreateJob :one
 INSERT INTO jobs (id, workspace_id, title, kind, brief, owner_user_id, manager_id, assignee_member_id, runner_id,
   cron, timezone, next_run_at, missed_policy, catchup_window_secs, run_timeout_secs, token_cap_per_run,
@@ -171,6 +183,38 @@ func (q *Queries) DeleteJob(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const dueJobIDs = `-- name: DueJobIDs :many
+SELECT id FROM jobs
+WHERE status = 'active' AND next_run_at IS NOT NULL AND next_run_at <= $1
+ORDER BY next_run_at, id
+LIMIT $2
+`
+
+type DueJobIDsParams struct {
+	Now     *time.Time
+	MaxRows int32
+}
+
+func (q *Queries) DueJobIDs(ctx context.Context, arg DueJobIDsParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, dueJobIDs, arg.Now, arg.MaxRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const dueJobs = `-- name: DueJobs :many
 SELECT id, workspace_id, title, kind, status, pause_reason, brief, owner_user_id, manager_id, assignee_member_id, runner_id, cron, timezone, next_run_at, last_run_at, missed_policy, catchup_window_secs, run_timeout_secs, token_cap_per_run, token_cap_per_month, notify, ends_at, max_runs, required_dirs, memory_note_id, consecutive_failures, created_by, created_at, updated_at FROM jobs
 WHERE status = 'active' AND next_run_at IS NOT NULL AND next_run_at <= $1
@@ -307,6 +351,28 @@ func (q *Queries) GetJobRun(ctx context.Context, id uuid.UUID) (JobRun, error) {
 	return i, err
 }
 
+const goalStartedTasks = `-- name: GoalStartedTasks :one
+SELECT count(*)::int FROM tasks WHERE goal_id = $1 AND status IN ('doing', 'review', 'done')
+`
+
+func (q *Queries) GoalStartedTasks(ctx context.Context, goalID *uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, goalStartedTasks, goalID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const goalTokens = `-- name: GoalTokens :one
+SELECT coalesce(sum(tokens_in + tokens_out), 0)::bigint FROM usage_work WHERE goal_id = $1
+`
+
+func (q *Queries) GoalTokens(ctx context.Context, goalID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, goalTokens, goalID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const jobRunByGoal = `-- name: JobRunByGoal :one
 SELECT r.id, r.job_id, r.number, r.scheduled_for, r.trigger, r.status, r.skip_reason, r.attempt, r.goal_id, r.started_at, r.finished_at, r.tokens, r.result, r.title, r.summary, r.error, r.pending_memory, r.memory_after, r.created_at FROM job_runs r JOIN goals g ON g.job_run_id = r.id WHERE g.id = $1
 `
@@ -441,6 +507,96 @@ func (q *Queries) ListJobs(ctx context.Context, workspaceID uuid.UUID) ([]Job, e
 	return items, nil
 }
 
+const lockDueJob = `-- name: LockDueJob :one
+SELECT id, workspace_id, title, kind, status, pause_reason, brief, owner_user_id, manager_id, assignee_member_id, runner_id, cron, timezone, next_run_at, last_run_at, missed_policy, catchup_window_secs, run_timeout_secs, token_cap_per_run, token_cap_per_month, notify, ends_at, max_runs, required_dirs, memory_note_id, consecutive_failures, created_by, created_at, updated_at FROM jobs
+WHERE id = $1 AND status = 'active' AND next_run_at IS NOT NULL AND next_run_at <= $2
+FOR UPDATE SKIP LOCKED
+`
+
+type LockDueJobParams struct {
+	ID  uuid.UUID
+	Now *time.Time
+}
+
+// One due job, locked; no row when another hub holds it or it is no longer due.
+func (q *Queries) LockDueJob(ctx context.Context, arg LockDueJobParams) (Job, error) {
+	row := q.db.QueryRow(ctx, lockDueJob, arg.ID, arg.Now)
+	var i Job
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Title,
+		&i.Kind,
+		&i.Status,
+		&i.PauseReason,
+		&i.Brief,
+		&i.OwnerUserID,
+		&i.ManagerID,
+		&i.AssigneeMemberID,
+		&i.RunnerID,
+		&i.Cron,
+		&i.Timezone,
+		&i.NextRunAt,
+		&i.LastRunAt,
+		&i.MissedPolicy,
+		&i.CatchupWindowSecs,
+		&i.RunTimeoutSecs,
+		&i.TokenCapPerRun,
+		&i.TokenCapPerMonth,
+		&i.Notify,
+		&i.EndsAt,
+		&i.MaxRuns,
+		&i.RequiredDirs,
+		&i.MemoryNoteID,
+		&i.ConsecutiveFailures,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const lockJob = `-- name: LockJob :one
+SELECT id, workspace_id, title, kind, status, pause_reason, brief, owner_user_id, manager_id, assignee_member_id, runner_id, cron, timezone, next_run_at, last_run_at, missed_policy, catchup_window_secs, run_timeout_secs, token_cap_per_run, token_cap_per_month, notify, ends_at, max_runs, required_dirs, memory_note_id, consecutive_failures, created_by, created_at, updated_at FROM jobs WHERE id = $1 FOR UPDATE
+`
+
+func (q *Queries) LockJob(ctx context.Context, id uuid.UUID) (Job, error) {
+	row := q.db.QueryRow(ctx, lockJob, id)
+	var i Job
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Title,
+		&i.Kind,
+		&i.Status,
+		&i.PauseReason,
+		&i.Brief,
+		&i.OwnerUserID,
+		&i.ManagerID,
+		&i.AssigneeMemberID,
+		&i.RunnerID,
+		&i.Cron,
+		&i.Timezone,
+		&i.NextRunAt,
+		&i.LastRunAt,
+		&i.MissedPolicy,
+		&i.CatchupWindowSecs,
+		&i.RunTimeoutSecs,
+		&i.TokenCapPerRun,
+		&i.TokenCapPerMonth,
+		&i.Notify,
+		&i.EndsAt,
+		&i.MaxRuns,
+		&i.RequiredDirs,
+		&i.MemoryNoteID,
+		&i.ConsecutiveFailures,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const nextJobRunNumber = `-- name: NextJobRunNumber :one
 SELECT coalesce(max(number), 0)::int + 1 FROM job_runs WHERE job_id = $1
 `
@@ -481,6 +637,50 @@ func (q *Queries) RunningJobRun(ctx context.Context, jobID uuid.UUID) (JobRun, e
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const runningJobRuns = `-- name: RunningJobRuns :many
+SELECT id, job_id, number, scheduled_for, trigger, status, skip_reason, attempt, goal_id, started_at, finished_at, tokens, result, title, summary, error, pending_memory, memory_after, created_at FROM job_runs WHERE status = 'running' ORDER BY started_at
+`
+
+func (q *Queries) RunningJobRuns(ctx context.Context) ([]JobRun, error) {
+	rows, err := q.db.Query(ctx, runningJobRuns)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []JobRun
+	for rows.Next() {
+		var i JobRun
+		if err := rows.Scan(
+			&i.ID,
+			&i.JobID,
+			&i.Number,
+			&i.ScheduledFor,
+			&i.Trigger,
+			&i.Status,
+			&i.SkipReason,
+			&i.Attempt,
+			&i.GoalID,
+			&i.StartedAt,
+			&i.FinishedAt,
+			&i.Tokens,
+			&i.Result,
+			&i.Title,
+			&i.Summary,
+			&i.Error,
+			&i.PendingMemory,
+			&i.MemoryAfter,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updateJob = `-- name: UpdateJob :one
