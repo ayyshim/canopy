@@ -168,18 +168,24 @@ func (s *Server) setupRoutes(r chi.Router) {
 
 		// Hub admin dashboard.
 		r.Route("/admin", func(r chi.Router) {
-			r.Use(auth.RequireUser, s.requireHubAdmin)
-			r.Get("/overview", httpx.Handler(s.handleAdminOverview))
-			r.Get("/organizations", httpx.Handler(s.handleAdminListOrgs))
-			r.Get("/organizations/{orgID}", httpx.Handler(s.handleAdminGetOrg))
-			r.Get("/users", httpx.Handler(s.handleAdminListUsers))
-			r.Get("/users/{userID}", httpx.Handler(s.handleAdminGetUser))
-			r.Patch("/users/{userID}", httpx.Handler(s.handleAdminPatchUser))
-			r.Post("/users/{userID}/two-factor/reset", httpx.Handler(s.handleAdminResetTwoFactor))
-			r.Get("/settings", httpx.Handler(s.handleAdminGetSettings))
-			r.Patch("/settings", httpx.Handler(s.handleAdminPatchSettings))
+			r.Use(auth.RequireUser)
+			// Resetting someone's two-factor is hidden: everyone but a hub admin gets 404.
+			r.With(s.requireHubAdminOr404).Post("/users/{userID}/two-factor/reset", httpx.Handler(s.handleAdminResetTwoFactor))
+			r.Group(s.adminRoutes)
 		})
 	}
+}
+
+func (s *Server) adminRoutes(r chi.Router) {
+	r.Use(s.requireHubAdmin)
+	r.Get("/overview", httpx.Handler(s.handleAdminOverview))
+	r.Get("/organizations", httpx.Handler(s.handleAdminListOrgs))
+	r.Get("/organizations/{orgID}", httpx.Handler(s.handleAdminGetOrg))
+	r.Get("/users", httpx.Handler(s.handleAdminListUsers))
+	r.Get("/users/{userID}", httpx.Handler(s.handleAdminGetUser))
+	r.Patch("/users/{userID}", httpx.Handler(s.handleAdminPatchUser))
+	r.Get("/settings", httpx.Handler(s.handleAdminGetSettings))
+	r.Patch("/settings", httpx.Handler(s.handleAdminPatchSettings))
 }
 
 func newID() uuid.UUID { return uuid.Must(uuid.NewV7()) }

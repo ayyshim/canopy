@@ -53,6 +53,15 @@ func (s *Server) requireSetup(next http.Handler) http.Handler {
 }
 
 func (s *Server) requireHubAdmin(next http.Handler) http.Handler {
+	return s.hubAdminOnly(next, errNotHubAdmin)
+}
+
+// requireHubAdminOr404 hides a route from everyone but hub admins.
+func (s *Server) requireHubAdminOr404(next http.Handler) http.Handler {
+	return s.hubAdminOnly(next, httpx.ErrNotFound)
+}
+
+func (s *Server) hubAdminOnly(next http.Handler, refuse error) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u, err := s.Store.GetUserByID(r.Context(), identity(r).UserID)
 		if err != nil {
@@ -60,7 +69,7 @@ func (s *Server) requireHubAdmin(next http.Handler) http.Handler {
 			return
 		}
 		if !u.IsHubAdmin {
-			httpx.Fail(w, r, errNotHubAdmin)
+			httpx.Fail(w, r, refuse)
 			return
 		}
 		next.ServeHTTP(w, r)
