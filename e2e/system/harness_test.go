@@ -27,7 +27,12 @@ import (
 
 var bins struct{ hub, canopy, fakeclaude string }
 
-const adminDB = "postgres://canopy:canopy@localhost:5432/postgres?sslmode=disable"
+var adminDB = func() string {
+	if v := os.Getenv("TEST_DATABASE_URL"); v != "" {
+		return v
+	}
+	return "postgres://canopy:canopy@localhost:5432/postgres?sslmode=disable"
+}()
 
 func TestMain(m *testing.M) {
 	dir, err := os.MkdirTemp("", "canopy-system-bins")
