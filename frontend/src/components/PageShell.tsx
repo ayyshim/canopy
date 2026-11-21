@@ -76,9 +76,14 @@ export function PageShell({ title, children, workspace }: { title: string; child
               )}
             </>
           )}
-          {wsAdmin && ws && (
+          {ws && (
             <>
               <h2 className="pnav-h">Workspace: {ws.name}</h2>
+              {link(`/w/${ws.id}/jobs`, "Jobs", path.startsWith(`/w/${ws.id}/jobs`))}
+            </>
+          )}
+          {wsAdmin && ws && (
+            <>
               {link(`/w/${ws.id}/settings?tab=general`, "General")}
               {link(`/w/${ws.id}/settings?tab=directories`, "Directories")}
               {link(`/w/${ws.id}/settings?tab=members`, "Members")}

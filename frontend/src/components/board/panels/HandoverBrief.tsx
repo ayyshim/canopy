@@ -7,6 +7,7 @@ import type { GoalView } from "@/lib/types";
 import { useB, useBoardCtx } from "../context";
 import { fileURL, useText } from "../outputs/Viewer";
 import { Markdown } from "./bits";
+import { goalClosed } from "../../../lib/goalStatus";
 
 /** HandoverBrief shows the latest handover.md of a goal and lets its person approve it or ask for changes. */
 export function HandoverBrief({ g }: { g: GoalView }) {
@@ -23,7 +24,7 @@ export function HandoverBrief({ g }: { g: GoalView }) {
   const can = g.created_by === me || isAdmin(b);
   const m = visibleMember(b, g.manager_id);
   const approved = !!g.handover_approved_by;
-  const waiting = !approved && o.status !== "changes" && g.status !== "done";
+  const waiting = !approved && o.status !== "changes" && !goalClosed(g);
 
   const send = async (action: string, extra?: Record<string, unknown>) => {
     if (!sig) return;

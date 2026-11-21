@@ -16,6 +16,7 @@ import (
 	"canopy/hub/internal/config"
 	"canopy/hub/internal/core"
 	"canopy/hub/internal/httpx"
+	"canopy/hub/internal/jobs"
 	"canopy/hub/internal/mail"
 	"canopy/hub/internal/notify"
 	"canopy/hub/internal/pki"
@@ -44,8 +45,10 @@ type Server struct {
 	// SetupToken must accompany first-run hub setup.
 	SetupToken string
 	// Runners and Orch are wired by main once the runner listener and orchestrator exist.
-	Runners  RunnerHub
-	Orch     Orchestrator
+	Runners RunnerHub
+	Orch    Orchestrator
+	// Jobs starts, pauses and resumes job runs; main sets its Host and runs it.
+	Jobs     *jobs.Engine
 	PKI      *pki.CA
 	Blobs    blob.Store
 	Resolver Resolver
@@ -82,6 +85,7 @@ func New(cfg config.Config, st *store.Store, mailer mail.Sender, limiter auth.Li
 		},
 		SetupToken: cfg.SetupToken,
 	}
+	s.Jobs = &jobs.Engine{Core: s.Core}
 	return s
 }
 

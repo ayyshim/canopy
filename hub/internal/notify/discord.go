@@ -31,6 +31,7 @@ var kindColors = map[string]int{
 	"progress":   0x3B82F6,
 	"goal_ready": 0x22C55E,
 	"errors":     0xEF4444,
+	"jobs":       0x8B5CF6,
 }
 
 const maxImageRead = 8 << 20

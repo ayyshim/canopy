@@ -13,6 +13,7 @@ import { NodeView } from "./NodeView";
 import { Minimap, useMinimapOpen } from "./Minimap";
 import { StickyDraft } from "./Sticky";
 import { STICKY_H, STICKY_W } from "@/lib/stickies";
+import { goalClosed } from "../../lib/goalStatus";
 
 type Cam = { x: number; y: number; z: number; auto: boolean };
 
@@ -320,7 +321,7 @@ function aura(b: Board, L: Layout) {
     put(s.id, c);
     put(s.task_id, c);
   }
-  for (const g of b.goals) if (g.status !== "done" && b.tasks.some((t) => t.goal_id === g.id && t.status === "doing")) put(g.id, "b");
+  for (const g of b.goals) if (!goalClosed(g) && b.tasks.some((t) => t.goal_id === g.id && t.status === "doing")) put(g.id, "b");
   return out;
 }
 

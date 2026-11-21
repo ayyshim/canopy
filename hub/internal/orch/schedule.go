@@ -144,7 +144,7 @@ func (o *Orch) startWork(ctx context.Context, t *core.Tx, st *wsState) error {
 		if s, ok := st.session[k]; ok && (s.Status == "gate" || s.Status == "error") {
 			continue
 		}
-		if g, ok := st.goal[k.goal]; ok && g.Status == "done" {
+		if g, ok := st.goal[k.goal]; ok && (g.Status == "done" || g.Status == "stopped") {
 			continue
 		}
 		runner := st.runnerFor(k, &task)
@@ -339,7 +339,7 @@ func (o *Orch) deliver(ctx context.Context, t *core.Tx, st *wsState, runner uuid
 		return err
 	}
 	msg := protocol.StartSession{SessionID: s.ID, WorkspaceID: st.ws.ID, MemberID: m.ID, MemberName: m.Name, CLI: m.Cli, Model: m.Model,
-		Resume: resume, AppendSystemPrompt: systemPrompt(st, m, mounts, notes), Work: work, Mounts: mounts, Turn: &turn,
+		Resume: resume, AppendSystemPrompt: systemPrompt(st, m, mounts, notes) + jobPrompt(ctx, q, st, k.goalID()), Work: work, Mounts: mounts, Turn: &turn,
 		UseAPIKey: o.useKey(st, runner, m.Cli)}
 	t.AfterCommit(func() { o.send(runner, protocol.TStartSession, msg) })
 	return nil

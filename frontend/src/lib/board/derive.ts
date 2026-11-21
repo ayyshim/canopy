@@ -2,6 +2,7 @@
 import type { AccountView, AnyMember, Board, Computer, GoalView, MemberView, SignalView, TaskView } from "../types";
 import { isHidden } from "../types";
 import { tasksHiddenByGoal } from "../taskShown";
+import { goalClosed } from "../goalStatus.ts";
 
 export const isAdmin = (b: Board) => b.viewer.role === "admin";
 
@@ -44,7 +45,7 @@ export const briefInReview = (b: Board, goalId: string) =>
   !!handoverReview(b, goalId) || goalTasks(b, goalId).some((t) => t.kind === "handover" && t.status === "review");
 export function goalProgress(b: Board, g: GoalView): number {
   const ts = workTasks(b, g.id);
-  if (!ts.length) return g.status === "done" ? 100 : 0;
+  if (!ts.length) return goalClosed(g) ? 100 : 0;
   return Math.round(ts.reduce((a, t) => a + (t.status === "done" ? 100 : t.progress), 0) / ts.length);
 }
 export const goalRepos = (b: Board, goalId: string) => b.goal_repos.filter((r) => r.goal_id === goalId);

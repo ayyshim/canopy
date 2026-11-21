@@ -8,6 +8,7 @@ import { useB, useBoardCtx } from "../context";
 import { Avatar, RepoIcon } from "../icons";
 import { PanelBody, PanelFoot, PanelHead } from "./Panel";
 import { FolderIcon } from "./WorkspacePanel";
+import { goalClosed } from "../../../lib/goalStatus";
 
 /** PoolPanel: independent staff, and which managers they're helping now. */
 export function PoolPanel() {
@@ -62,7 +63,7 @@ export function DirsPanel() {
         {b.directories.map((d) => {
           if (d.is_repo) {
             const clones = b.clones.filter((c) => c.directory_id === d.id);
-            const branches = b.goals.filter((g) => g.status !== "done" && b.goal_repos.some((r) => r.goal_id === g.id && r.directory_id === d.id));
+            const branches = b.goals.filter((g) => !goalClosed(g) && b.goal_repos.some((r) => r.goal_id === g.id && r.directory_id === d.id));
             return (
               <div className="box" key={d.id}>
                 <div className="row"><RepoIcon /><b className="spacer">{d.name}</b><span className="pill">Git repository</span></div>

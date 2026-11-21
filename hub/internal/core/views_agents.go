@@ -33,7 +33,8 @@ type GoalView struct {
 	HandoverApprovedBy *uuid.UUID      `json:"handover_approved_by"`
 	HandoverApprovedAt *time.Time      `json:"handover_approved_at"`
 	CreatedAt          time.Time       `json:"created_at"`
-	Usage              *UsageTotals    `json:"usage"` // tokens and cost so far; nil when not loaded
+	Usage              *UsageTotals    `json:"usage"`                // tokens and cost so far; nil when not loaded
+	JobRunID           *uuid.UUID      `json:"job_run_id,omitempty"` // set when the goal is a job run
 }
 
 func ToGoal(g db.Goal) GoalView {
@@ -41,7 +42,7 @@ func ToGoal(g db.Goal) GoalView {
 		Summary: g.Summary, CreatedBy: g.CreatedBy, PlannedAt: g.PlannedAt, FinishedAt: g.FinishedAt, CreatedAt: g.CreatedAt,
 		ReadyAt: g.ReadyAt, RunnerID: g.RunnerID, Base: g.Base, Branch: g.Branch, Snapshot: g.Snapshot, Shipped: g.Shipped,
 		ShowTasks: g.ShowTasks, DoneBy: g.DoneBy,
-		HandoverApprovedBy: g.HandoverApprovedBy, HandoverApprovedAt: g.HandoverApprovedAt}
+		HandoverApprovedBy: g.HandoverApprovedBy, HandoverApprovedAt: g.HandoverApprovedAt, JobRunID: g.JobRunID}
 	if len(v.Shipped) == 0 {
 		v.Shipped = json.RawMessage("{}")
 	}

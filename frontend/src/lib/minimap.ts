@@ -51,7 +51,7 @@ export function nodeLook(n: LookIn): Look {
     case "ws": return { fill: "--team" };
     case "goal":
       if (n.goalStatus === "ready") return { fill: "--surface", edge: "--amber", accent: n.goalColor, side: "left" };
-      return { ...card, accent: n.goalColor, side: "left", dashed: n.goalStatus === "draft", fade: n.goalStatus === "done" };
+      return { ...card, accent: n.goalColor, side: "left", dashed: n.goalStatus === "draft", fade: n.goalStatus === "done" || n.goalStatus === "stopped" };
     case "task": {
       const fill = n.taskStatus === "doing" || n.taskStatus === "review" ? "--amber-soft" : n.taskStatus === "done" ? "--green-soft" : "--surface";
       return { fill, edge: n.blocked ? "--red" : "--edge", accent: n.goalColor || "--edge", side: "left" };

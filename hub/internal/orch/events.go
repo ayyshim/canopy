@@ -349,7 +349,7 @@ func (o *Orch) onCrash(ctx context.Context, rn db.Runner, sess db.Session, msg s
 				Text: "Your session crashed and restarted. Continue “" + task.Title + "” where you left off."}
 		}
 		start := protocol.StartSession{SessionID: ns.ID, WorkspaceID: ws.ID, MemberID: m.ID, MemberName: m.Name, CLI: m.Cli, Model: m.Model,
-			Resume: sess.CliSessionID, AppendSystemPrompt: systemPrompt(st, m, mounts, notes), Work: sess.Cwd, Mounts: mounts, Turn: turn,
+			Resume: sess.CliSessionID, AppendSystemPrompt: systemPrompt(st, m, mounts, notes) + jobPrompt(ctx, q, st, sess.GoalID), Work: sess.Cwd, Mounts: mounts, Turn: turn,
 			UseAPIKey: o.useKey(st, rn.ID, m.Cli)}
 		runner := rn.ID
 		t.AfterCommit(func() { o.send(runner, protocol.TStartSession, start) })

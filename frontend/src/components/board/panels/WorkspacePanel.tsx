@@ -14,11 +14,12 @@ import { PanelBody, PanelFoot, PanelHead } from "./Panel";
 import { Tabs, TabPanel, useTab, EmptyState } from "../../ui";
 import { UsageTab } from "./UsageTab";
 import type { UsageTotals } from "@/lib/core-types";
+import { goalClosed } from "../../../lib/goalStatus";
 
 const TABS: [string, string, (g: GoalView, needs: boolean) => boolean][] = [
   ["all", "All", () => true],
   ["active", "Active", (g) => g.status === "active" || g.status === "planning"],
-  ["done", "Done", (g) => g.status === "done"],
+  ["done", "Done", (g) => goalClosed(g)],
   ["draft", "Drafts", (g) => g.status === "draft"],
   ["attn", "Need attention", (_g, needs) => needs],
 ];
@@ -40,7 +41,7 @@ export function WorkspacePanel() {
   const [about, setAbout] = useState(b.workspace.about);
   const filter = TABS.find((t) => t[0] === tab)![2];
   const list = b.goals.filter((g) => filter(g, goalNeeds(b, g)));
-  const hosts = [...new Set(b.goals.filter((g) => g.status !== "done" && g.status !== "draft").map((g) => g.runner_id).filter(Boolean))] as string[];
+  const hosts = [...new Set(b.goals.filter((g) => !goalClosed(g) && g.status !== "draft").map((g) => g.runner_id).filter(Boolean))] as string[];
   const total = sumUsage(b.goals.map((g) => g.usage));
   const save = (patch: Record<string, string>) => patchWorkspace(wsId, patch);
 
@@ -145,7 +146,7 @@ export function WorkspacePanel() {
           <span className="lbl">Where work runs</span>
           {hosts.map((id) => {
             const why = whyWaiting(b, id);
-            const who = [...new Set(b.goals.filter((g) => g.status !== "done" && g.status !== "draft" && g.runner_id === id).map((g) => firstName(b, g.created_by)))];
+            const who = [...new Set(b.goals.filter((g) => !goalClosed(g) && g.status !== "draft" && g.runner_id === id).map((g) => firstName(b, g.created_by)))];
             return (
               <div className="trow" style={{ cursor: "default" }} key={id}>
                 <span className={`dot ${why ? "need" : "done"}`} />

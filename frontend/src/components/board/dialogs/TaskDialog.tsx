@@ -10,6 +10,7 @@ import { useUI } from "@/lib/board/ui";
 import { type MemberView } from "@/lib/types";
 import { useB, useBoardCtx } from "../context";
 import { FilePicker, MAX_FILE_MB } from "../panels/Attachments";
+import { goalClosed } from "../../../lib/goalStatus";
 
 /** TaskDialog adds a task by hand, under a goal or on its own, waiting on other tasks. */
 export function TaskDialog({ goalId, memberId }: { goalId?: string; memberId?: string }) {
@@ -43,14 +44,14 @@ export function TaskDialog({ goalId, memberId }: { goalId?: string; memberId?: s
 
   return (
     <form className="dialog" onSubmit={submit}>
-      <h2>{g?.status === "ready" || g?.status === "done" ? "Add a follow-up task" : "New task"}</h2>
-      <p>{g?.status === "ready" || g?.status === "done" ? `This puts “${g.title}” back to work.` : "Most work comes from managers splitting goals. Add a task yourself when you want something specific done."}</p>
+      <h2>{g?.status === "ready" || goalClosed(g) ? "Add a follow-up task" : "New task"}</h2>
+      <p>{g?.status === "ready" || goalClosed(g) ? `This puts “${g?.title}” back to work.` : "Most work comes from managers splitting goals. Add a task yourself when you want something specific done."}</p>
       <label className="field"><span>Title</span>
         <RefAssist><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Add a saved-cards picker" autoComplete="off" autoFocus /></RefAssist></label>
       <label className="field"><span>Goal</span>
         <select className="input" value={goal} onChange={(e) => setGoal(e.target.value)}>
           <option value="">No goal</option>
-          {b.goals.filter((x) => x.status !== "done" || x.id === goalId).map((x) => <option key={x.id} value={x.id}>{x.title}</option>)}
+          {b.goals.filter((x) => !goalClosed(x) || x.id === goalId).map((x) => <option key={x.id} value={x.id}>{x.title}</option>)}
         </select></label>
       <label className="field"><span>Assign to</span>
         <select className="input" value={member} onChange={(e) => setMember(e.target.value)} required>

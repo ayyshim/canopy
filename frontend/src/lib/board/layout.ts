@@ -5,6 +5,7 @@ import type { Board, GoalView, MemberView, NoteView, OutputView, SessionView, Si
 import { isPinned, STICKY_H, STICKY_W } from "../stickies";
 import { isHidden } from "../types";
 import { blockedOnPerson, hiddenTask, independentStaff, isAdmin, managers, outputsOf, staffOf, task } from "./derive";
+import { goalClosed } from "../goalStatus.ts";
 
 export const GEO = { teamW: 290, teamH: 136, agW: 240, agH: 84, colW: 320, cx: 36, cw: 220, gap: 14, fruit: 50 };
 const SIZE = { task: 64, sess: 58, fork: 150, gate: 118, errc: 118, acct: 140 };
@@ -49,7 +50,7 @@ export function layout(b: Board, heights: Record<string, number>, focusGoal: str
   const gx = GEO.teamW + 40;
   let gy = 0;
   // Done goals lose their card; their tasks stay hidden unless show_tasks is on (hiddenTask).
-  const goals = b.goals.filter((g) => g.status !== "done");
+  const goals = b.goals.filter((g) => !goalClosed(g));
   for (const g of goals) {
     add({ id: g.id, type: "goal", g, x: gx, y: gy, w: 236, h: 60 });
     gy += 68;

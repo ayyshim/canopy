@@ -462,6 +462,8 @@ func serve(args []string) error {
 	}
 	app.Download, app.Install = web.Download(), web.InstallScript(cfg.PublicURL)
 	go orchestrator.Run(ctx)
+	app.Jobs.Host = orchestrator
+	go app.Jobs.Run(ctx)
 	go notify.New(st, mailer, cfg.PublicURL).Run(ctx)
 	vapid, err := notify.LoadVAPID(ctx, st, cfg.VAPIDPublic, cfg.VAPIDPrivate)
 	if err != nil {

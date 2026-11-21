@@ -1,8 +1,8 @@
 -- name: CreateNote :one
 INSERT INTO notes (id, workspace_id, goal_id, kind, title, body, author_user_id, author_member_id, number,
-  visibility, color, board_x, board_y)
+  visibility, color, board_x, board_y, job_id)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, next_item_number($2, 'note'),
-  coalesce(sqlc.narg(visibility), 'shared'), coalesce(sqlc.narg(color), 'yellow'), sqlc.narg(board_x), sqlc.narg(board_y))
+  coalesce(sqlc.narg(visibility), 'shared'), coalesce(sqlc.narg(color), 'yellow'), sqlc.narg(board_x), sqlc.narg(board_y), sqlc.narg(job_id))
 RETURNING *;
 
 -- name: GetNote :one

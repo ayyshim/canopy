@@ -24,9 +24,9 @@ func (q *Queries) CountGoals(ctx context.Context, workspaceID uuid.UUID) (int64,
 }
 
 const createGoal = `-- name: CreateGoal :one
-INSERT INTO goals (id, workspace_id, manager_id, title, done_when, color, created_by, runner_id, base, branch, snapshot, description, status, number)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, next_item_number($2, 'goal'))
-RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number, discord_thread_id
+INSERT INTO goals (id, workspace_id, manager_id, title, done_when, color, created_by, runner_id, base, branch, snapshot, description, status, job_run_id, number)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, next_item_number($2, 'goal'))
+RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number, discord_thread_id, job_run_id
 `
 
 type CreateGoalParams struct {
@@ -43,6 +43,7 @@ type CreateGoalParams struct {
 	Snapshot    bool
 	Description string
 	Status      string
+	JobRunID    *uuid.UUID
 }
 
 func (q *Queries) CreateGoal(ctx context.Context, arg CreateGoalParams) (Goal, error) {
@@ -60,6 +61,7 @@ func (q *Queries) CreateGoal(ctx context.Context, arg CreateGoalParams) (Goal, e
 		arg.Snapshot,
 		arg.Description,
 		arg.Status,
+		arg.JobRunID,
 	)
 	var i Goal
 	err := row.Scan(
@@ -89,6 +91,7 @@ func (q *Queries) CreateGoal(ctx context.Context, arg CreateGoalParams) (Goal, e
 		&i.HandoverApprovedAt,
 		&i.Number,
 		&i.DiscordThreadID,
+		&i.JobRunID,
 	)
 	return i, err
 }
@@ -106,7 +109,7 @@ func (q *Queries) DeleteDraftGoal(ctx context.Context, id uuid.UUID) (int64, err
 }
 
 const getGoal = `-- name: GetGoal :one
-SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number, discord_thread_id FROM goals WHERE id = $1
+SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number, discord_thread_id, job_run_id FROM goals WHERE id = $1
 `
 
 func (q *Queries) GetGoal(ctx context.Context, id uuid.UUID) (Goal, error) {
@@ -139,12 +142,13 @@ func (q *Queries) GetGoal(ctx context.Context, id uuid.UUID) (Goal, error) {
 		&i.HandoverApprovedAt,
 		&i.Number,
 		&i.DiscordThreadID,
+		&i.JobRunID,
 	)
 	return i, err
 }
 
 const getGoalByNumber = `-- name: GetGoalByNumber :one
-SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number, discord_thread_id FROM goals WHERE workspace_id = $1 AND number = $2
+SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number, discord_thread_id, job_run_id FROM goals WHERE workspace_id = $1 AND number = $2
 `
 
 type GetGoalByNumberParams struct {
@@ -182,13 +186,14 @@ func (q *Queries) GetGoalByNumber(ctx context.Context, arg GetGoalByNumberParams
 		&i.HandoverApprovedAt,
 		&i.Number,
 		&i.DiscordThreadID,
+		&i.JobRunID,
 	)
 	return i, err
 }
 
 const giveDraftGoal = `-- name: GiveDraftGoal :one
 UPDATE goals SET status = 'planning', created_at = now() WHERE id = $1 AND status = 'draft'
-RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number, discord_thread_id
+RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number, discord_thread_id, job_run_id
 `
 
 func (q *Queries) GiveDraftGoal(ctx context.Context, id uuid.UUID) (Goal, error) {
@@ -221,6 +226,7 @@ func (q *Queries) GiveDraftGoal(ctx context.Context, id uuid.UUID) (Goal, error)
 		&i.HandoverApprovedAt,
 		&i.Number,
 		&i.DiscordThreadID,
+		&i.JobRunID,
 	)
 	return i, err
 }
@@ -327,7 +333,7 @@ func (q *Queries) ListGoalRepos(ctx context.Context, goalID uuid.UUID) ([]GoalRe
 }
 
 const listGoals = `-- name: ListGoals :many
-SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number, discord_thread_id FROM goals WHERE workspace_id = $1 ORDER BY created_at, id
+SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number, discord_thread_id, job_run_id FROM goals WHERE workspace_id = $1 ORDER BY created_at, id
 `
 
 func (q *Queries) ListGoals(ctx context.Context, workspaceID uuid.UUID) ([]Goal, error) {
@@ -366,6 +372,7 @@ func (q *Queries) ListGoals(ctx context.Context, workspaceID uuid.UUID) ([]Goal,
 			&i.HandoverApprovedAt,
 			&i.Number,
 			&i.DiscordThreadID,
+			&i.JobRunID,
 		); err != nil {
 			return nil, err
 		}
@@ -378,7 +385,7 @@ func (q *Queries) ListGoals(ctx context.Context, workspaceID uuid.UUID) ([]Goal,
 }
 
 const listGoalsMovedSince = `-- name: ListGoalsMovedSince :many
-SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number, discord_thread_id FROM goals WHERE workspace_id = $1 AND updated_at >= $2 ORDER BY updated_at DESC LIMIT 20
+SELECT id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number, discord_thread_id, job_run_id FROM goals WHERE workspace_id = $1 AND updated_at >= $2 ORDER BY updated_at DESC LIMIT 20
 `
 
 type ListGoalsMovedSinceParams struct {
@@ -422,6 +429,7 @@ func (q *Queries) ListGoalsMovedSince(ctx context.Context, arg ListGoalsMovedSin
 			&i.HandoverApprovedAt,
 			&i.Number,
 			&i.DiscordThreadID,
+			&i.JobRunID,
 		); err != nil {
 			return nil, err
 		}
@@ -504,7 +512,7 @@ const updateDraftGoal = `-- name: UpdateDraftGoal :one
 UPDATE goals
 SET manager_id = $2, title = $3, done_when = $4, description = $5, runner_id = $6, base = $7, branch = $8, snapshot = $9
 WHERE id = $1 AND status = 'draft'
-RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number, discord_thread_id
+RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number, discord_thread_id, job_run_id
 `
 
 type UpdateDraftGoalParams struct {
@@ -559,6 +567,7 @@ func (q *Queries) UpdateDraftGoal(ctx context.Context, arg UpdateDraftGoalParams
 		&i.HandoverApprovedAt,
 		&i.Number,
 		&i.DiscordThreadID,
+		&i.JobRunID,
 	)
 	return i, err
 }
@@ -578,7 +587,7 @@ SET status = coalesce($1, status),
     handover_approved_by = CASE WHEN $14::boolean THEN $15 ELSE handover_approved_by END,
     handover_approved_at = CASE WHEN $14::boolean AND $15::uuid IS NOT NULL THEN now() WHEN $14::boolean THEN NULL ELSE handover_approved_at END
 WHERE id = $16
-RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number, discord_thread_id
+RETURNING id, workspace_id, manager_id, title, done_when, color, status, summary, created_by, planned_at, finished_at, created_at, updated_at, runner_id, base, branch, snapshot, shipped, show_tasks, done_by, ready_at, description, handover_approved_by, handover_approved_at, number, discord_thread_id, job_run_id
 `
 
 type UpdateGoalParams struct {
@@ -647,6 +656,7 @@ func (q *Queries) UpdateGoal(ctx context.Context, arg UpdateGoalParams) (Goal, e
 		&i.HandoverApprovedAt,
 		&i.Number,
 		&i.DiscordThreadID,
+		&i.JobRunID,
 	)
 	return i, err
 }

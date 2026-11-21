@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"canopy/hub/internal/core"
+	"canopy/hub/internal/jobs"
 	"canopy/hub/internal/notify"
 	"canopy/hub/internal/store"
 	"canopy/hub/internal/store/db"
@@ -51,6 +52,15 @@ func (o *Orch) finishGoals(ctx context.Context, t *core.Tx, st *wsState) error {
 			workDone = workDone && x.Status == "done"
 		}
 		if work == 0 || !workDone {
+			continue
+		}
+		if g.JobRunID != nil {
+			// A job run needs no handover; its report is the record.
+			if g.Status == "active" {
+				if err := o.finishJobGoal(ctx, t, st, g, tasks); err != nil {
+					return err
+				}
+			}
 			continue
 		}
 		if g.HandoverApprovedAt == nil {
@@ -149,6 +159,18 @@ func (o *Orch) goalTasksDone(ctx context.Context, t *core.Tx, st *wsState, g db.
 	return nil
 }
 
+// finishJobGoal closes a job run's goal and settles the run.
+func (o *Orch) finishJobGoal(ctx context.Context, t *core.Tx, st *wsState, g db.Goal, tasks []db.Task) error {
+	if err := o.closeGoal(ctx, t, st.ws, g, nil, map[string]any{}, goalSummary(st, g, tasks, o.now())); err != nil {
+		return err
+	}
+	out, err := jobs.RunFinished(ctx, t, g, o.now())
+	if err != nil || out.Run.ID == uuid.Nil {
+		return err
+	}
+	return jobs.Notify(ctx, t, out.Job, out.Run, out.Paused)
+}
+
 func goalHasCode(repos []db.GoalRepo) bool {
 	for _, r := range repos {
 		if r.TipSha != "" && r.TipSha != r.BaseSha {
@@ -196,6 +218,9 @@ func (o *Orch) closeGoal(ctx context.Context, t *core.Tx, ws db.Workspace, g db.
 	if err := core.GoalEvent(ctx, t, ws, ng, "complete", "Goal done. "+shippedText(shipped), shipped); err != nil {
 		return err
 	}
+	if g.JobRunID != nil {
+		return o.endGoalWork(ctx, t, ws, g)
+	}
 	n := notify.Note{Kind: "goal_ready", MemberID: g.ManagerID, GoalID: &g.ID, Body: "Goal done: " + g.Title + ". " + shippedText(shipped)}
 	if prs, ok := shipped["prs"].([]string); ok {
 		for _, u := range prs {
@@ -211,7 +236,11 @@ func (o *Orch) closeGoal(ctx context.Context, t *core.Tx, ws db.Workspace, g db.
 			return err
 		}
 	}
-	// Cleanup deletes the sessions' work folders, so end them; a reopened goal starts fresh ones.
+	return o.endGoalWork(ctx, t, ws, g)
+}
+
+// endGoalWork ends the goal's sessions and cleans its work folders. A reopened goal starts fresh ones.
+func (o *Orch) endGoalWork(ctx context.Context, t *core.Tx, ws db.Workspace, g db.Goal) error {
 	if err := o.endGoalSessions(ctx, t, ws, g.ID); err != nil {
 		return err
 	}

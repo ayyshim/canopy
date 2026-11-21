@@ -31,7 +31,7 @@ type Pref struct {
 type Prefs map[string]Pref
 
 // Kinds are the rows people can turn on and off.
-var Kinds = []string{"questions", "progress", "errors", "goal_ready", "daily"}
+var Kinds = []string{"questions", "progress", "errors", "goal_ready", "jobs", "daily"}
 
 // Defaults: everything that needs you is on; the daily summary is off until asked for.
 func Defaults() Prefs {
@@ -40,6 +40,7 @@ func Defaults() Prefs {
 		"progress":   {},
 		"errors":     {Desktop: true, Email: true, Push: true},
 		"goal_ready": {Desktop: true, Email: true, Push: true},
+		"jobs":       {Desktop: true, Email: true, Push: true},
 		"daily":      {},
 	}
 }
@@ -77,6 +78,8 @@ func KindOf(signalType string) string {
 		return "errors"
 	case "goal_ready":
 		return "goal_ready"
+	case "job_attention", "job_failed", "job_paused":
+		return "jobs"
 	}
 	return ""
 }
@@ -363,7 +366,7 @@ func (n *Notifier) summary(ctx context.Context, userID uuid.UUID, since time.Tim
 	return b.String(), found
 }
 
-var goalStatus = map[string]string{"planning": "planning", "active": "in progress", "ready": "ready for you", "done": "done"}
+var goalStatus = map[string]string{"planning": "planning", "active": "in progress", "ready": "ready for you", "done": "done", "stopped": "stopped"}
 
 func firstName(name string) string {
 	if f := strings.Fields(name); len(f) > 0 {
