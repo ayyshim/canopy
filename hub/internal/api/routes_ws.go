@@ -100,6 +100,7 @@ func (s *Server) workspaceRoutes(r chi.Router) {
 
 	r.Get("/outputs/{outputID}", httpx.Handler(s.handleGetOutput))
 	r.Get("/outputs/{outputID}/versions/{n}/file", httpx.Handler(s.handleOutputFile))
+	r.Post("/outputs/{outputID}/preview", httpx.Handler(s.handleCreatePreview))
 	r.Post("/outputs/{outputID}/seen", httpx.Handler(s.handleOutputSeen))
 
 	r.Get("/orgs/{orgID}/usage", httpx.Handler(s.handleOrgUsage))
