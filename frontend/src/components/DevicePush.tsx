@@ -49,7 +49,7 @@ export function DevicePush() {
 
   const can = state === "on" || state === "off" || state === "ready";
   return (
-    <div className="note-box stack-sm" aria-labelledby="this-device">
+    <div className="note-box" role="group" aria-labelledby="this-device"><div className="stack-sm">
       <b id="this-device">This device</b>
       <span className="hint" role="status">{state === "loading" ? "Checking…" : STATUS[state]}</span>
       <div className="row wrap">
@@ -60,6 +60,6 @@ export function DevicePush() {
         {state === "on" && <button className="btn btn-sm" disabled={busy} onClick={() => run(async () => { await sendTestPush(); return "Test sent. It should arrive in a moment."; })}>Send a test</button>}
       </div>
       {msg && <span className="hint" role="status">{msg}</span>}
-    </div>
+    </div></div>
   );
 }
