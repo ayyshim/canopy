@@ -226,7 +226,7 @@ export function TopBar() {
         {presence.length > shown.length && <span className="pav more">+{presence.length - shown.length}</span>}
       </button>
       <button className="btn out-btn" onClick={() => ui.setTray(!ui.tray)} aria-expanded={ui.tray}><GridIcon /><span className="hide-s">Outputs</span>{newOutputs > 0 && <span className="bdg">{newOutputs}</span>}</button>
-      <button className="btn hide-xs" onClick={() => { const c = camera.get(); ui.startSticky(centerSpot(c, c.w, c.h)); }} title="Add a sticky note to the board"><span aria-hidden="true">+</span><span className="hide-s">Sticky note</span></button>
+      <button className="btn hide-xs" onClick={() => { const c = camera.get(); ui.startSticky(centerSpot(c, c.w, c.h)); }} title="Add a sticky note to the board" aria-label="Add a sticky note"><span aria-hidden="true">+</span><span className="hide-s">Sticky note</span></button>
       <button className="btn btn-primary" onClick={() => ui.openDialog({ kind: "goal" })}><span aria-hidden="true">+</span><span className="hide-s">Give a goal</span></button>
       <div className="mw hide-xs">
         <button className="me-btn" onClick={() => menu.toggle("me")} aria-label="Your account" aria-expanded={menu.open === "me"}><Avatar name={meState.user.name} color={meState.user.avatar_color} size={28} /></button>
