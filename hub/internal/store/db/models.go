@@ -470,6 +470,26 @@ type PendingWrite struct {
 	AppliedAt   *time.Time
 }
 
+type PushActionToken struct {
+	TokenHash []byte
+	UserID    uuid.UUID
+	SignalID  uuid.UUID
+	Actions   []string
+	ExpiresAt time.Time
+	CreatedAt time.Time
+}
+
+type PushSubscription struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	Endpoint  string
+	P256dh    string
+	Auth      string
+	UserAgent string
+	CreatedAt time.Time
+	LastOkAt  *time.Time
+}
+
 type QueuedWork struct {
 	ID          uuid.UUID
 	OrgID       uuid.UUID
@@ -670,6 +690,7 @@ type User struct {
 	IsHubAdmin    bool
 	Notifications []byte
 	DailySentOn   pgtype.Date
+	SnoozeUntil   *time.Time
 }
 
 type UserIdentity struct {
@@ -680,6 +701,13 @@ type UserIdentity struct {
 	Email     string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+type VapidKey struct {
+	ID         bool
+	PublicKey  string
+	PrivateKey string
+	CreatedAt  time.Time
 }
 
 type Workspace struct {
