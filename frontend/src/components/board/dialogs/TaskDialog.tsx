@@ -23,6 +23,7 @@ export function TaskDialog({ goalId, memberId }: { goalId?: string; memberId?: s
   const [error, setError] = useState("");
   const vis = (id: string) => visibleMember(b, id);
   const team = (mgr: MemberView) => [mgr, ...staffOf(b, mgr.id).map((s) => vis(s.id)).filter(Boolean)] as MemberView[];
+  const asksManager = !!goal && vis(member)?.kind === "manager";
   const open = b.tasks.filter((t) => t.kind !== "plan" && t.status !== "done" && (!goal || t.goal_id === goal));
 
   const submit = async (e: React.FormEvent) => {
@@ -64,7 +65,9 @@ export function TaskDialog({ goalId, memberId }: { goalId?: string; memberId?: s
               {independentStaff(b).map((s) => vis(s.id)).filter(Boolean).map((x) => <option key={x!.id} value={x!.id}>{x!.name}, {SKILL_LABEL[x!.skill ?? ""]}</option>)}
             </optgroup>
           )}
-        </select></label>
+        </select>
+        {asksManager && <span className="hint">Request → manager splits it up. {vis(member)?.name} won’t do it, and will hand it to the right staff.</span>}
+      </label>
       <div className="field"><span>Waits on</span>
         <div className="chks">
           {open.map((t) => (
