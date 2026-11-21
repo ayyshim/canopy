@@ -349,7 +349,7 @@ other. Prompts list the attached file names. Board events: `attachment.created`,
 Agents run Claude Code with `--mcp-config` (without `--strict-mcp-config`) and
 `--setting-sources user,project,local`. Canopy's own MCP server is added next to whatever the
 person already has, so claude.ai connectors (`mcp__claude_ai_*`), their own MCP servers, user
-plugins and skills, and Artifact publishing are available to managers and staff. Before this,
+plugins and skills are available to managers and staff. Before this,
 `--setting-sources project` hid user skills (15 vs 24 in the init list on a real check) and
 `--strict-mcp-config` hid connectors. The session still signs in with the person's Claude account;
 an API key is set only when the person chose one for the computer.
@@ -357,3 +357,9 @@ an API key is set only when the person chose one for the computer.
 **Trade-off.** Agents now see the person's user-level settings and MCP servers, not just the
 project's. Connectors that need a browser sign-in or an interactive prompt can't finish that in
 print mode; the person must connect them in Claude first.
+
+**Artifact.** Artifact is not on by default in headless sessions. It needs `CLAUDE_CODE_ARTIFACT=1`,
+and `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` turns it off, so Canopy no longer sets that one.
+It works on Claude Code 2.1.316 and later. Telemetry vars still set: `DISABLE_ERROR_REPORTING=1`
+and `DISABLE_BUG_COMMAND=1`. `DISABLE_TELEMETRY=1` is not set, because with it only Artifact
+loads and ArtifactComments and ArtifactData are lost.
