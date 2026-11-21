@@ -1,7 +1,5 @@
 import type { MetadataRoute } from "next";
 
-export const dynamic = "force-static";
-
 // Colors match --paper and --green in globals.css.
 export default function manifest(): MetadataRoute.Manifest {
   return {
