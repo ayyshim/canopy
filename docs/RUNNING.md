@@ -407,3 +407,9 @@ Agents use your Claude sign-in and see your user-level Claude setup: claude.ai c
 MCP servers, plugins and skills, plus Canopy's own tools. Connect a connector in Claude first;
 agents can't do browser sign-ins themselves. Using the API key option instead of a Claude
 account means claude.ai connectors aren't available.
+
+Artifact works only with a Claude account sign-in, not the API key option. The agent writes a
+local HTML file first, then publishes it.
+
+claude.ai connectors load a few seconds after the session starts, so an empty list at the start
+doesn't mean they're off.

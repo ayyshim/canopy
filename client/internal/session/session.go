@@ -350,7 +350,7 @@ func (s *Session) launch(resume string) error {
 	}
 	argv := append([]string{bin}, claudecode.Args(claudecode.Params{Model: spec.Model, AppendSystemPrompt: spec.AppendSystemPrompt,
 		Resume: resume, MCPConfig: mcpPath, AddDirs: addDirs})...)
-	env := []string{"CANOPY_SESSION=" + s.id.String(), "MCP_TOOL_TIMEOUT=86400000", "DISABLE_AUTOUPDATER=1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1"}
+	env := baseEnv(s.id.String())
 	env = append(env, gitIdentity(spec.MemberName)...)
 	if spec.UseAPIKey {
 		key := config.ReadKey(spec.CLI)
@@ -370,6 +370,8 @@ func (s *Session) launch(resume string) error {
 	if s.m.Sandbox == "none" && !spec.UseAPIKey {
 		cmd.Env = withoutVar(cmd.Env, "ANTHROPIC_API_KEY")
 	}
+	// An inherited value would switch Artifact off.
+	cmd.Env = withoutVar(cmd.Env, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -792,6 +794,14 @@ func (s *Session) integrate(raw json.RawMessage) json.RawMessage {
 	}
 	b, _ := json.Marshal(in)
 	return b
+}
+
+// baseEnv is the environment every Claude Code session starts with.
+// Artifact needs CLAUDE_CODE_ARTIFACT=1 and is off under CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC.
+// DISABLE_TELEMETRY is left unset: it hides ArtifactComments and ArtifactData.
+func baseEnv(sessionID string) []string {
+	return []string{"CANOPY_SESSION=" + sessionID, "MCP_TOOL_TIMEOUT=86400000", "DISABLE_AUTOUPDATER=1",
+		"CLAUDE_CODE_ARTIFACT=1", "DISABLE_ERROR_REPORTING=1", "DISABLE_BUG_COMMAND=1"}
 }
 
 // gitIdentity names the agent on its commits, under the person's own git email if set.
