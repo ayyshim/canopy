@@ -6,7 +6,7 @@ import { CodeInput } from "@/components/CodeInput";
 import { focusFirstInvalid } from "@/components/Field";
 import { logOut } from "@/components/LogoutButton";
 import { api, ApiError, hardNavigate, landingPath, type Me } from "@/lib/api";
-import { cleanRecoveryCode, isCodeComplete, safeNext, twoFactorPath, unauthorizedPath } from "@/lib/twoFactor";
+import { cleanRecoveryCode, isCodeComplete, lowOnRecoveryCodes, recoveryHint, safeNext, twoFactorPath, unauthorizedPath } from "@/lib/twoFactor";
 
 export function VerifyForm() {
   const router = useRouter();
@@ -20,6 +20,7 @@ export function VerifyForm() {
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [usedRecovery, setUsedRecovery] = useState<Me | null>(null);
 
   useEffect(() => {
     api<{ next: "enroll" | "verify" | "" }>("GET", "/auth/two-factor").then(
@@ -43,6 +44,7 @@ export function VerifyForm() {
     setBusy(true);
     try {
       const me = await api<Me>("POST", "/auth/two-factor/verify", body);
+      if (recovery && lowOnRecoveryCodes(me.two_factor.recovery_codes_left)) return setUsedRecovery(me);
       hardNavigate(next ?? landingPath(me));
     } catch (err) {
       setBusy(false);
@@ -66,6 +68,18 @@ export function VerifyForm() {
         <h1>We couldn’t check your sign-in</h1>
         <p className="lead">Wait a moment and try again.</p>
         <button className="btn btn-primary wide" onClick={() => location.reload()}>Try again</button>
+      </div>
+    );
+  }
+  if (usedRecovery) {
+    return (
+      <div className="authcard">
+        <div className="stack-sm">
+          <h1>You’re signed in</h1>
+          <p className="lead">{recoveryHint(usedRecovery.two_factor.recovery_codes_left)}</p>
+        </div>
+        <button className="btn btn-primary wide" onClick={() => hardNavigate("/account")}>Get new recovery codes</button>
+        <button className="btn wide" onClick={() => hardNavigate(next ?? landingPath(usedRecovery))}>Continue without them</button>
       </div>
     );
   }

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { SearchTable } from "@/components/SearchTable";
 import { api, ApiError, formatDate, timeAgo, type AdminUser } from "@/lib/api";
@@ -31,7 +32,7 @@ export function Users() {
         rowKey={(u) => u.id}
         version={version}
         columns={[
-          { header: "Name", cell: (u) => <>{u.name}{u.is_hub_admin && <> <span className="pill">Hub admin</span></>}</> },
+          { header: "Name", cell: (u) => <><Link href={`/admin/users/${u.id}`}>{u.name}</Link>{u.is_hub_admin && <> <span className="pill">Hub admin</span></>}</> },
           { header: "Email", cell: (u) => u.email },
           { header: "Organizations", cell: (u) => u.organizations, align: "right" },
           { header: "Last active", cell: (u) => timeAgo(u.last_active_at) },
