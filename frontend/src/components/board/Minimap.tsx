@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { camera } from "@/lib/board/camera";
 import type { Layout } from "@/lib/board/layout";
 import { useUI } from "@/lib/board/ui";
@@ -61,11 +61,22 @@ function rects(L: Layout, goalColor: Map<string, string>): Rect[] {
 /** Minimap draws every node as a small rect and the current view as a frame. Click or drag to pan. */
 export function Minimap({ L }: { L: Layout }) {
   const b = useB();
-  const shifted = useUI((s) => !!s.side);
+  const side = useUI((s) => s.side);
+  const [clear, setClear] = useState(0); // px to move left so the details panel does not cover the map
   const ref = useRef<HTMLCanvasElement>(null);
   const goalColor = useMemo(() => new Map(b.goals.map((g) => [g.id, g.color])), [b.goals]);
   const items = useMemo(() => rects(L, goalColor), [L, goalColor]);
   const bounds = useMemo(() => mapBounds(L.box), [L.box]);
+  useLayoutEffect(() => {
+    const measure = () => {
+      const board = ref.current?.closest(".board")?.getBoundingClientRect(), sb = document.querySelector(".sidebar")?.getBoundingClientRect();
+      // On phones the panel is a sheet over the whole board; the map hides under it, which is fine.
+      setClear(board && sb && side && sb.left > board.left + board.width / 2 ? Math.max(0, board.right - sb.left) : 0);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [side]);
   const fit = useRef<Fit>(fitMap(bounds, W, H));
   useEffect(() => { fit.current = fitMap(bounds, W, H); }, [bounds]);
 
@@ -122,7 +133,7 @@ export function Minimap({ L }: { L: Layout }) {
     camera.panTo(p.x, p.y);
   };
   return (
-    <div className={"minimap" + (shifted ? " shifted" : "")} role="group" aria-label="Board minimap">
+    <div className="minimap" role="group" aria-label="Board minimap" style={clear ? { right: 14 + clear } : undefined}>
       <canvas
         ref={ref}
         width={W}
