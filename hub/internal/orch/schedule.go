@@ -144,7 +144,7 @@ func (o *Orch) startWork(ctx context.Context, t *core.Tx, st *wsState) error {
 		if s, ok := st.session[k]; ok && (s.Status == "gate" || s.Status == "error") {
 			continue
 		}
-		if g, ok := st.goal[k.goal]; ok && g.Status == "done" {
+		if g, ok := st.goal[k.goal]; ok && (g.Status == "done" || g.Status == "stopped") {
 			continue
 		}
 		runner := st.runnerFor(k, &task)

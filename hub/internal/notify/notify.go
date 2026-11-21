@@ -363,7 +363,7 @@ func (n *Notifier) summary(ctx context.Context, userID uuid.UUID, since time.Tim
 	return b.String(), found
 }
 
-var goalStatus = map[string]string{"planning": "planning", "active": "in progress", "ready": "ready for you", "done": "done"}
+var goalStatus = map[string]string{"planning": "planning", "active": "in progress", "ready": "ready for you", "done": "done", "stopped": "stopped"}
 
 func firstName(name string) string {
 	if f := strings.Fields(name); len(f) > 0 {
