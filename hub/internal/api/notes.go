@@ -316,6 +316,9 @@ func (s *Server) handleRestoreNoteRevision(w http.ResponseWriter, r *http.Reques
 		return httpx.ErrNotFound
 	}
 	ctx := r.Context()
+	if err := s.guardJobMemory(ctx, n, true); err != nil {
+		return err
+	}
 	old, err := s.Store.GetNoteRevision(ctx, db.GetNoteRevisionParams{NoteID: n.ID, Rev: int32(rev)})
 	if err != nil {
 		return httpx.ErrNotFound
