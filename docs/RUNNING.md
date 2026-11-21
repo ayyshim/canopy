@@ -284,6 +284,8 @@ canopy-hub install [--dir DIR] [--no-path]
 canopy-hub migrate status      show the data's version and what an upgrade would change
 canopy-hub migrate up          upgrade the data now (the hub also does this on start)
 canopy-hub backup [--data DIR] copy the database into DIR/backups (stop the hub first)
+canopy-hub reset-two-factor EMAIL [--data DIR]
+                               clear that person's two-factor setup and sessions (stop the hub first)
 canopy-hub version             version, database schema and PostgreSQL version
 canopy-hub help
 ```
