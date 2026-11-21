@@ -538,7 +538,7 @@ func (o *Orch) sendTurn(ctx context.Context, wsID uuid.UUID, k sessKey, turn pro
 		if unavailable != "" {
 			return nil
 		}
-		notes, err := t.Q.ListNotes(ctx, wsID)
+		notes, err := t.Q.ListNotes(ctx, db.ListNotesParams{WorkspaceID: wsID})
 		if err != nil {
 			return err
 		}

@@ -394,3 +394,21 @@ no goal or its goal is. Hidden and unknown refs look the same: nothing, or 404 o
 in the workspace (as with `read_notes`); text written by a person is expanded only with what that person sees.
 Expansion adds a "Referenced items" block (max 10 items, about 1500 characters each) to goal and task prompts,
 chat messages, task comments and review change requests. The `read_item` tool shows one item in full.
+
+## Sticky notes: private and shared (2026-11-21)
+
+Notes have `visibility` (`shared` default, or `private`), a `color` from a fixed palette, and an optional board
+position (`board_x`, `board_y`, both set or both null; set means pinned as a sticky). A private note is seen by its
+author and by agents working for that person (a goal they created, a chat with them); nobody else, admins
+included, and everyone else gets 404. Private notes are left out of the notes list, board snapshot, `read_notes`,
+`read_item`, the `#` picker and ref expansion; prompts list shared notes only. Only the author changes visibility.
+Shared notes stay editable by their author or an admin.
+
+`note.saved` and `note.deleted` for a private note carry `realtime.Event.ToUserID` and reach only that person's
+sockets; the stored event row keeps `{}` instead of the note. A note turning private first sends a plain
+`note.deleted` to everyone so it leaves other boards.
+
+Each change to a note's title, body or kind first saves a revision (last 20 kept) and records the editor
+(`edited_by_user_id` or `edited_by_member_id`). Moving, recoloring and changing visibility save none.
+`GET /notes/{id}/revisions` lists them and `POST /notes/{id}/revisions/{n}/restore` puts one back, saving the
+current text first. Agents use `update_note(ref, title?, body?, mode)`; `append` is the default.

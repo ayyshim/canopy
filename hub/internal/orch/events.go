@@ -339,7 +339,7 @@ func (o *Orch) onCrash(ctx context.Context, rn db.Runner, sess db.Session, msg s
 		if err := o.log(ctx, t, ws, &ns.ID, m.ID, taskIDOf(task), "system", "Crashed; restarted and resumed the conversation."); err != nil {
 			return err
 		}
-		notes, err := q.ListNotes(ctx, ws.ID)
+		notes, err := q.ListNotes(ctx, db.ListNotesParams{WorkspaceID: ws.ID})
 		if err != nil {
 			return err
 		}

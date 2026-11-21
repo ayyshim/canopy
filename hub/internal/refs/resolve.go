@@ -18,10 +18,25 @@ import (
 // is visible when its manager or owner is, and a note when it has no goal or its goal is.
 type Scope struct {
 	member func(*uuid.UUID) bool
+	user   *uuid.UUID // whose private notes show; nil sees none
 }
 
-// AllScope sees everything in the workspace, for agents.
-func AllScope() Scope { return Scope{member: func(*uuid.UUID) bool { return true }} }
+// AllScope sees everything in the workspace except private notes.
+func AllScope() Scope { return ForUser(nil) }
+
+// ForUser is the scope of an agent working for one person: the whole workspace, plus that
+// person's private notes.
+func ForUser(userID *uuid.UUID) Scope {
+	return Scope{member: func(*uuid.UUID) bool { return true }, user: userID}
+}
+
+// NoteVisible is the private-note rule: only the author, never admins.
+func (sc Scope) NoteVisible(n db.Note) bool { return NoteReadableBy(n, sc.user) }
+
+// NoteReadableBy says whether a note's visibility lets this person read it.
+func NoteReadableBy(n db.Note, userID *uuid.UUID) bool {
+	return n.Visibility != "private" || (userID != nil && n.AuthorUserID != nil && *n.AuthorUserID == *userID)
+}
 
 // ViewerScope is what one person sees in one workspace.
 func ViewerScope(ctx context.Context, q *db.Queries, ws db.Workspace, userID uuid.UUID) (Scope, error) {
@@ -37,7 +52,7 @@ func ViewerScope(ctx context.Context, q *db.Queries, ws db.Workspace, userID uui
 	for _, m := range members {
 		byID[m.ID] = m
 	}
-	return Scope{member: func(id *uuid.UUID) bool {
+	return Scope{user: &userID, member: func(id *uuid.UUID) bool {
 		if id == nil {
 			return v.Admin()
 		}
@@ -130,6 +145,9 @@ func (r Resolver) One(ctx context.Context, wsID uuid.UUID, sc Scope, ref Ref) (I
 		if err != nil {
 			return Item{}, false, notFoundOK(err)
 		}
+		if !sc.NoteVisible(n) {
+			return Item{}, false, nil
+		}
 		if n.GoalID != nil {
 			g, err := r.Q.GetGoal(ctx, *n.GoalID)
 			if err != nil {
@@ -204,7 +222,7 @@ func (r Resolver) Search(ctx context.Context, wsID uuid.UUID, sc Scope, q string
 			items = append(items, Item{Ref: Ref{Task, t.Number}, ID: t.ID, Title: t.Title, Task: &t})
 		}
 	}
-	notes, err := r.Q.ListNotes(ctx, wsID)
+	notes, err := r.Q.ListNotes(ctx, db.ListNotesParams{WorkspaceID: wsID, ViewerID: sc.user})
 	if err != nil {
 		return nil, err
 	}
