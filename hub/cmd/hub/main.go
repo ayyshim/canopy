@@ -28,7 +28,6 @@ import (
 	"canopy/hub/internal/auth"
 	"canopy/hub/internal/blob"
 	"canopy/hub/internal/config"
-	"canopy/hub/internal/jobs"
 	"canopy/hub/internal/mail"
 	"canopy/hub/internal/mirror"
 	"canopy/hub/internal/notify"
@@ -463,7 +462,8 @@ func serve(args []string) error {
 	}
 	app.Download, app.Install = web.Download(), web.InstallScript(cfg.PublicURL)
 	go orchestrator.Run(ctx)
-	go (&jobs.Engine{Core: app.Core, Host: orchestrator}).Run(ctx)
+	app.Jobs.Host = orchestrator
+	go app.Jobs.Run(ctx)
 	go notify.New(st, mailer, cfg.PublicURL).Run(ctx)
 	vapid, err := notify.LoadVAPID(ctx, st, cfg.VAPIDPublic, cfg.VAPIDPrivate)
 	if err != nil {

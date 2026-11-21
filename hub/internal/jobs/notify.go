@@ -29,23 +29,23 @@ func Notify(ctx context.Context, t *core.Tx, job db.Job, run db.JobRun, paused b
 	what := fmt.Sprintf("%s, run %d", job.Title, run.Number)
 	switch run.Status {
 	case "failed", "capped":
-		if err := send(what+" failed: "+firstNonEmpty(run.Error, "it stopped before it finished")+"."); err != nil {
+		if err := send(what + " failed: " + firstNonEmpty(run.Error, "it stopped before it finished") + "."); err != nil {
 			return err
 		}
 	case "succeeded":
 		switch {
 		case run.Result == "attention" && job.Notify != "failures":
-			if err := send(what+" needs a look: "+firstNonEmpty(run.Summary, run.Title)); err != nil {
+			if err := send(what + " needs a look: " + firstNonEmpty(run.Summary, run.Title)); err != nil {
 				return err
 			}
 		case job.Notify == "always" && job.Kind == "continuous" && run.Result != "attention":
-			if err := send(what+" is done: "+firstNonEmpty(run.Title, run.Summary)); err != nil {
+			if err := send(what + " is done: " + firstNonEmpty(run.Title, run.Summary)); err != nil {
 				return err
 			}
 		}
 	}
 	if paused {
-		return send(job.Title+" is paused after "+fmt.Sprint(FailuresToPause)+" failed runs in a row. Open the job to fix it and resume.")
+		return send(job.Title + " is paused after " + fmt.Sprint(FailuresToPause) + " failed runs in a row. Open the job to fix it and resume.")
 	}
 	return nil
 }
