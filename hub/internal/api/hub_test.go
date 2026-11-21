@@ -47,6 +47,13 @@ func TestHubSetupComesFirst(t *testing.T) {
 	if r.Status != http.StatusCreated {
 		t.Fatalf("setup: %d %v", r.Status, r.Body)
 	}
+	if r.Body["two_factor"] != "enroll" {
+		t.Errorf("setup should start a pending session: %v", r.Body)
+	}
+	if got := c.do("GET", "/api/v1/me", nil); got.Status != 401 || got.errCode() != "two_factor_required" {
+		t.Errorf("/me while pending: %d %v", got.Status, got.Body)
+	}
+	r.Body = e.finishSignIn(c, "", r.Body)
 	user := r.Body["user"].(map[string]any)
 	if user["is_hub_admin"] != true || r.Body["current_org_id"] != nil {
 		t.Errorf("setup should create a hub admin with no organization: %v", r.Body)
@@ -71,9 +78,11 @@ func TestHubSetupComesFirst(t *testing.T) {
 func (e *env) hubAdmin() *client {
 	e.t.Helper()
 	c := e.client()
-	if r := c.do("POST", "/api/v1/hub/setup", setupBody("setup-code-for-tests")); r.Status != http.StatusCreated {
+	r := c.do("POST", "/api/v1/hub/setup", setupBody("setup-code-for-tests"))
+	if r.Status != http.StatusCreated {
 		e.t.Fatalf("setup: %d %v", r.Status, r.Body)
 	}
+	e.finishSignIn(c, "", r.Body)
 	return c
 }
 
@@ -229,8 +238,14 @@ func TestOAuthSignInUsesStoredProvider(t *testing.T) {
 	if cb.Status != http.StatusFound || cb.Header.Get("Location") != "/" {
 		t.Fatalf("callback: %d %s", cb.Status, cb.Header.Get("Location"))
 	}
-	if r := c.do("GET", "/api/v1/me", nil); r.Status != 200 || userEmail(r.Body) != email {
-		t.Fatalf("not signed in after OAuth: %d %v", r.Status, r.Body)
+	if r := c.do("GET", "/api/v1/me", nil); r.Status != 401 || r.errCode() != "two_factor_required" {
+		t.Fatalf("OAuth skipped the code: %d %v", r.Status, r.Body)
+	}
+	if r := c.do("GET", "/api/v1/auth/two-factor", nil); r.Status != 200 || r.Body["next"] != "verify" {
+		t.Fatalf("two-factor state after OAuth: %d %v", r.Status, r.Body)
+	}
+	if me := e.finishSignIn(c, email, map[string]any{"two_factor": "verify"}); userEmail(me) != email {
+		t.Fatalf("not signed in after OAuth and code: %v", me)
 	}
 
 	// Unknown emails are sent to create an organization instead.
