@@ -327,3 +327,80 @@ func (q *Queries) UpsertOutput(ctx context.Context, arg UpsertOutputParams) (Out
 	)
 	return i, err
 }
+
+const getGoalOutputByName = `-- name: GetGoalOutputByName :one
+SELECT o.id, o.workspace_id, o.task_id, o.member_id, o.kind, o.name, o.title, o.status, o.created_at, o.updated_at FROM outputs o JOIN tasks t ON t.id = o.task_id WHERE t.goal_id = $1 AND o.name = $2 ORDER BY o.updated_at DESC, o.id LIMIT 1
+`
+
+type GetGoalOutputByNameParams struct {
+	GoalID *uuid.UUID
+	Name   string
+}
+
+func (q *Queries) GetGoalOutputByName(ctx context.Context, arg GetGoalOutputByNameParams) (Output, error) {
+	row := q.db.QueryRow(ctx, getGoalOutputByName, arg.GoalID, arg.Name)
+	var i Output
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.TaskID,
+		&i.MemberID,
+		&i.Kind,
+		&i.Name,
+		&i.Title,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getLatestOutputVersion = `-- name: GetLatestOutputVersion :one
+SELECT id, output_id, number, blob_key, mime, size, note, session_id, model, created_at, updated_at FROM output_versions WHERE output_id = $1 ORDER BY number DESC LIMIT 1
+`
+
+func (q *Queries) GetLatestOutputVersion(ctx context.Context, outputID uuid.UUID) (OutputVersion, error) {
+	row := q.db.QueryRow(ctx, getLatestOutputVersion, outputID)
+	var i OutputVersion
+	err := row.Scan(
+		&i.ID,
+		&i.OutputID,
+		&i.Number,
+		&i.BlobKey,
+		&i.Mime,
+		&i.Size,
+		&i.Note,
+		&i.SessionID,
+		&i.Model,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getTaskOutputByName = `-- name: GetTaskOutputByName :one
+SELECT id, workspace_id, task_id, member_id, kind, name, title, status, created_at, updated_at FROM outputs WHERE task_id = $1 AND name = $2
+`
+
+type GetTaskOutputByNameParams struct {
+	TaskID *uuid.UUID
+	Name   string
+}
+
+func (q *Queries) GetTaskOutputByName(ctx context.Context, arg GetTaskOutputByNameParams) (Output, error) {
+	row := q.db.QueryRow(ctx, getTaskOutputByName, arg.TaskID, arg.Name)
+	var i Output
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.TaskID,
+		&i.MemberID,
+		&i.Kind,
+		&i.Name,
+		&i.Title,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}

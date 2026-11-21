@@ -40,7 +40,7 @@ func systemPrompt(st *wsState, m db.Member, mounts []protocol.Mount, notes []db.
 	b.WriteString("- report_progress(step, progress, note): after each step of your task.\n")
 	b.WriteString("- ask_question(question, options, suggested): when a person must decide. It waits for the answer.\n")
 	b.WriteString("- request_directory(path, mode, reason): when you need a directory you can't see.\n")
-	b.WriteString("- submit_output(path, title, kind, needs_review): for files people should see (screenshots, documents, diffs, reports).\n")
+	b.WriteString("- submit_output(path, title, kind, needs_review): for files people should see (screenshots, documents, diffs, reports, HTML prototypes).\n")
 	b.WriteString("- get_attachments(name): download files people or agents attached to your goal into ./attachments.\n")
 	b.WriteString("- attach_file(path, to): share a file with the goal (or your task) so others can use it.\n")
 	b.WriteString("- complete_task(summary): when the task is done. Always call it; a task isn't finished until you do.\n")
@@ -348,7 +348,11 @@ func taskPrompt(st *wsState, m db.Member, t db.Task, comments []db.Comment, moun
 		}
 	}
 	b.WriteString(attachmentsLine(taskAttachments(st, t)))
-	fmt.Fprintf(&b, "\nSave outputs people should see in ./%s and call submit_output for each. Call report_progress as you finish steps, and complete_task(summary) when done.\n",
+	fmt.Fprintf(&b, "\nSave outputs people should see in ./%s and call submit_output for each.\n"+
+		"For an HTML prototype, save every page and its css, js and images inside that folder, with subfolders if you like. "+
+		"Link pages with relative paths (about.html, assets/app.css), never file:// or localhost. "+
+		"Pin exact versions on any CDN script or style. Submit each file, then the entry page (index.html) for review.\n"+
+		"Call report_progress as you finish steps, and complete_task(summary) when done.\n",
 		OutputsDir(t.ID))
 	return b.String()
 }

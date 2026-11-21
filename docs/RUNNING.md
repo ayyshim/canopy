@@ -403,6 +403,18 @@ see who the goal is waiting for.
 A goal can only be shipped or marked done once its brief is approved, also when the workspace marks goals
 done automatically. The approved brief stays on the goal after it is done. Reopening a goal asks for a new brief.
 
+## Prototype pages
+
+When an agent submits an HTML file, the output viewer shows it as a live page ("Prototype"), with its CSS,
+JavaScript and images. Agents save every page and asset in the task's outputs folder and link them with
+relative paths (`about.html`, `assets/app.css`); subfolders keep their names. Click a link and the side panel
+switches to that page. Use Full screen (or the F key) for the whole screen, and the Desktop, Tablet and Phone
+buttons to check widths.
+
+To try it without a real agent, give the fake runner a task with `[prototype]` in it. It writes a sample
+three-page site and submits `index.html` for review. Pages run in a sandbox with no access to the hub, so
+`localStorage` lasts across the pages of one preview but not after you close it. See DECISIONS.md.
+
 ## Known gaps
 
 - **macOS computers have no sandbox yet.** The client refuses to run agents without one. On a

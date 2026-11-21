@@ -3,6 +3,7 @@ package orch
 import (
 	"context"
 	"path"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -130,6 +131,11 @@ func (o *Orch) toolSubmitOutput(ctx context.Context, tc *toolCtx) error {
 	if in.Name == "" {
 		in.Name = path.Base(in.Path)
 	}
+	in.Name = strings.TrimPrefix(strings.ReplaceAll(in.Name, "\\", "/"), "/")
+	if in.Name == "" || slices.Contains(strings.Split(in.Name, "/"), "..") {
+		return toolError("That file name isn’t allowed. Use a path inside your outputs folder.")
+	}
+	in.Name = path.Clean(in.Name)
 	return o.Core.Tx(ctx, func(t *core.Tx) error {
 		task, err := t.Q.GetTaskForUpdate(ctx, tc.task.ID)
 		if err != nil {

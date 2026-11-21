@@ -383,3 +383,20 @@ active and gets a brief task.
 
 When a goal closes, its live sessions are ended too. Cleanup deletes their work folders, so a reopened
 goal (which needs a new brief) starts fresh sessions instead of reusing ones with a deleted folder.
+
+## Prototype previews run on an opaque origin (2026-11-21)
+
+HTML outputs can be opened as live pages (`POST /outputs/{id}/preview`, then `GET /preview/{token}/{name}`).
+Agent pages need JavaScript and CSS, but they are untrusted code served from the hub's own host. So the
+preview response is sandboxed with `allow-scripts` and never `allow-same-origin`: the page gets an opaque
+origin and cannot read hub cookies, call the API as the person, or touch the parent page. The token in the
+URL is the only credential (random, 1 hour, kept in Redis, tied to the person, workspace, task and goal), and
+the file route stays as before (`default-src 'none'; sandbox`). Page names are looked up in the same task, then
+in the other tasks of the goal, so pages can link to each other with relative paths. Responses also send
+`Access-Control-Allow-Origin: *`, because pages on an opaque origin need CORS for fonts, modules and fetch.
+
+Pages have no real `localStorage` on an opaque origin, so the injected helper keeps it in `window.name`. That
+lasts across the pages of one preview and is lost when the viewer reloads the frame.
+
+**Trade-off.** Preview pages can call any https site (`connect-src https:`), so they can send what they know
+elsewhere. They know nothing of the hub, but people should still only preview work from their own team.

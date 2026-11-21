@@ -33,3 +33,12 @@ ON CONFLICT (user_id, output_id) DO UPDATE SET version = GREATEST(output_views.v
 
 -- name: ListOutputViews :many
 SELECT v.* FROM output_views v JOIN outputs o ON o.id = v.output_id WHERE o.workspace_id = $1 AND v.user_id = $2;
+
+-- name: GetTaskOutputByName :one
+SELECT * FROM outputs WHERE task_id = $1 AND name = $2;
+
+-- name: GetGoalOutputByName :one
+SELECT o.* FROM outputs o JOIN tasks t ON t.id = o.task_id WHERE t.goal_id = $1 AND o.name = $2 ORDER BY o.updated_at DESC, o.id LIMIT 1;
+
+-- name: GetLatestOutputVersion :one
+SELECT * FROM output_versions WHERE output_id = $1 ORDER BY number DESC LIMIT 1;
