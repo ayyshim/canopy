@@ -95,6 +95,7 @@ func systemPrompt(st *wsState, m db.Member, mounts []protocol.Mount, notes []db.
 			fmt.Fprintf(&b, "- %s (%s)\n", noteLabel(n), n.Kind)
 		}
 	}
+	writeGuides(&b, m)
 	if m.Instructions != "" {
 		fmt.Fprintf(&b, "\nInstructions from your admins:\n%s\n", m.Instructions)
 	}
@@ -102,6 +103,23 @@ func systemPrompt(st *wsState, m db.Member, mounts []protocol.Mount, notes []db.
 		fmt.Fprintf(&b, "\nSkill: %s\n%s\n", sk.Name, strings.TrimSpace(sk.Content))
 	}
 	return b.String()
+}
+
+// writeGuides adds the working guides for the member's skill: the base role first, then the subcategory.
+func writeGuides(b *strings.Builder, m db.Member) {
+	if m.Skill == nil {
+		return
+	}
+	key := *m.Skill
+	base := domain.BaseRole(key)
+	if g := domain.SkillGuide(base); g != "" {
+		fmt.Fprintf(b, "\nHow you work as %s:\n%s\n", domain.SkillLabel(base), g)
+	}
+	if key != base {
+		if g := domain.SkillGuide(key); g != "" {
+			fmt.Fprintf(b, "\nHow you work as %s:\n%s\n", domain.SkillLabel(key), g)
+		}
+	}
 }
 
 // skillNames is " — skills: A, B" for a member with library skills attached, else "".
