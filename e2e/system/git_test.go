@@ -68,6 +68,7 @@ func TestGoalBranchShipsAsPullRequest(t *testing.T) {
 				owner.do("POST", "/api/v1/signals/"+str(m(sig)["id"])+"/resolve", map[string]any{"action": "grant"}, 200)
 			}
 		}
+		owner.approveHandovers(b)
 		for _, g := range list(b["goals"]) {
 			if str(m(g)["id"]) == goal {
 				branch = str(m(g)["branch"])

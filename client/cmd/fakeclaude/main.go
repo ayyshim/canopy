@@ -8,6 +8,7 @@
 //	[limit] hit a usage limit once  [stall] stop without finishing once  [slow:N] N seconds per step
 //	[read:/p] try to read /p (sandbox checks)  [write:/p] write to /p
 //	[dirs:/p:rw] the plan's first task needs /p  [everydir] every task needs it  [parallel] no dependencies
+//	Handover tasks write a short handover.md and submit it for review.
 //	[code:repo] write a file in the repository's worktree  [conflict:repo] every task edits the same file
 package main
 
@@ -299,8 +300,32 @@ func work(text string, resumed bool) {
 	result(summary, false)
 }
 
+// handover writes a short brief for a handover task and submits it for review.
+func handover(text string) {
+	title := line(text, "Handover task:")
+	outDir := ""
+	if m := regexp.MustCompile(`Save it as (\S+)/handover\.md`).FindStringSubmatch(text); m != nil {
+		outDir = m[1]
+	}
+	_ = os.MkdirAll(outDir, 0o755)
+	name := filepath.Join(outDir, "handover.md")
+	brief := "# Handover\n\n## What was asked\n" + title + "\n\n## What changed\nSee the task summaries.\n\n## How to check it\nOpen the outputs.\n\n## Not done or risky\nNothing.\n\n## To decide\nNothing.\n"
+	_ = os.WriteFile(name, []byte(brief), 0o644)
+	res, _ := call("submit_output", map[string]any{"path": name, "title": "Handover brief", "kind": "document", "needs_review": true})
+	for strings.Contains(res, "Changes requested") {
+		brief += "\nRevised after review.\n"
+		_ = os.WriteFile(name, []byte(brief), 0o644)
+		res, _ = call("submit_output", map[string]any{"path": name, "title": "Handover brief", "kind": "document", "needs_review": true})
+	}
+	call("complete_task", map[string]any{"summary": "Handover brief approved."})
+	result("Handover brief approved.", false)
+}
+
 func handle(text string) {
 	switch {
+	case strings.HasPrefix(text, "Handover task:"):
+		remember(text)
+		handover(text)
 	case strings.HasPrefix(text, "New goal:"):
 		remember(text)
 		plan(text)
@@ -326,6 +351,8 @@ func handle(text string) {
 		if prev := recall(); prev != "" {
 			if strings.HasPrefix(prev, "New goal:") {
 				plan(prev)
+			} else if strings.HasPrefix(prev, "Handover task:") {
+				handover(prev)
 			} else {
 				work(prev, true)
 			}
