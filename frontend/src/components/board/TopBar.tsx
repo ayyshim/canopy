@@ -112,7 +112,7 @@ export function TopBar() {
       else if (e.key === "[") go(-1);
       else if (e.key === "g") ui.openDialog({ kind: "goal" });
       else if (e.key === "n") ui.openDialog({ kind: "task" });
-      else if (e.key === "o") ui.setTray(!ui.tray);
+      else if (e.key === "o") { e.preventDefault(); ui.setTray(!ui.tray); }
       else if (e.key === "?") ui.openDialog({ kind: "shortcuts" });
     };
     window.addEventListener("keydown", onKey);
