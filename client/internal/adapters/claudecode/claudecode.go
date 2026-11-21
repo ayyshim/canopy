@@ -67,9 +67,11 @@ type Event struct {
 
 	Text string // text, tool summary, result text
 
-	MessageID string
-	TokensIn  int64
-	TokensOut int64
+	MessageID  string
+	TokensIn   int64
+	TokensOut  int64
+	CacheRead  int64
+	CacheWrite int64 // part of TokensIn
 
 	Limited     bool
 	ResetsAt    *time.Time
@@ -119,6 +121,7 @@ type message struct {
 		InputTokens              int64 `json:"input_tokens"`
 		OutputTokens             int64 `json:"output_tokens"`
 		CacheCreationInputTokens int64 `json:"cache_creation_input_tokens"`
+		CacheReadInputTokens     int64 `json:"cache_read_input_tokens"`
 	} `json:"usage"`
 }
 
@@ -150,9 +153,11 @@ func Parse(b []byte) ([]Event, error) {
 			}
 		}
 		if m.Usage != nil {
-			// New input processed (fresh plus cache writes) and output; cache reads are left out.
+			// TokensIn is new input (fresh plus cache writes) and is what limits count; cache reads
+			// are reported on their own for cost.
 			out = append(out, Event{Kind: "usage", MessageID: m.ID, Model: m.Model,
-				TokensIn: m.Usage.InputTokens + m.Usage.CacheCreationInputTokens, TokensOut: m.Usage.OutputTokens})
+				TokensIn: m.Usage.InputTokens + m.Usage.CacheCreationInputTokens, TokensOut: m.Usage.OutputTokens,
+				CacheRead: m.Usage.CacheReadInputTokens, CacheWrite: m.Usage.CacheCreationInputTokens})
 		}
 		return out, nil
 	case "rate_limit_event":

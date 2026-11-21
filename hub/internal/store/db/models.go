@@ -349,6 +349,14 @@ type MirrorState struct {
 	UpdatedAt    time.Time
 }
 
+type ModelPrice struct {
+	Pattern    string
+	Input      float64
+	Output     float64
+	CacheRead  float64
+	CacheWrite float64
+}
+
 type Note struct {
 	ID             uuid.UUID
 	WorkspaceID    uuid.UUID
@@ -590,6 +598,11 @@ type UsageEvent struct {
 	TokensIn         int64
 	TokensOut        int64
 	At               time.Time
+	TaskID           *uuid.UUID
+	GoalID           *uuid.UUID
+	CacheRead        int64
+	CacheWrite       int64
+	CostMicros       int64
 }
 
 type UsageHourly struct {
@@ -602,6 +615,21 @@ type UsageHourly struct {
 	TokensIn    int64
 	TokensOut   int64
 	Calls       int64
+	CacheRead   int64
+	CacheWrite  int64
+	CostMicros  int64
+}
+
+type UsageWork struct {
+	GoalID     uuid.UUID
+	TaskID     uuid.UUID
+	Model      string
+	TokensIn   int64
+	TokensOut  int64
+	CacheRead  int64
+	CacheWrite int64
+	Calls      int64
+	CostMicros int64
 }
 
 type User struct {

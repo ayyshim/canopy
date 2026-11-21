@@ -59,6 +59,13 @@ export const useBoard = create<BoardState>((set) => ({
   apply: (type, data) => set((s) => applyEvent(s, type, data)),
 }));
 
+/** Task and goal events carry no usage; keep the totals the board already has. */
+function keepUsage<T extends { id: string; usage?: unknown }>(next: T, list: T[]): T {
+  if (next.usage) return next;
+  const old = list.find((x) => x.id === next.id);
+  return old?.usage ? { ...next, usage: old.usage } : next;
+}
+
 /** applyEvent folds one realtime event into the board (SPEC "Board WebSocket"). */
 function applyEvent(s: BoardState, type: string, data: unknown): Partial<BoardState> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -90,11 +97,16 @@ function applyEvent(s: BoardState, type: string, data: unknown): Partial<BoardSt
       return nb({ workspace: d });
     case "task.created":
     case "task.updated":
-      return nb({ tasks: upsert(b.tasks, d, byId) });
+      return nb({ tasks: upsert(b.tasks, keepUsage(d, b.tasks), byId) });
     case "task.deleted":
       return nb({ tasks: b.tasks.filter((t) => t.id !== d.id) });
     case "goal.updated":
-      return nb({ goals: upsert(b.goals, d, byId) });
+      return nb({ goals: upsert(b.goals, keepUsage(d, b.goals), byId) });
+    case "usage.work":
+      return nb({
+        tasks: d.task_id && d.task ? b.tasks.map((t) => (t.id === d.task_id ? { ...t, usage: d.task } : t)) : b.tasks,
+        goals: d.goal_id && d.goal ? b.goals.map((g) => (g.id === d.goal_id ? { ...g, usage: d.goal } : g)) : b.goals,
+      });
     case "goal.deleted":
       return nb({ goals: b.goals.filter((g) => g.id !== d.id), goal_events: b.goal_events.filter((e) => e.goal_id !== d.id) });
     case "attachment.created":

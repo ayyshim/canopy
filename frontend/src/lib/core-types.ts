@@ -24,6 +24,48 @@ export interface AttachmentView {
 }
 
 //////////
+// source: usage.go
+
+/**
+ * Price is a model's list price in dollars per million tokens.
+ */
+export interface Price {
+  Pattern: string;
+  Input: number /* float64 */;
+  Output: number /* float64 */;
+  CacheRead: number /* float64 */;
+  CacheWrite: number /* float64 */;
+}
+/**
+ * Prices picks a price by the longest pattern found in the model name.
+ */
+export type Prices = Price[];
+/**
+ * ModelUsage is one model's share of a total.
+ */
+export interface ModelUsage {
+  model: string;
+  tokens_in: number /* int64 */;
+  tokens_out: number /* int64 */;
+  cache_read: number /* int64 */;
+  cache_write: number /* int64 */;
+  calls: number /* int64 */;
+  cost_micros: number /* int64 */;
+}
+/**
+ * UsageTotals is what a task or goal has used. Cost is in millionths of a dollar.
+ */
+export interface UsageTotals {
+  tokens_in: number /* int64 */;
+  tokens_out: number /* int64 */;
+  cache_read: number /* int64 */;
+  cache_write: number /* int64 */;
+  calls: number /* int64 */;
+  cost_micros: number /* int64 */;
+  by_model: ModelUsage[];
+}
+
+//////////
 // source: views.go
 
 export interface WorkspaceView {
@@ -44,7 +86,7 @@ export interface MemberView {
   reports_to?: string /* uuid */;
   independent: boolean;
   isolated: boolean;
-  created_by: string | null;
+  created_by?: string /* uuid */;
   cli: string;
   model: string;
   instructions: string;
@@ -189,6 +231,7 @@ export interface GoalView {
   show_tasks: boolean;
   done_by?: string /* uuid */;
   created_at: string /* RFC3339 */;
+  usage?: UsageTotals; // tokens and cost so far; nil when not loaded
 }
 /**
  * GoalRepoView is a goal's branch in one repository.
@@ -233,6 +276,7 @@ export interface TaskView {
   started_at?: string /* RFC3339 */;
   finished_at?: string /* RFC3339 */;
   created_at: string /* RFC3339 */;
+  usage?: UsageTotals; // tokens and cost so far; nil when not loaded
 }
 export interface SessionView {
   id: string /* uuid */;
