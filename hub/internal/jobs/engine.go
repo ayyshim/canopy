@@ -30,11 +30,7 @@ var (
 	ErrNotPaused = errors.New("this job is not paused")
 )
 
-const (
-	// failuresToPause is how many failed runs in a row pause a job.
-	failuresToPause = 3
-	dueBatch        = 50
-)
+const dueBatch = 50
 
 type Engine struct {
 	Core     *core.Service

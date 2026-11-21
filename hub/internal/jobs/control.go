@@ -143,9 +143,11 @@ func (e *Engine) stop(ctx context.Context, r db.JobRun, j db.Job, status, skip, 
 		}
 	}
 	return e.Core.Tx(ctx, func(t *core.Tx) error {
-		if _, err := t.Q.LockJob(ctx, j.ID); err != nil {
+		locked, err := t.Q.LockJob(ctx, j.ID)
+		if err != nil {
 			return err
 		}
+		j = locked // the failure count may have changed since the sweep read it
 		cur, err := t.Q.GetJobRun(ctx, r.ID)
 		if err != nil || cur.Status != "running" {
 			return err
@@ -162,7 +164,7 @@ func (e *Engine) stop(ctx context.Context, r db.JobRun, j db.Job, status, skip, 
 		if status == "failed" && r.Trigger != "test" {
 			fails := j.ConsecutiveFailures + 1
 			up := db.UpdateJobParams{ID: j.ID, ConsecutiveFailures: &fails}
-			if fails >= failuresToPause {
+			if fails >= FailuresToPause {
 				up.Status, up.PauseReason = ptr("paused"), ptr("failures")
 				paused = true
 			}
