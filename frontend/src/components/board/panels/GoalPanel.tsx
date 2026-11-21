@@ -4,7 +4,7 @@ import { useState } from "react";
 import { markGoalDone, shipGoal, showGoalTasks } from "@/lib/board/actions";
 import {
   clock, computer, computerFor, directory, goal as findGoal, goalRepos, goalTasks, isAdmin, memberStatus, personName,
-  signInLabel, visibleMember, firstName, plural,
+  signInLabel, visibleMember, workTasks, firstName, plural,
 } from "@/lib/board/derive";
 import { useUI } from "@/lib/board/ui";
 import type { GoalView } from "@/lib/types";
@@ -18,6 +18,7 @@ import { PanelBody, PanelFoot, PanelHead } from "./Panel";
 import { Tabs, TabPanel, useTab, EmptyState } from "../../ui";
 import { UsageBadge } from "../../ui";
 import { UsageTab } from "./UsageTab";
+import { HandoverBrief } from "./HandoverBrief";
 import { OutputThumb } from "../OutputThumb";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,7 +48,7 @@ function GivenGoalPanel({ g }: { g: GoalView }) {
   const [tab, setTab] = useTab("goal", "overview", ids);
   const now = useNow(30000);
   const ts = goalTasks(b, g.id);
-  const work = ts.filter((t) => t.kind !== "plan");
+  const work = workTasks(b, g.id);
   const dn = work.filter((t) => t.status === "done").length;
   const m = visibleMember(b, g.manager_id);
   const outs = b.outputs.filter((o) => ts.some((t) => t.id === o.task_id));
@@ -94,6 +95,8 @@ function GivenGoalPanel({ g }: { g: GoalView }) {
           </div>
           <div className="meter"><i style={{ width: `${work.length ? (dn / work.length) * 100 : 0}%`, background: g.color }} /></div>
         </div>
+
+        <HandoverBrief g={g} />
 
         {g.status === "ready" && (
           <div className="box warn">
